@@ -30,3 +30,6 @@
 *.exe
 *.out
 *.app
+
+# Makefiles places all binaries in bin folder
+**/bin
