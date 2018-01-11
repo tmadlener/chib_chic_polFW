@@ -1,14 +1,14 @@
 #ifndef CHIBCHICPOLFW_UNBINNEDPOLFW_CHICTUPLINGWITHWEIGHTS_H__
 #define CHIBCHICPOLFW_UNBINNEDPOLFW_CHICTUPLINGWITHWEIGHTS_H__
 
-#include "general/misc_utils.h"
+#include "general/interface/misc_utils.h"
 
 #include "ChicInputEvent.h"
 #include "ChicTupleEvent.h"
 #include "JpsiMassSelector.h"
 
-#include "general/calcAngles.h"
-#include "general/misc_utils.h"
+#include "general/interface/calcAngles.h"
+#include "general/interface/misc_utils.h"
 
 struct MassRegions;
 struct LifeTimeRegions;

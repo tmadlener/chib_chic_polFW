@@ -5,11 +5,11 @@
 #include "ChicInputEvent.h"
 #include "JpsiMassSelector.h"
 
-#include "general/TTreeLooper.h"
+#include "general/interface/TTreeLooper.h"
 
-#include "general/ArgParser.h"
-#include "general/root_utils.h"
-#include "general/misc_utils.h"
+#include "general/interface/ArgParser.h"
+#include "general/interface/root_utils.h"
+#include "general/interface/misc_utils.h"
 
 #include "RooWorkspace.h"
 

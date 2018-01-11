@@ -1,9 +1,9 @@
 #ifndef CHIBCHICPOLFW_POLUTILS_TTREELOOPER_H__
 #define CHIBCHICPOLFW_POLUTILS_TTREELOOPER_H__
 
-#include "general/root_utils.h"
+#include "root_utils.h"
 
-#include "general/progress.h"
+#include "progress.h"
 
 #include "TFile.h"
 #include "TTree.h"

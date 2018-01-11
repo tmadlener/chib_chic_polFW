@@ -3,7 +3,7 @@
 
 #include "Region.h"
 
-#include "general/root_utils.h"
+#include "general/interface/root_utils.h"
 
 #include "RooWorkspace.h"
 #include "RooAbsPdf.h"
