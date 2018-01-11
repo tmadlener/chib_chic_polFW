@@ -39,3 +39,4 @@
 
 # Pdfs and other image/binary files
 *.pdf
+*.root

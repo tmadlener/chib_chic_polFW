@@ -85,14 +85,17 @@ bool chicTuplingWithWeights(const ChicInputEvent &inEvent, ChicTupleEvent &event
   const auto anglesHX = calcAnglesInFrame(inEvent.muN(), inEvent.muP(), RefFrame::HX);
   event.costh_HX = anglesHX.costh;
   event.phi_HX = anglesHX.phi;
+  event.cosalpha_HX = anglesHX.cosalpha;
 
   const auto anglesPX = calcAnglesInFrame(inEvent.muN(), inEvent.muP(), RefFrame::PX);
   event.costh_PX = anglesPX.costh;
   event.phi_PX = anglesPX.phi;
+  event.cosalpha_PX = anglesPX.cosalpha;
 
   const auto anglesCS = calcAnglesInFrame(inEvent.muN(), inEvent.muP(), RefFrame::CS);
   event.costh_CS = anglesCS.costh;
   event.phi_CS = anglesCS.phi;
+  event.cosalpha_CS = anglesCS.cosalpha;
 
   // std::cout << "====================\n";
 
@@ -153,14 +156,17 @@ bool chicTuplingWithMassWeights(const ChicInputEvent &inEvent, ChicTupleEvent &e
   const auto anglesHX = calcAnglesInFrame(inEvent.muN(), inEvent.muP(), RefFrame::HX);
   event.costh_HX = anglesHX.costh;
   event.phi_HX = anglesHX.phi;
+  event.cosalpha_HX = anglesHX.cosalpha;
 
   const auto anglesPX = calcAnglesInFrame(inEvent.muN(), inEvent.muP(), RefFrame::PX);
   event.costh_PX = anglesPX.costh;
   event.phi_PX = anglesPX.phi;
+  event.cosalpha_PX = anglesPX.cosalpha;
 
   const auto anglesCS = calcAnglesInFrame(inEvent.muN(), inEvent.muP(), RefFrame::CS);
   event.costh_CS = anglesCS.costh;
   event.phi_CS = anglesCS.phi;
+  event.cosalpha_CS = anglesCS.cosalpha;
 
   double wChic1 = mr.SR1.contains(event.chicMass) ? 1 : weights.first;
   if (mr.SR2.contains(event.chicMass)) wChic1 = 0;
@@ -199,14 +205,17 @@ bool chicTuplingWith2DWeights(const ChicInputEvent& inEvent, ChicTupleEvent& eve
   const auto anglesHX = calcAnglesInFrame(inEvent.muN(), inEvent.muP(), RefFrame::HX);
   event.costh_HX = anglesHX.costh;
   event.phi_HX = anglesHX.phi;
+  event.cosalpha_HX = anglesHX.cosalpha;
 
   const auto anglesPX = calcAnglesInFrame(inEvent.muN(), inEvent.muP(), RefFrame::PX);
   event.costh_PX = anglesPX.costh;
   event.phi_PX = anglesPX.phi;
+  event.cosalpha_PX = anglesPX.cosalpha;
 
   const auto anglesCS = calcAnglesInFrame(inEvent.muN(), inEvent.muP(), RefFrame::CS);
   event.costh_CS = anglesCS.costh;
   event.phi_CS = anglesCS.phi;
+  event.cosalpha_CS = anglesCS.cosalpha;
 
   const bool massSR1 = mr.SR1.contains(event.chicMass);
   const bool massSR2 = mr.SR2.contains(event.chicMass);

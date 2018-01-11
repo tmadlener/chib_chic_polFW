@@ -16,6 +16,7 @@ enum class RefFrame {
 struct Angles {
   double costh;
   double phi;
+  double cosalpha;
 };
 
 /** Small helper struct for defining the axis of a reference frame. */
@@ -40,8 +41,9 @@ Angles calcAngles(const ReferenceAxis& refAxis,
 
   const double cosTh = lepInDilepRotated.CosTheta();
   const double phi = lepInDilepRotated.Phi() * 180 * overpi;
+  const double cosAlpha = std::sqrt(1 - cosTh*cosTh) * std::sin(lepInDilepRotated.Phi());
 
-  return Angles{cosTh, phi};
+  return Angles{cosTh, phi, cosAlpha};
 }
 
 /**

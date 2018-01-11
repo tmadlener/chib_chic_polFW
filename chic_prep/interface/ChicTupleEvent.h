@@ -16,10 +16,15 @@ public:
 
   double costh_HX{};
   double phi_HX{};
+  double cosalpha_HX{};
+
   double costh_PX{};
   double phi_PX{};
+  double cosalpha_PX{};
+
   double costh_CS{};
   double phi_CS{};
+  double cosalpha_CS{};
 
   double chicPt{};
   double chicMass{};
@@ -35,10 +40,15 @@ void ChicTupleEvent::Create(TTree *t)
 {
   t->Branch("costh_HX", &costh_HX);
   t->Branch("phi_HX", &phi_HX);
+  t->Branch("cosalpha_HX", &cosalpha_HX);
+
   t->Branch("costh_PX", &costh_PX);
   t->Branch("phi_PX", &phi_PX);
+  t->Branch("cosalpha_PX", &cosalpha_PX);
+
   t->Branch("costh_CS", &costh_CS);
   t->Branch("phi_CS", &phi_CS);
+  t->Branch("cosalpha_CS", &cosalpha_CS);
 
   t->Branch("chicPt", &chicPt);
   t->Branch("chicMass", &chicMass);
