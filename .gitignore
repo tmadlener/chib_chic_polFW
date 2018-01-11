@@ -33,3 +33,9 @@
 
 # Makefiles places all binaries in bin folder
 **/bin
+
+# Python
+*.pyc
+
+# Pdfs and other image/binary files
+*.pdf

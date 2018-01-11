@@ -11,7 +11,8 @@ To setup anything additional do `source .setup.sh` in the base-directory of this
 ## TODO list
 * [ ] Move existing code from other repositories into this one
   - [x] chi\_c tupling (starting from finished mass- and lifetime fit)
-  - [ ] existing code for plotting
+  - [x] existing code for plotting
+  - [ ] Maybe other useful code from ratio fitting, etc. when appropriate
   - [ ] chi\_b mass fit framework
 * [ ] Generalize plotting code to handle both cases
 * [ ] Make setup script setting all the necessary environment and `PATH` variables so that no additional setup from CMSSW is necessary.
