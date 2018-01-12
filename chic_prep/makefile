@@ -27,3 +27,6 @@ setup:
 
 $(BIN)%: $(SRC)%.cc
 	$(CXX) $(INCS) $(ROOTINCS) $(CXXFLAGS) $(ROOTCXXFLAGS) -MMD -MP $< -o $@ $(ROOTLIBS) $(ROOFITLIBS)
+
+clear:
+	rm -rf $(BIN)

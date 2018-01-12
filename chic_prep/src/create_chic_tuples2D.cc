@@ -5,6 +5,8 @@
 #include "ChicInputEvent.h"
 #include "JpsiMassSelector.h"
 
+#include "config/commonVar.h"
+
 #include "general/interface/TTreeLooper.h"
 
 #include "general/interface/ArgParser.h"
@@ -15,13 +17,7 @@
 
 #include <string>
 #include <iostream>
-#include <array>
 #include <memory>
-
-constexpr std::array<double, 6> ptBinBorders = {10, 15, 20, 25, 30, 50};
-// constexpr std::array<double, 6> ptBinBorders = {10, 15, 25, 25, 30, 50}; // 09.10.2017: merged pt bins test
-
-constexpr double maxAbsRap = 2.4; // effectively no cut on chic rapidity
 
 std::unique_ptr<DiMuonSelector> getDimuonSelector(const bool rejSeagulls, const bool rejCowboys)
 {
@@ -83,15 +79,15 @@ int main(int argc, char *argv[])
   auto* tupleTree = new TTree(outTreeName.c_str(), "tupled chic data with 2 dim mass weights");
   tupleTree->SetDirectory(outFile);
 
-  const double ptMin = ptBinBorders[ptBin - 1];
-  const double ptMax = ptBinBorders[ptBin];
+  const double ptMin = config::ptBinBorders[ptBin - 1];
+  const double ptMax = config::ptBinBorders[ptBin];
 
   const auto dimuonSelector = getDimuonSelector(rejSeagulls, rejCowboys);
 
   TTreeLooper<ChicInputEvent, ChicTupleEvent> treeLooper(dataTree, tupleTree);
   auto tuplingFunc = [&] (const ChicInputEvent& ie, ChicTupleEvent& e) {
     return chicTuplingWith2DWeights(ie, e, mRegions, ltRegions, bkgWeights, ptMin, ptMax,
-                                    maxAbsRap, jpsiSelector, *dimuonSelector);
+                                    config::maxAbsRap, jpsiSelector, *dimuonSelector);
   };
 
   treeLooper.loop(tuplingFunc);
