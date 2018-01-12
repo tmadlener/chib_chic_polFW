@@ -1,0 +1,64 @@
+#!/bin/bash
+
+# Script that helps in automating the creation of tuples that can be fed into the plotting (and fitting) scripts
+# for the chic
+
+## basename under which the create tuples will get stored
+## the pt bin will be added dynamically and all the files are stored under the passed output directory
+OUTFILE_BASENAME=chic_tuple
+
+## Create the chic tuple given an input datafile, a fit file and an outfile name
+function create_tuple() {
+    if [[ $# -ne 3 ]]; then
+        echo "ERROR: create_tuple() needs 3 arguments (data_file, fit_file and out_file)"
+        return 1
+    fi
+
+    data_file=${1}
+    fit_file=${2}
+    out_file=${3}
+
+    chic_tupler=${CHIB_CHIC_POLFW_DIR}/chic_prep/bin/create_chic_tuples2D
+    fold_angle_adder=${CHIB_CHIC_POLFW_DIR}/polarization/add_folded_angles.py
+
+    ${chic_tupler} --datafile ${data_file} --fitfile ${fit_file} --outfile ${out_file}
+    exc_tupler=$?
+    if [[ ${exc_tupler} -ne 0 ]]; then
+        echo "ERROR: chic tupler returned non-zero exit code: "${exc_tupler}
+        return ${exc_tupler}
+    fi
+
+    ${fold_angle_adder} --frames="HX,PX,CS" --treename="chic_tuple" ${out_file}
+    exc_folder=$?
+    if [[ ${exc_folder} -ne 0 ]]; then
+        echo "ERROR: adding folded angles failed with exit code: "${exc_folder}
+        return ${exc_folder}
+    fi
+}
+
+
+## Create all possible tuples from the passed directory (must contain finished mass-lifetime fit)
+function create_all_tuples() {
+    base_dir=${1} # the base directory
+    out_dir=${2} # where to store the files to
+
+    mkdir -p ${out_dir}
+
+    data_file=${base_dir}/tmpFiles/selEvents_data.root # data file (after preselection)
+    fit_file_base=${base_dir}/tmpFiles/backupWorkSpace/ws_MassLifetimeFit_Chi_rap1_pt
+
+    # simply run over all available fit files
+    for f in ${fit_file_base}*.root; do
+        pt_bin=${f: -6:1} # assuming that pT bin is only 1 digit here. TODO: make this more stable or a separate function
+        out_file=${out_dir}/${OUTFILE_BASENAME}_pt${pt_bin}.root
+
+        create_tuple ${data_file} ${f} ${out_file}
+    done
+}
+
+if [[ $# -ne 2 ]]; then
+    echo "Usage: create_chic_tuple FIT_BASE_DIR OUT_DIR"
+    exit 1
+fi
+
+create_all_tuples ${1} ${2}

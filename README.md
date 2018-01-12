@@ -14,5 +14,6 @@ To setup anything additional do `source .setup.sh` in the base-directory of this
   - [x] existing code for plotting
   - [ ] Maybe other useful code from ratio fitting, etc. when appropriate
   - [ ] chi\_b mass fit framework
+* [ ] Make plotting script more flexible (i.e. take input files as arguments, etc.)
 * [ ] Generalize plotting code to handle both cases
 * [ ] Make setup script setting all the necessary environment and `PATH` variables so that no additional setup from CMSSW is necessary.
