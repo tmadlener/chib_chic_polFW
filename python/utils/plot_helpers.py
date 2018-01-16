@@ -51,3 +51,69 @@ def default_colors():
         _color_indices = [col[0] for col in _colors]
 
     return _color_indices
+
+
+def set_color(pltable, col):
+    """
+    Set the passed color for all attributes of the passed plottable.
+
+    Args:
+        pltable (ROOT.TObject): Plottable root object
+        col (int): Color index to use for the plottable
+    """
+    pltable.SetLineColor(col)
+    pltable.SetMarkerColor(col)
+
+
+def plot_on_canvas(can, plots, **kwargs):
+    """
+    Generic plotting function, that puts all the plots on plots onto the same
+    canvas.
+
+    Args:
+        can (ROOT.Canvas): Canvas to which the plots should be added
+        plots (list): Plottable root objects (specifying Draw() method)
+
+    Keyword Args:
+        colors (list. optional): list of colors to be used for plotting
+            (otherwise default colors will be used)
+        drawOpt (Ste, optional): option that will be passed to the Draw() method
+        leg (ROOT.TLegend, optional): Put the passed TLegend onto the plot
+        legEntries (list): list of string (at least as long as the plot list)
+            from which the keys for the legend are taken
+
+    Returns:
+        ROOT.TCanvas: TCanvas that has been passed in
+    """
+    can.cd()
+
+    colors = kwargs.pop('colors', default_colors())
+    get_col = lambda i: colors[ i % len(colors) ]
+
+    leg_option = kwargs.pop('drawOpt', '')
+    draw_option = ''.join(['same', leg_option])
+    legend = kwargs.pop('leg', None)
+    leg_entries = kwargs.pop('legEntries', [h.GetName() for h in plots])
+
+    # cant make pop above default to 'ple', since that alters the
+    # draw option defaults
+    # If passed draw option is 'H' only, specify the 'ple' option for the
+    # legend
+    if not leg_option or leg_option == 'H':
+        leg_option = 'ple'
+
+    for i in range(len(plots)):
+        set_color(plots[i], get_col(i))
+        plots[i].Draw(draw_option)
+
+        if legend is not None:
+            legend.AddEntry(plots[i], leg_entries[i], leg_option)
+
+    if legend is not None:
+        legend.Draw()
+
+    can.Update()
+
+    return can
+
+
