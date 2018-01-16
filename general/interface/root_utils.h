@@ -27,6 +27,16 @@ TFile* checkOpenFile(const std::string& filename)
   return nullptr;
 }
 
+/** Redirect TObject->Print() from std::cout to arbitrary std::ostream (e.g. a file) j.n. 01-2018 */
+void print2stream(TObject* object_to_Print, std::ostream & stream)
+{
+  // From https://stackoverflow.com/questions/10150468/how-to-redirect-cin-and-cout-to-files
+  std::streambuf *coutbuf = std::cout.rdbuf(); //save old buf
+  std::cout.rdbuf(stream.rdbuf()); //redirect std::cout
+  object_to_Print->Print();
+  std::cout.rdbuf(coutbuf); //reset to standard output again
+}
+
 /** Try to get object with name from TFile f. */
 template<typename T>
 T* checkGetFromFile(TFile* f, const std::string& name)
