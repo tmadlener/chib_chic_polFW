@@ -231,10 +231,10 @@ long long ParallelTreeLooper::loop_singlethreaded(long long nEvents)
 void ParallelTreeLooper::worker(long long start_event, long long end_event, int worker_id, long long & count_out, std::string & worker_filename_out,
   std::mutex &cout_lock, std::mutex &clone_lock, long long update_every)
 {
-  ParallelTreeLooper *looper = nullptr;
+  std::unique_ptr<ParallelTreeLooper> looper;
   {
     std::lock_guard<std::mutex> lock(clone_lock);
-    looper = this->clone();
+    looper.reset(this->clone());
   }
   {
     std::lock_guard<std::mutex> lock(cout_lock);
@@ -310,9 +310,7 @@ void ParallelTreeLooper::worker(long long start_event, long long end_event, int 
     std::cout << "TreeLooper worker " << worker_id << " processed " << count_out << " events." << std::endl;
   }
   //looper->m_out_tree->Print();
-
-  delete looper; //also closes files
-
+  
 }
 
 void ParallelTreeLooper::progress_boost()
