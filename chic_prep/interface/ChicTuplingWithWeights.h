@@ -71,7 +71,7 @@ struct SeagullSelector : public DiMuonSelector {
   }
 };
 
-bool chicTuplingWithWeights(const ChicInputEvent &inEvent, ChicTupleEvent &event,
+bool chicTuplingWithWeights(const ChicInputEvent<> &inEvent, ChicTupleEvent<> &event,
                             const MassRegions &mr, const LifeTimeRegions &ltr,
                             const BkgWeights &weights)
 {
@@ -131,7 +131,7 @@ bool chicTuplingWithWeights(const ChicInputEvent &inEvent, ChicTupleEvent &event
 }
 
 
-bool chicTuplingWithMassWeights(const ChicInputEvent &inEvent, ChicTupleEvent &event,
+bool chicTuplingWithMassWeights(const ChicInputEvent<> &inEvent, ChicTupleEvent<> &event,
                                 const MassRegions& mr, const Region<Boundary::TwoSided> &ltr,
                                 const std::pair<double, double> weights,
                                 const double ptMin, const double ptMax,
@@ -181,7 +181,7 @@ bool chicTuplingWithMassWeights(const ChicInputEvent &inEvent, ChicTupleEvent &e
 }
 
 template<typename DiMuSelector>
-bool chicTuplingWith2DWeights(const ChicInputEvent& inEvent, ChicTupleEvent& event,
+bool chicTuplingWith2DWeights(const ChicInputEvent<>& inEvent, ChicTupleEvent<>& event,
                               const MassRegions& mr, const LifeTimeRegions& ltr,
                               const BkgWeights2D& weights,
                               const double ptMin, const double ptMax, const double absRapMax,

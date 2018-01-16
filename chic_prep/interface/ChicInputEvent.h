@@ -4,7 +4,21 @@
 #include "TTree.h"
 #include "TLorentzVector.h"
 
+struct VoidInfo {
+  void Init(TTree*) { /* No-OP */ }
+  void Create(TTree*) { /* No-OP */ }
+};
 
+struct DefaultBranchNames  {
+  static constexpr auto jpsi = "jpsi";
+  static constexpr auto chic = "chic";
+  static constexpr auto lepP = "lepP";
+  static constexpr auto lepN = "lepN";
+  static constexpr auto Jpsict = "Jpsict";
+};
+
+template<typename AdditionalInfo = VoidInfo,
+         typename BranchNames = DefaultBranchNames>
 class ChicInputEvent {
 public:
   ChicInputEvent() = default;
@@ -18,6 +32,8 @@ public:
   const TLorentzVector &muP() const { return *m_muP; }
   const TLorentzVector &muN() const { return *m_muN; }
 
+  const AdditionalInfo& info() const { return m_addInfo; }
+
   double Jpsict;
 private:
 
@@ -25,10 +41,13 @@ private:
   TLorentzVector *m_chic{nullptr};
   TLorentzVector *m_muP{nullptr};
   TLorentzVector *m_muN{nullptr};
+
+  AdditionalInfo m_addInfo;
 };
 
 
-ChicInputEvent::~ChicInputEvent()
+template<typename AI, typename BN>
+ChicInputEvent<AI, BN>::~ChicInputEvent()
 {
   delete m_jpsi;
   delete m_chic;
@@ -36,14 +55,17 @@ ChicInputEvent::~ChicInputEvent()
   delete m_muN;
 }
 
-void ChicInputEvent::Init(TTree *t)
+template<typename AI, typename BN>
+void ChicInputEvent<AI, BN>::Init(TTree *t)
 {
-  t->SetBranchAddress("jpsi", &m_jpsi);
-  t->SetBranchAddress("chic", &m_chic);
-  t->SetBranchAddress("lepP", &m_muP);
-  t->SetBranchAddress("lepN", &m_muN);
+  t->SetBranchAddress(BN::jpsi, &m_jpsi);
+  t->SetBranchAddress(BN::chic, &m_chic);
+  t->SetBranchAddress(BN::lepP, &m_muP);
+  t->SetBranchAddress(BN::lepN, &m_muN);
 
-  t->SetBranchAddress("Jpsict", &Jpsict);
+  t->SetBranchAddress(BN::Jpsict, &Jpsict);
+
+  m_addInfo.Init(t);
 }
 
 #endif

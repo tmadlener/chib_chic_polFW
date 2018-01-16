@@ -84,8 +84,8 @@ int main(int argc, char *argv[])
 
   const auto dimuonSelector = getDimuonSelector(rejSeagulls, rejCowboys);
 
-  TTreeLooper<ChicInputEvent, ChicTupleEvent> treeLooper(dataTree, tupleTree);
-  auto tuplingFunc = [&] (const ChicInputEvent& ie, ChicTupleEvent& e) {
+  TTreeLooper<ChicInputEvent<>, ChicTupleEvent<>> treeLooper(dataTree, tupleTree);
+  auto tuplingFunc = [&] (const ChicInputEvent<>& ie, ChicTupleEvent<>& e) {
     return chicTuplingWith2DWeights(ie, e, mRegions, ltRegions, bkgWeights, ptMin, ptMax,
                                     config::maxAbsRap, jpsiSelector, *dimuonSelector);
   };

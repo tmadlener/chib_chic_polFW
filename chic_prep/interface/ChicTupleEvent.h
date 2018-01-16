@@ -5,12 +5,12 @@
 
 #include "TTree.h"
 
-
+template<typename AdditionalInfo = VoidInfo>
 class ChicTupleEvent {
 public:
   ChicTupleEvent() = default;
 
-  ChicTupleEvent(const ChicInputEvent &inEvent);
+  // ChicTupleEvent(const ChicInputEvent &inEvent);
 
   void Create(TTree *t);
 
@@ -34,9 +34,15 @@ public:
 
   double wChic1{};
   double wChic2{};
+
+  AdditionalInfo& info() { return m_additionalInfo; }
+
+private:
+  AdditionalInfo m_additionalInfo;
 };
 
-void ChicTupleEvent::Create(TTree *t)
+template<typename AI>
+void ChicTupleEvent<AI>::Create(TTree *t)
 {
   t->Branch("costh_HX", &costh_HX);
   t->Branch("phi_HX", &phi_HX);
@@ -58,6 +64,8 @@ void ChicTupleEvent::Create(TTree *t)
 
   t->Branch("wChic1", &wChic1);
   t->Branch("wChic2", &wChic2);
+
+  m_additionalInfo.Create(t);
 }
 
 #endif
