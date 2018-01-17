@@ -22,7 +22,8 @@ def draw_var_to_hist(tree, hist, var, cut='', weight=None):
     plot_str = " >> ".join([var, hist.GetName()])
     if weight is not None:
         if cut:
-            cut = " * ".join([weight, "(", cut, ")"])
+            cut = "".join(["(", cut, ")"])
+            cut = " * ".join([weight, cut])
         else:
             cut = weight
 
@@ -73,3 +74,18 @@ def set_bins_to_zero(hist, thresh=0, verbose=False):
               format(hist.GetName(), thresh))
         for negb, cont in neg_bins:
             print('Set bin {} to 0, content was {}'.format(negb, cont))
+
+
+def set_labels(hist, xlabel='', ylabel=''):
+    """
+    Set the labels to the passed histogram.
+
+    Args:
+        hist (ROOT.TH1): Histogram for which the labels should be set
+        xlabel, ylabel (str, optional): The x-, resp. y-label to set
+    """
+    if xlabel:
+        hist.SetXTitle(xlabel)
+    if ylabel:
+        hist.SetYTitle(ylabel)
+
