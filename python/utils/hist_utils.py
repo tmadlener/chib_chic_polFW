@@ -89,3 +89,38 @@ def set_labels(hist, xlabel='', ylabel=''):
     if ylabel:
         hist.SetYTitle(ylabel)
 
+
+def get_y_max(hists):
+    """
+    Get the maximum y-value of all histograms
+
+    Args:
+        hists (list): list of ROOT.TH1 for which the maximum y-value should be
+            obtained
+
+    Returns:
+        float: The maximum y-value of all passed histograms
+    """
+    max_y = -1
+    for hist in hists:
+        hist_max = hist.GetBinContent(hist.GetMaximumBin())
+        if hist_max > max_y:
+            max_y = hist_max
+
+    return max_y
+
+
+def set_range_hist(hist, x_range=None, y_range=None):
+    """
+    Set the range to the histogram.
+
+    Args:
+        hist (ROOT.TH1): histogram for which the range should be passed
+        x_range, y_range (list or tuple, optional): x- resp. y-range to be used.
+            Must be at least two numbers or None. If None this range will not be
+            set for this histogram
+    """
+    if x_range is not None:
+        hist.GetXaxis().SetRangeUser(x_range[0], x_range[1])
+    if y_range is not None:
+        hist.GetYaxis().SetRangeUser(y_range[0], y_range[1])

@@ -11,7 +11,10 @@ import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
 
-from utils.hist_utils import draw_var_to_hist, set_hist_opts, set_bins_to_zero
+from utils.hist_utils import (
+    draw_var_to_hist, set_hist_opts, set_bins_to_zero, set_range_hist,
+    get_y_max
+)
 from utils.setup_plot_style import set_TDR_style, add_auxiliary_info
 from utils.plot_helpers import default_colors
 #################################################################
@@ -26,10 +29,15 @@ BASE_DIR = '/'.join([os.environ['WORK'], 'NewPolMethodTests', 'data', 'Chic'])
 #     '2016': '/'.join([BASE_DIR, 'tuples', 'data_2016', 'chic_tuple_ptmerged_2D.root']),
 #     '2017': '/'.join([BASE_DIR, 'tuples', 'data_2017', 'chic_tuple_pt3_2D.root'])
 # }
+# INPUT_FILES = {
+#     '2012': '/'.join([BASE_DIR, 'tuples', 'data_2012', 'cowboy_rejection_after_fit', 'chic_tuple_pt2_2D.root']),
+#     '2017': '/'.join([BASE_DIR, 'tuples', 'data_2017', 'chic_tuple_pt3_2D.root'])
+# }
+
 INPUT_FILES = {
-    '2012': '/'.join([BASE_DIR, 'tuples', 'data_2012', 'cowboy_rejection_after_fit', 'chic_tuple_pt2_2D.root']),
-    '2017': '/'.join([BASE_DIR, 'tuples', 'data_2017', 'chic_tuple_pt3_2D.root'])
+    '2017': '../foo_test_creation_script/chic_tuple_pt3.root'
 }
+
 # entries to the legend
 LEG_ENTRIES = {
     '2012': '8 TeV (2012)',
@@ -85,14 +93,6 @@ DIST_LEG_POS = { # TODO; this has to be done dynamically at some point
 # using a dict to avoid opening the same file multiple times       #
 ####################################################################
 _OPEN_FILES = {}
-
-
-def set_range_hist(hist, x_range=None, y_range=None):
-    """Set the range to the histogram"""
-    if x_range is not None:
-        hist.GetXaxis().SetRangeUser(x_range[0], x_range[1])
-    if y_range is not None:
-        hist.GetYaxis().SetRangeUser(y_range[0], y_range[1])
 
 
 def get_dist_hists(datafile, frame):
@@ -229,17 +229,6 @@ def get_aux_info_pos(frame, var, plot):
     return 'right'
 
 
-def get_y_max(hists):
-    """Get the maximum y-value of all histograms"""
-    max_y = -1
-    for h in hists:
-        hist_max = h.GetBinContent(h.GetMaximumBin())
-        if hist_max > max_y:
-            max_y = hist_max
-
-    return max_y
-
-
 def make_dist_plot(hists, var, years, frame):
     """Make chic distribution plots"""
     set_TDR_style()
@@ -322,8 +311,8 @@ def main():
     # TODO: make plots
 
     #years_to_plot = ['2012', '2016']
-    # years_to_plot = ['2017']
-    years_to_plot = ['2012', '2017']
+    years_to_plot = ['2017']
+    # years_to_plot = ['2012', '2017']
 
     make_ratio_plot(histograms, 'costh', years_to_plot, 'HX')
     make_ratio_plot(histograms, 'phi', years_to_plot, 'HX')
