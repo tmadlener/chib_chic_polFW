@@ -2,6 +2,8 @@
 Module containing helper functions for handling ROOT TH1Ds (or similar)
 """
 
+import numpy as np
+
 def draw_var_to_hist(tree, hist, var, cut='', weight=None):
     """
     Fill passed variable from TTree into TH1 using TTree.Draw().
@@ -115,7 +117,7 @@ def set_range_hist(hist, x_range=None, y_range=None):
     Set the range to the histogram.
 
     Args:
-        hist (ROOT.TH1): histogram for which the range should be passed
+        hist (ROOT.TH1): histogram for which the range should be set
         x_range, y_range (list or tuple, optional): x- resp. y-range to be used.
             Must be at least two numbers or None. If None this range will not be
             set for this histogram
@@ -124,3 +126,50 @@ def set_range_hist(hist, x_range=None, y_range=None):
         hist.GetXaxis().SetRangeUser(x_range[0], x_range[1])
     if y_range is not None:
         hist.GetYaxis().SetRangeUser(y_range[0], y_range[1])
+
+
+def set_range_hists(hists, x_range=None, y_range=None):
+    """
+    Set the range to all histograms
+
+    Args:
+        hists (list): ROOT.TH1s for which the range should be set
+        x_range, y_range (list or tuple, optional): x- resp. y-range to be used.
+            Must be at least two numbers or None. If None this range will not be
+            set for the histograms
+    """
+    for hist in hists:
+        set_range_hist(hist, x_range, y_range)
+
+
+def get_quantiles(hist, quantiles):
+    """
+    Get the (approximate) quantiles from the passed histogram
+
+    Depending on the binning it is possible that the quantiles are not exactly
+    at the desired values. In this case, the upper bound of the bin, that exceeds
+    the quantile will be used.
+
+    Args:
+        hist (ROOT.TH1): histogram of distribution for which quantile cuts
+            should be determined
+        quantiles (list): quantile values between 0 and 1
+
+    Returns:
+        list: x-value at the upper bounds of the bins that exceed the quantiles
+    """
+    integral = hist.Integral()
+    # calculate the cumulative sum of the bin entries, excluding under- and
+    # overflow
+    cum_sum = np.cumsum([hist[i] for i in xrange(1, hist.GetNbinsX() +1)])
+    cum_sum /= integral # normalize
+
+    # get the first indices in the normalized cumulative sum array that are
+    # greater or equal to the desired quantiles
+    q_bins = [np.where(cum_sum >= q)[0][0] for q in quantiles]
+
+    x_axis = hist.GetXaxis()
+    # when retrieving the upper bound adjust for the indexing in ROOT histograms
+    # (starts at 1 and ends at Nbins for the "nominal" bins, 0 is underflow,
+    # Nbins + 1 is overflow)
+    return [x_axis.GetBinUpEdge(b + 1) for b in q_bins]

@@ -61,8 +61,53 @@ def set_color(pltable, col):
         pltable (ROOT.TObject): Plottable root object
         col (int): Color index to use for the plottable
     """
-    pltable.SetLineColor(col)
-    pltable.SetMarkerColor(col)
+    col_attributes = ['SetLineColor', 'SetMarkerColor']
+    for attr in col_attributes:
+        if hasattr(pltable, attr):
+            getattr(pltable, attr)(col)
+
+
+def set_attributes(pltable, **kwargs):
+    """
+    Set attributes to passed plotable.
+
+    Function checks which functions are available and sets the attributes
+    specified by the kwargs.
+
+    Args:
+        pltable (ROOT.TObject): Plottable root object
+
+    Keyword Args:
+        color (int): TColor index specifying a color to be set
+        marker (int): TMarker style index
+        line (int): Towline style index
+        width (int): TLine width (in pixels)
+        size (float): TMarker size
+    """
+    def conditional_set(key, set_func):
+        """
+        Helper function that tries to pop key from kwargs and calls the set_func
+        with the argument if it is set.
+
+        Args:
+            key (str): keyword to check for in kwargs
+            set_func (function): Function taking exactly one argument that will
+                be called if the key is found in the kwargs.
+        """
+        arg = kwargs.pop(key, None)
+        if arg is not None:
+            set_func(pltable, arg)
+
+    arg_func_pairs = (
+        ('color', set_color),
+        ('marker', lambda p, m: p.SetMarkerStyle(m)),
+        ('size', lambda p, s: p.SetMarkerSize(s)),
+        ('width', lambda l, w: l.SetLineWidth(w)),
+        ('line', lambda l, s: l.SetLineStyle(s))
+    )
+
+    for arg, func in arg_func_pairs:
+        conditional_set(arg, func)
 
 
 def plot_on_canvas(can, plots, **kwargs):
@@ -115,5 +160,3 @@ def plot_on_canvas(can, plots, **kwargs):
     can.Update()
 
     return can
-
-
