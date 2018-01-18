@@ -2,15 +2,18 @@
 Script for producing plots for studying acceptance effects for the chic
 """
 
+import re
+
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
 
 from utils.hist_utils import (
-    draw_var_to_hist, set_hist_opts, combine_cuts, set_labels
+    draw_var_to_hist, set_hist_opts, combine_cuts, set_labels, get_y_max,
+    set_range_hists, get_quantiles
 )
-from utils.plot_helpers import plot_on_canvas
-
+from utils.plot_helpers import default_colors, set_attributes, mkplot
+from utils.misc_helpers import stringify, cond_mkdir
 
 def get_hist_settings(var):
     """
@@ -18,11 +21,11 @@ def get_hist_settings(var):
     """
     hist_settings = {
         'costh': {'n_bins': 16, 'min': 0, 'max': 1},
-        'chicMass': {'n_bins': 100, 'min': 3.275, 'max': 3.725},
+        'chicMass': {'n_bins': 200, 'min': 3.2, 'max': 3.65},
         'phi': {'n_bins': 20, 'min': 0, 'max': 90}
     }
 
-    if 'costh' in var:
+    if 'costh' in var or 'cosalpha' in var:
         return hist_settings['costh']
     if 'phi' in var:
         return hist_settings['phi']
@@ -30,25 +33,31 @@ def get_hist_settings(var):
     return hist_settings[var]
 
 
-def select_state(state, varname='gen_chic_p4.M()'):
+def get_plot_varname(var):
     """
-    Select the state via its generated mass.
+    Get the name from the variable that can be used in plot and histogram names.
+
+    TODO
+    """
+    s_var = re.sub(r'TMath::Abs\((.*)\)', r'abs_\1', var)
+    return s_var
+
+
+def var_selection(var, v_min, v_max):
+    """
+    Get events in a min, max window for a given variable
 
     Args:
-        state (str): Can be either 'chic1', or 'chic2'
-        varname (str, optional): The name of the branch in which the generator
-            4-vector is stored
+        var (str): branch name of the desired variable
+        v_min, v_max (float): min and max value of the variable
 
     Returns:
         str: Selection string to be used in TTree::Draw()
     """
-    # All chic are generated with the same mass (distinct values for chi1 and
-    # chic2). For deciding if something is a chic1 or chic2 at generator level
-    # define a mass inbetween the two and check if it's above or below
-    mass_split = 3.53 # GE
-    operator = {'chic1': ' < ', 'chic2': ' > '}
+    low_cut = ' > '.join([var, str(v_min)])
+    up_cut = ' < '.join([var, str(v_max)])
 
-    return operator[state].join([varname, str(mass_split)])
+    return combine_cuts([low_cut, up_cut])
 
 
 def select_trigger(brname='trigger', bit=2):
@@ -66,8 +75,44 @@ def select_trigger(brname='trigger', bit=2):
     return '({0} & {1}) == {1}'.format(brname, bit)
 
 
-def get_gen_splitted_hists(rfile, var, hist_settings, base_sel=[],
-                           treename='chic_mc_tuple'):
+def base_selection():
+    """
+    Get a basic selection that should be applied to all plots
+
+    NOTE: Calls gets the histogram settings for 'chicMass' to determine min and
+    max mass cuts
+
+    Returns:
+        str: Selection string to be used in TTree::Draw()
+    """
+    mass_hist_settings = get_hist_settings('chicMass')
+
+    return var_selection('chicMass', mass_hist_settings['min'],
+                         mass_hist_settings['max'])
+
+
+def get_histogram(rfile, var, state, selection, treename='chic_mc_tuple'):
+    """
+    Get histogram of given state for variable and selection.
+    TODO
+    """
+    tree = rfile.Get(treename)
+    hist_set = get_hist_settings(var)
+
+    hist_name = '_'.join([stringify(selection), state, get_plot_varname(var)])
+
+    hist = r.TH1D(hist_name, '', hist_set['n_bins'],
+                  hist_set['min'], hist_set['max'])
+
+    set_hist_opts(hist)
+    state_sel = {'chic1': 'wChic1', 'chic2': 'wChic2'}[state]
+
+    draw_var_to_hist(tree, hist, var, selection, state_sel)
+
+    return hist
+
+
+def get_gen_splitted_hists(rfile, var, base_sel=[], treename='chic_mc_tuple'):
     """
     Get histogram of desired variable split into chic2 and chic1 using generator
     information.
@@ -85,35 +130,9 @@ def get_gen_splitted_hists(rfile, var, hist_settings, base_sel=[],
         (ROOT.TH1D, ROOT.TH1D): histogram of chic1 and chic2 separated
             distribution of the desired variable
     """
-    def get_name(state, var):
-        """Get unique name for histogram from state and var.
-
-        If the var contains function calls, etc. they are replaced with a
-        syntax that doesn't confuse the TTree::Draw() command
-
-        TODO
-        """
-        nvar = var.replace('()', '')
-        nvar = nvar.replace('.', '_')
-        nvar = nvar.replace('TMath::', '')
-        nvar = nvar.replace('(', '_').replace('', '_')
-
-        return '__'.join([nvar, state])
-
-    n_bins, h_min, h_max = [hist_settings[v] for v in ['n_bins', 'min', 'max']]
-
-    tree = rfile.Get(treename)
-    chic1_h = r.TH1D(get_name('chic1', var), '', n_bins, h_min, h_max)
-    chic2_h = r.TH1D(get_name('chic2', var), '', n_bins, h_min, h_max)
-
-    set_hist_opts(chic1_h)
-    set_hist_opts(chic2_h)
-
-    chic1_sel = combine_cuts(base_sel)
-    chic2_sel = combine_cuts(base_sel)
-
-    draw_var_to_hist(tree, chic1_h, var, chic1_sel, 'wChic1')
-    draw_var_to_hist(tree, chic2_h, var, chic2_sel, 'wChic2')
+    selection = combine_cuts(base_sel)
+    chic1_h = get_histogram(rfile, var, 'chic1', selection, treename)
+    chic2_h = get_histogram(rfile, var, 'chic2', selection, treename)
 
     return (chic1_h, chic2_h)
 
@@ -126,9 +145,8 @@ def make_var_split_plot(rfile, var, savename, sum_dist=False, leg=False,
     TODO
     """
     chic1_h, chic2_h = get_gen_splitted_hists(rfile, var,
-                                              get_hist_settings(var),
-                                              [select_trigger()])
-
+                                              [select_trigger(),
+                                               base_selection()])
 
     x_label, y_label = kwargs.pop('xlabel', ''), kwargs.pop('ylabel', '')
     set_labels(chic1_h, x_label, y_label)
@@ -142,16 +160,16 @@ def make_var_split_plot(rfile, var, savename, sum_dist=False, leg=False,
         plot_hists = [sum_h] + plot_hists
         leg_entries = ['sum'] + leg_entries
 
-    can = r.TCanvas('_'.join([var, 'can']), '', 50, 50, 600, 600)
+    y_max = get_y_max(plot_hists)
+    set_range_hists(plot_hists, y_range=[0, y_max * 1.1])
 
     if leg:
         legend = r.TLegend(0.6, 0.91, 0.9, 0.95)
         legend.SetNColumns(3)
         legend.SetBorderSize(0)
-        can = plot_on_canvas(can, plot_hists, leg=legend,
-                             legEntries=leg_entries, **kwargs)
+        can = mkplot(plot_hists, leg=legend, legEntries=leg_entries, **kwargs)
     else:
-        can = plot_on_canvas(can, plot_hists, **kwargs)
+        can = mkplot(plot_hists, **kwargs)
 
     can.SaveAs(savename)
 
@@ -161,33 +179,205 @@ def make_var_ratio_plot(rfile, var, savename, **kwargs):
     TODO
     """
     chic1_h, chic2_h = get_gen_splitted_hists(rfile, var,
-                                              get_hist_settings(var),
-                                              [select_trigger()])
-
+                                              [select_trigger(),
+                                               base_selection()])
 
     ratio_h = chic2_h.Clone(chic2_h.GetName().replace('chic2', 'ratio'))
     ratio_h.Divide(chic1_h)
 
+    ratio_h.GetYaxis().SetRangeUser(0, .75)
     x_label, y_label = kwargs.pop('xlabel', ''), kwargs.pop('ylabel', '')
     set_labels(ratio_h, x_label, y_label)
 
-    can = r.TCanvas('_'.join([var, 'ratio', 'can']), '', 50, 50, 600, 600)
-    can = plot_on_canvas(can, [ratio_h])
+    can = mkplot([ratio_h])
 
     can.SaveAs(savename)
+
+
+def get_quantile_lines(x_vals, y_vals, color, style):
+    """
+    Return TLine objects to be plotted
+    """
+    line1 = r.TLine(x_vals[0], y_vals[0], x_vals[0], y_vals[1])
+    line2 = r.TLine(x_vals[1], y_vals[0], x_vals[1], y_vals[1])
+
+    set_attributes(line1, color=color, line=style, width=2)
+    set_attributes(line2, color=color, line=style, width=2)
+
+    return line1, line2
+
+
+def make_mass_quantile_plot(hist, quantile_pairs, color, savename):
+    """
+    Quantile plots for one state.
+
+    TODO:
+    """
+    y_range = [0, hist.GetMaximum() * 1.05]
+    set_range_hists([hist], y_range=y_range)
+
+    can = mkplot([hist], colors=[color], drawOpt='H')
+
+    leg = r.TLegend(0.1, 0.91, 0.9, 0.95)
+    leg.SetNColumns(len(quantile_pairs))
+    leg.SetBorderSize(0)
+
+    line_styles = [2, 3, 5, 6]
+    # store all lines in this list so that they live long enough to be plotted
+    lines = []
+    for i, pair in enumerate(quantile_pairs):
+        quantiles = get_quantiles(hist, pair)
+        qline_1, qline_2 = get_quantile_lines(quantiles, y_range,
+                                              default_colors()[0], line_styles[i])
+        qline_2.Draw()
+        qline_1.Draw()
+
+        leg.AddEntry(qline_1, '[{}, {}]'.format(*pair), 'l')
+
+        lines.append(qline_1)
+        lines.append(qline_2)
+
+    leg.Draw()
+    can.Draw()
+    can.SaveAs(savename)
+
+
+def make_mass_quantile_plots(mcfile, quantile_pairs, savename_base):
+    """
+    TODO
+    """
+    chic1_h, chic2_h = get_gen_splitted_hists(mcfile, 'chicMass',
+                                              [select_trigger(),
+                                               base_selection()])
+    set_labels(chic1_h, xlabel='M^{#mu#mu#gamma}')
+    set_labels(chic2_h, xlabel='M^{#mu#mu#gamma}')
+
+    chic1_col = default_colors()[1]
+    chic2_col = default_colors()[2]
+
+    make_mass_quantile_plot(chic1_h, quantile_pairs, chic1_col,
+                            savename_base + '_chic1.pdf')
+    make_mass_quantile_plot(chic2_h, quantile_pairs, chic2_col,
+                            savename_base + '_chic2.pdf')
+
+
+def make_dist_ratio_plot_set(rfile, var, savename_base, sum_dist=False,
+                             **kwargs):
+    """
+    TODO
+    """
+    save_split = savename_base + '_split.pdf'
+    save_ratio = savename_base + '_ratio.pdf'
+
+    make_var_split_plot(rfile, var, save_split, leg=True, **kwargs)
+    make_var_ratio_plot(rfile, var, save_ratio, **kwargs)
+
+
+def get_mass_cut_hists(rfile, var, state, mass_cuts, selection,
+                            treename='chic_mc_tuple'):
+    """
+    Get list of histograms with mass cut applied according to the mass_cuts list
+    (one histogram per mass_cut)
+    """
+    hists = []
+    for cut in mass_cuts:
+        full_sel = combine_cuts([cut, selection])
+        hists.append(get_histogram(rfile, var, state, full_sel, treename))
+
+    return hists
+
+
+def get_ratio_hists(hists, baseline):
+    """
+    Get the ratio histograms w.r.t. to baseline
+    """
+    ratio_h = [h.Clone(h.GetName() + '_ratio') for h in hists]
+    for hist in ratio_h:
+        hist.Divide(baseline)
+
+    return ratio_h
+
+
+def make_quantile_ratio_plots(rfile, var, state, quantile_pairs, savename_base):
+    """
+    Make ratio plots w.r.t. no selection and quantile selection
+
+    TODO
+    """
+    mass_hist = get_histogram(rfile, 'chicMass', state,
+                              combine_cuts([select_trigger(),
+                                            base_selection()]))
+
+    # get the mass values for the quantiles
+    q_masses = [get_quantiles(mass_hist, q) for q in quantile_pairs]
+    mass_cuts = [var_selection('chicMass', q[0], q[1]) for q in q_masses]
+    leg_entries = ['[{}, {}]'.format(*q) for q in quantile_pairs]
+    mass_cut_hists = get_mass_cut_hists(rfile, var, state, mass_cuts,
+                                        combine_cuts([base_selection(), select_trigger()]))
+
+    # get the baseline histogram as well as the full histogram (w/o cuts
+    # apart from trigger)
+    base_hist = get_histogram(rfile, var, state,
+                              combine_cuts([base_selection(),
+                                            select_trigger()]))
+    full_hist = get_histogram(rfile, var, state, select_trigger())
+
+    leg = r.TLegend(0.1, 0.91, 0.9, 0.95)
+    leg.SetNColumns(len(quantile_pairs) + 2)
+    leg.SetBorderSize(0)
+
+    can = mkplot(mass_cut_hists + [full_hist, base_hist],
+                 leg=leg, legEntries=leg_entries + ['no cut', 'baseline'],
+                 autoRange=True)
+    can.SaveAs(savename_base + '_dists.pdf')
+
+    full_ratios = get_ratio_hists(mass_cut_hists, full_hist)
+    leg.Clear()
+    leg.SetNColumns(len(quantile_pairs))
+    can = mkplot(full_ratios, leg=leg, legEntries=leg_entries, autoRange=True)
+    can.SaveAs(savename_base + '_ratio_full.pdf')
+
+
+    base_ratios = get_ratio_hists(mass_cut_hists, base_hist)
+    leg.Clear()
+    can = mkplot(base_ratios, leg=leg, legEntries=leg_entries, autoRange=True)
+    can.SaveAs(savename_base + '_ratio_base.pdf')
+
+
 
 
 def main(args):
     """Main"""
     mcfile = r.TFile.Open(args.mcfile)
-    # make_mass_plot(mcfile, 'refit_mass_reco_gen_split.pdf')
-    make_var_split_plot(mcfile, 'TMath::Abs(costh_HX)', 'costh_HX_split_gen.pdf',
-                        leg=True, xlabel='|cos#theta^{HX}|')
-    make_var_split_plot(mcfile, 'chicMass', 'refit_mass_reco_gen_split.pdf',
-                        True, True, drawOpt='H',
-                        xlabel = 'M^{#mu#mu#gamma}')
-    make_var_ratio_plot(mcfile, 'TMath::Abs(costh_HX)', 'costh_HX_ratio_gen.pdf',
-                        xlabel='|cos#theta^{HX}|', ylabel='#chi_{c2} / #chi_{c1}')
+    frames = ['CS', 'HX', 'PX']
+    frame_vars = ['TMath::Abs(costh_{})', 'phi_{}']
+    frame_indep_vars = ['TMath::Abs(cosalpha_HX)']
+    quantile_pairs = [[0.05, 0.99], [0.1, 0.95], [0.2, 0.9]]
+
+    outdir = args.outdir
+    cond_mkdir(outdir)
+
+    # mass overview plots
+    make_var_split_plot(mcfile, 'chicMass',
+                        '/'.join([outdir, 'chicMass_MC_overview.pdf']),
+                        leg=True, sum_dist=True, drawOpt='H')
+
+    make_mass_quantile_plots(mcfile, quantile_pairs,
+                             '/'.join([outdir, 'mass_quantile_overview']))
+
+    # frame independent and frame dependent plots split by state
+    for state in ['chic1', 'chic2']:
+        for var in frame_indep_vars:
+            save_base = '_'.join([get_plot_varname(var), state, 'quantile'])
+            make_quantile_ratio_plots(mcfile, var, state, quantile_pairs,
+                                      '/'.join([outdir, save_base]))
+
+        for frame in frames:
+            for var in frame_vars:
+                fvar = var.format(frame)
+                save_base = '_'.join([get_plot_varname(fvar), state, 'quantile'])
+                make_quantile_ratio_plots(mcfile, fvar, state, quantile_pairs,
+                                          '/'.join([outdir, save_base]))
 
 
 if __name__ == '__main__':
@@ -197,6 +387,8 @@ if __name__ == '__main__':
                                      'chic')
     parser.add_argument('mcfile', help='File containing the MC generated events'
                         ' that should be used for plotting')
+    parser.add_argument('-o', '--outdir', type=str, default='.',
+                        help='output directory for plots')
 
     args = parser.parse_args()
     main(args)
