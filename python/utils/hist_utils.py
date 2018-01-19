@@ -103,13 +103,22 @@ def get_y_max(hists):
     Returns:
         float: The maximum y-value of all passed histograms
     """
-    max_y = -1
-    for hist in hists:
-        hist_max = hist.GetBinContent(hist.GetMaximumBin())
-        if hist_max > max_y:
-            max_y = hist_max
+    return max([h.GetBinContent(h.GetMaximumBin()) for h in hists])
 
-    return max_y
+def get_x_max(hists):
+    """
+    Get the maximum x-value of all histograms
+
+    Args:
+        hists (list): list of ROOT.TH1 for which the maximum x-value should be
+            obtained
+
+    Returns:
+        float: The maximum x-value of all passed histograms
+    """
+    max_bin = lambda h: h.GetNbinsX()
+    return max([h.GetBinLowEdge(max_bin(h)) + h.GetBinWidth(max_bin(h))
+                for h in hists])
 
 
 def set_range_hist(hist, x_range=None, y_range=None):
@@ -140,6 +149,43 @@ def set_range_hists(hists, x_range=None, y_range=None):
     """
     for hist in hists:
         set_range_hist(hist, x_range, y_range)
+
+
+def set_common_range(hists, axis='xy', dscale=0.1):
+    """
+    Set the same range to all histograms
+
+    Determine the the range such that all points from all histograms fit an set
+    it to all histograms.
+
+    Args:
+        hists (list): ROOT.TH1s for which the range should be unified
+        axis (str, optional): Axis for which the range should be unified.
+            Defaults to 'xy' so that the x and y axis will be set to the same
+            range on all histograms
+        dscale(float, optional): Scale factor to be applied to the minimum and
+            maximum before setting the range.
+    """
+    x_range = None
+    y_range = None
+
+    # depending on the sign of the min and maximum values it is necessary to
+    # either add or subtract from the values to have the widening in range go
+    # into the right direction
+    dmin = lambda val: dscale * val if val < 0 else -dscale * val
+    dmax = lambda val: dscale * val if val > 0 else -dscale * val
+
+    if 'y' in axis.lower():
+        y_min = min([h.GetBinContent(h.GetMinimumBin()) for h in hists])
+        y_max = get_y_max(hists)
+        y_range = [y_min + dmin(y_min), y_max + dmax(y_max)]
+
+    if 'x' in axis.lower():
+        x_min = min([h.GetBinLowEdge(1) for h in hists]) # 0 is underflow bin
+        x_max = get_x_max(hists)
+        x_range = [x_min + dmin(x_min), x_max + dmax(x_max)]
+
+    set_range_hists(hists, x_range, y_range)
 
 
 def get_quantiles(hist, quantiles):

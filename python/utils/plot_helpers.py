@@ -10,6 +10,12 @@ Attributes:
     default_colors method should be used
 """
 
+import ROOT as r
+
+from collections import Iterable
+from utils.misc_helpers import create_random_str
+from utils.hist_utils import set_common_range
+
 _colors = []
 _color_indices = []
 
@@ -158,5 +164,42 @@ def plot_on_canvas(can, plots, **kwargs):
         legend.Draw()
 
     can.Update()
+
+    return can
+
+
+def mkplot(pltables, **kwargs):
+    """
+    Plot all pltables onto a canvas and return the canvas
+
+    Args:
+        pltables: single plotable ROOT object or list of plotable ROOT objects
+
+    Keyword Args:
+        colors (list. optional): list of colors to be used for plotting
+            (otherwise default colors will be used)
+        drawOpt (Ste, optional): option that will be passed to the Draw() method
+        leg (ROOT.TLegend, optional): Put the passed TLegend onto the plot
+        legEntries (list): list of string (at least as long as the plot list)
+            from which the keys for the legend are taken
+        autoRange (bool): Automatically determine the y-range from the passed
+            histograms and set it such that all points should fit (not taking)
+            into account error bars
+
+    Returns:
+        ROOT.TCanvas: Canvas with all the plotables drawn onto it
+    """
+    # allow single plots to be handled the same as a list of plots
+    if not isinstance(pltables, Iterable):
+        pltables = [pltables]
+
+    can_name = create_random_str()
+    can = r.TCanvas(can_name, '', 50, 50, 600, 600)
+
+    if kwargs.pop('autoRange', False) and all(p.InheritsFrom('TH1')
+                                              for p in pltables):
+        set_common_range(pltables, axis='y', dscale=0.05)
+
+    plot_on_canvas(can, pltables, **kwargs)
 
     return can
