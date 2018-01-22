@@ -17,7 +17,7 @@
 int main(int argc, char *argv[])
 {
   ArgParser parser(argc, argv);
-  const auto mcfile = parser.getOptionVal<std::string>("--mcfile");
+  const auto mcfile = parser.getOptionVal<std::string>("--datafile");
   const auto outfile = parser.getOptionVal<std::string>("--outfile");
 
   auto* infile = checkOpenFile(mcfile);

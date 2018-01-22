@@ -51,19 +51,29 @@ def calc_folded_vars(costh, phi):
     return costh_fold, phi_fold
 
 
-def add_folded_frame(df, frame):
+def add_folded_frame(df, frame, costhn='costh', phin='phi'):
     """
     Add the folded variables to the dataframe for the passed frame
+
+    Args:
+        df (pandas.DataFrame): The DataFrame holding all the data for which the
+            folded angles should be added
+        frame (str): The reference frame for which the folded angles should be
+            added.
+        costhn, phin (str, optional): The base names of the costh and phi
+            variables in the DataFrame (Default to 'costh' and 'phi' so that
+            e.g. the complete column names for the HX frame are generated to be
+            'costh_HX' and 'phi_HX')
     """
     logging.debug('Adding folded variables for frame {}'.format(frame))
     try:
         # get the values from the dataframe as np.arrays
-        phi = df['phi_' + frame].values
-        costh = df['costh_' + frame].values
+        phi = df['_'.join([phin, frame])].values
+        costh = df['_'.join([costhn, frame])].values
         costh_f, phi_f = calc_folded_vars(costh, phi)
 
-        df['phi_' + frame + '_fold'] = phi_f
-        df['costh_' + frame + '_fold'] = costh_f
+        df['_'.join([phin, frame, 'fold'])] = phi_f
+        df['_'.join([costhn, frame, 'fold'])] = costh_f
     except KeyError:
         logging.warning('Could not add folded variables for frame {}, because '
                         'unfolded angular variables were not available'
@@ -74,9 +84,14 @@ def main(args):
     """Main"""
     for infile in args.inputfiles:
         logging.info('Processing file {}'.format(infile))
-        df = get_dataframe(infile)
-        for frame in args.frames.split(','):
-            add_folded_frame(df, frame)
+        var_names = [('costh', 'phi')]
+        if args.genlevel:
+            logging.info('Also adding generator level folding')
+            var_names.append(('gen_costh', 'gen_phi'))
+        df = get_dataframe(infile, args.treename)
+        for var_pair in var_names:
+            for frame in args.frames.split(','):
+                add_folded_frame(df, frame, *var_pair)
 
         store_dataframe(df, infile, args.treename)
 
@@ -93,6 +108,8 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--frames', type=str, default='HX,PX,CS',
                         help='reference frames for which to add the folded variables'
                         ' (comma separated list of two char abbreviations)')
+    parser.add_argument('-g', '--genlevel', default=False, action='store_true',
+                        help='add the folding also for the generator level angles')
 
     clargs = parser.parse_args()
     main(clargs)

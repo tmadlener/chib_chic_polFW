@@ -48,7 +48,7 @@ def store_dataframe(dfr, outfile, tname='chi2_values'):
         dfr.to_pickle(outfile)
 
 
-def get_dataframe(infile):
+def get_dataframe(infile, treename=None):
     """
     Get the dataframe from the input file.
 
@@ -56,6 +56,10 @@ def get_dataframe(infile):
         infile (str): Name of the inputfile from which the dataframe should be
             read. Must either be a pkl or a root file. Which format will be read
             depends entirely on the ending of the filename.
+        treename (str, optional): The TTree in the TFile that should be read.
+            Since it is possible to store multiple trees in one file it can be
+            necessary to specify which on to read. Option is only used for reads
+            from .root files.
 
     Returns:
         pandas.DataFrame: The dataframe read from the file.
@@ -70,7 +74,7 @@ def get_dataframe(infile):
     if infile.endswith('.root'):
         try:
             from root_pandas import read_root
-            return read_root(infile)
+            return read_root(infile, key=treename)
         except ImportError:
             # log and bail out
             logging.error('Requested to read DataFrame from {}, but could not '

@@ -6,19 +6,37 @@
 ## basename under which the create tuples will get stored
 ## the pt bin will be added dynamically and all the files are stored under the passed output directory
 OUTFILE_BASENAME=chic_tuple
+## global flag steering if MC or data workflow should be used (can be set via args to script)
+MC_WORKFLOW=0
 
-## Create the chic tuple given an input datafile, a fit file and an outfile name
+## Create the chic tuple given an input datafile, a fit file and an outfile name (for data workflow)
+## Create the chic tuple given an input and an output file (for mc workflow)
+## Which workflow is chosen is controlled by global MC_WORKFLOW variable
 function create_tuple() {
-    if [[ $# -ne 3 ]]; then
-        echo "ERROR: create_tuple() needs 3 arguments (data_file, fit_file and out_file)"
-        return 1
+    if [[ ${MC_WORKFLOW} -eq 0 ]]; then
+        if [[ $# -ne 3 ]]; then
+            echo "ERROR: create_tuple() needs 3 arguments (data_file, fit_file and out_file) for data workflow"
+            return 1
+        fi
+        fit_file=${2}
+        out_file=${3}
+
+        chic_tupler=${CHIB_CHIC_POLFW_DIR}/chic_prep/bin/create_chic_tuples2D
+        tree_name="chic_tuple"
+    else
+        if [[ $# -ne 2 ]]; then
+            echo "ERROR: creat_tuple() needs 2 arguments (mcfile and out_file) for mc workflow"
+            return 1
+        fi
+        out_file=${2}
+        gen_flag="--genlevel" # try to add genlevel to tuples for MC workflow
+
+        chic_tupler=${CHIB_CHIC_POLFW_DIR}/chic_prep/bin/create_chic_tuplesMC
+        tree_name="chic_mc_tuple"
     fi
 
     data_file=${1}
-    fit_file=${2}
-    out_file=${3}
 
-    chic_tupler=${CHIB_CHIC_POLFW_DIR}/chic_prep/bin/create_chic_tuples2D
     fold_angle_adder=${CHIB_CHIC_POLFW_DIR}/polarization/add_folded_angles.py
 
     ${chic_tupler} --datafile ${data_file} --fitfile ${fit_file} --outfile ${out_file}
@@ -28,7 +46,7 @@ function create_tuple() {
         return ${exc_tupler}
     fi
 
-    ${fold_angle_adder} --frames="HX,PX,CS" --treename="chic_tuple" ${out_file}
+    ${fold_angle_adder} --frames="HX,PX,CS" --treename=${tree_name} ${gen_flag} ${out_file}
     exc_folder=$?
     if [[ ${exc_folder} -ne 0 ]]; then
         echo "ERROR: adding folded angles failed with exit code: "${exc_folder}
@@ -56,9 +74,22 @@ function create_all_tuples() {
     done
 }
 
-if [[ $# -ne 2 ]]; then
-    echo "Usage: create_chic_tuple FIT_BASE_DIR OUT_DIR"
-    exit 1
+## Check if arguments are valid and set globals (if necessary)
+if [[ $# -lt 2 ]]; then
+    echo "Usage: create_chic_tuple FIT_BASE_DIR OUT_DIR [-mc]"
+    exit 64
+fi
+if [[ $# -eq 3 ]]; then
+    if [[ $(echo ${3} | tr '[:lower:]' '[:upper:]') = "-MC" ]]; then
+        echo "Using MC workflow"
+        MC_WORKFLOW=1
+    else
+        echo "Unrecognized input flag. Ignoring it"
+    fi
 fi
 
-create_all_tuples ${1} ${2}
+if [[ ${MC_WORKFLOW} -eq 0 ]]; then
+    create_all_tuples ${1} ${2}
+else
+    create_tuple ${1} ${2}
+fi
