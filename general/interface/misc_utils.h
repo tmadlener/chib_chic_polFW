@@ -5,6 +5,8 @@
 #include <regex>
 #include <iostream>
 
+#include "RooRealVar.h"
+
 /**
  * extract the 'rapX_ptY' part from the passed string (must not necessarily be a filename)
  */

@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <map>
+#include <iostream>
 
 #include "TTree.h"
 #include "TLorentzVector.h"
@@ -40,6 +41,7 @@ private:
   T & getBranchReference(const std::string & branchname) 
   {
     if (branches.find(branchname) != branches.end()) return branches[branchname].first;
+    std::cout <<"Branch '" << branchname << "' not found. Check spelling and type." << std::endl;
     return default_val;
   }
 
@@ -110,13 +112,16 @@ protected:
 private:
   void init() override;
 
-  /////////////////////////////
-  // HAVE TO BE IMPLEMENTED: //
-  /////////////////////////////
+  //////////////////////////////////////////////////////////
+  // HAVE TO BE IMPLEMENTED:
+
   //from ParallelTreeLooper
   //virtual bool fill_and_cut_variables();
   //virtual ParallelTreeLooper* clone() const;
   virtual void setup_new_branches() = 0; // Variables used in fill_and_cut_variables for adding new variables
+
+  // END TO IMPLEMENT
+  //////////////////////////////////////////////////////////
 
   BranchHolder<Double_t> * double_branches = nullptr;
   BranchHolder<Int_t > * int_branches = nullptr;
@@ -125,6 +130,7 @@ private:
   BranchHolder<UInt_t > * uint_branches = nullptr;
   BranchHolder<Float_t > * float_branches = nullptr;
   BranchHolder<TLorentzVector * > * lorentz_branches = nullptr;
+  BranchHolder<TVector3 * > * vector_branches = nullptr;
 
   std::map < std::string, bool> branch_names; //true means copy that variable, false means only read that variable
   
@@ -144,6 +150,12 @@ template<>
 inline  TLorentzVector * const & TreeProcessor::get_branch<TLorentzVector*>(const std::string & branchname)
 {
   return lorentz_branches->getBranchReference(branchname);
+}
+
+template<>
+inline  TVector3 * const & TreeProcessor::get_branch<TVector3*>(const std::string & branchname)
+{
+  return vector_branches->getBranchReference(branchname);
 }
 
 template<>

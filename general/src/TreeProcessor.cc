@@ -41,6 +41,7 @@ void TreeProcessor::init()
 
 void TreeProcessor::fill_branch_maps()
 {
+
   // Create BranchHolders
   double_branches = new BranchHolder<Double_t>(m_in_tree, m_out_tree);
   int_branches = new BranchHolder<Int_t>(m_in_tree, m_out_tree);
@@ -49,6 +50,7 @@ void TreeProcessor::fill_branch_maps()
   uint_branches = new BranchHolder<UInt_t>(m_in_tree, m_out_tree);
   float_branches = new BranchHolder<Float_t>(m_in_tree, m_out_tree);
   lorentz_branches = new BranchHolder<TLorentzVector*>(m_in_tree, m_out_tree);
+  vector_branches = new BranchHolder<TVector3*>(m_in_tree, m_out_tree);
 
   for (const auto &bi : branch_names) {
 
@@ -72,6 +74,7 @@ void TreeProcessor::fill_branch_maps()
     else if (typestr == "UInt_t") uint_branches->addBranch(bi.first, bi.second);
     else if (typestr == "Float_t") float_branches->addBranch(bi.first, bi.second);
     else if (typestr == "TLorentzVector") lorentz_branches->addBranch(bi.first, bi.second);
+    else if (typestr == "TVector3") vector_branches->addBranch(bi.first, bi.second);
     else std::cout << "Type '" << typestr << "' of branch '" << bi.first << "' is not implemented." << std::endl;
   }
 }
@@ -85,6 +88,7 @@ void TreeProcessor::set_branch_adresses()
   uint_branches->setBranches();
   float_branches->setBranches();
   lorentz_branches->setBranches();
+  vector_branches->setBranches();
 }
 
 TreeProcessor::~TreeProcessor()
@@ -97,5 +101,14 @@ TreeProcessor::~TreeProcessor()
   // the object will not be deleted when the TTree is deleted.
 
   for (auto & b : lorentz_branches->branches) delete b.second.first;
+  for (auto &b : vector_branches->branches) delete b.second.first;
+
+  delete double_branches;
+  delete int_branches;
+  delete long64_branches;
+  delete bool_branches;
+  delete uint_branches;
+  delete float_branches;
+  delete lorentz_branches;
 
 }

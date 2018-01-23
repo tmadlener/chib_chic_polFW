@@ -10,8 +10,8 @@ LIBTARGET := lib
 ROOTFLAGS := $(shell root-config --cflags)
 ROOTLIBS := $(shell root-config --libs)
 
-#CFLAGSINC := $(ROOTFLAGS) -I $(INCDIR) -ggdb
-CFLAGSINC := $(ROOTFLAGS) -I $(INCDIR)
+CFLAGSINC := $(ROOTFLAGS) -I $(INCDIR) -ggdb
+#CFLAGSINC := $(ROOTFLAGS) -I $(INCDIR)
 
 LIB := $(ROOTLIBS)
 
@@ -20,6 +20,7 @@ defaulttarget:
 	@echo "Available targets:"
 	@echo "   paralooper [cleanparalooper]"
 	@echo "   treeproc [cleantreeproc]"
+	@echo "   fitter [cleanfitter]"
 
 ################################
 # PARALLEL TREE LOOPER EXAMPLE #
@@ -42,6 +43,17 @@ cleantreeproc:
 	rm -f $(BUILDDIR)/testtreeproc.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/treeproc.o $(TARGET)/treeproc
 
 
+##################
+# FITTER EXAMPLE #
+##################
+fitter : $(BUILDDIR)/fitterexample.o $(BUILDDIR)/fitter.o $(BUILDDIR)/utils.o $(BUILDDIR)/fitanalyser.o
+	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)  -lRooFit -lRooFitCore
+$(BUILDDIR)/fitterexample.o: $(TESTDIR)/fitter_example.cc $(INCDIR)/Fitter.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+cleanfitter:
+	rm -f $(BUILDDIR)/fitterexample.o $(BUILDDIR)/fitter.o $(TARGET)/fitter
+
+
 
 #
 # PARALLEL TREE LOOPER	
@@ -53,4 +65,23 @@ $(BUILDDIR)/paralooper.o: $(SRCDIR)/ParallelTreeLooper.cc $(INCDIR)/ParallelTree
 # TREE PROCESSOR
 #
 $(BUILDDIR)/treeproc.o: $(SRCDIR)/TreeProcessor.cc $(INCDIR)/TreeProcessor.h $(INCDIR)/ParallelTreeLooper.h $(INCDIR)/utils.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+	
+#
+# FITTER
+#
+$(BUILDDIR)/fitter.o: $(SRCDIR)/Fitter.cc $(INCDIR)/Fitter.h $(INCDIR)/utils.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+
+
+#
+# FITANALYSER
+#
+$(BUILDDIR)/fitanalyser.o: $(SRCDIR)/FitAnalyser.cc $(INCDIR)/FitAnalyser.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+
+#
+# UTILS
+#
+$(BUILDDIR)/utils.o: $(SRCDIR)/utils.cc $(INCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c

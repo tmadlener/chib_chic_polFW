@@ -51,7 +51,7 @@ void ParallelTreeLooper::loop(int max_events, int nThreads) {
   }
   ////////////////
 
-  std::cout << "number of reconstructed events: " << count << " of a total of " << nEvents << " events\n";
+  std::cout << "Number of accepted events: " << count << " of a total of " << nEvents << " events\n";
 
   auto of = m_out_tree->GetCurrentFile();
   if (of) of->cd();
