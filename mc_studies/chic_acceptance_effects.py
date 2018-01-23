@@ -9,7 +9,7 @@ r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
 
 from utils.hist_utils import (
-    draw_var_to_hist, set_hist_opts, combine_cuts, set_labels, get_y_max,
+    draw_var_to_hist, set_hist_opts, combine_cuts, set_labels,
     set_range_hists, get_quantiles
 )
 from utils.plot_helpers import default_colors, set_attributes, mkplot
@@ -160,16 +160,14 @@ def make_var_split_plot(rfile, var, savename, sum_dist=False, leg=False,
         plot_hists = [sum_h] + plot_hists
         leg_entries = ['sum'] + leg_entries
 
-    y_max = get_y_max(plot_hists)
-    set_range_hists(plot_hists, y_range=[0, y_max * 1.1])
-
     if leg:
         legend = r.TLegend(0.6, 0.91, 0.9, 0.95)
         legend.SetNColumns(3)
         legend.SetBorderSize(0)
-        can = mkplot(plot_hists, leg=legend, legEntries=leg_entries, **kwargs)
+        can = mkplot(plot_hists, leg=legend, legEntries=leg_entries,
+                     yRange=[0, None], **kwargs)
     else:
-        can = mkplot(plot_hists, **kwargs)
+        can = mkplot(plot_hists, yRange=[0, None], **kwargs)
 
     can.SaveAs(savename)
 
@@ -356,7 +354,7 @@ def main(args):
     mcfile = r.TFile.Open(args.mcfile)
     frames = ['CS', 'HX', 'PX']
     frame_vars = ['TMath::Abs(costh_{})', 'phi_{}']
-    x_axis_labels_frame = ['|cos#theta^{{}}|', '#phi^{{{0}}}_{{folded}}']
+    x_axis_labels_frame = ['|cos#theta^{{{0}}}|', '#phi^{{{0}}}_{{folded}}']
 
     frame_indep_vars = ['TMath::Abs(cosalpha_HX)']
     x_axis_labels = ['|cos#alpha|']
