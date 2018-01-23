@@ -105,6 +105,21 @@ def get_y_max(hists):
     """
     return max([h.GetBinContent(h.GetMaximumBin()) for h in hists])
 
+
+def get_y_min(hists):
+    """
+    Get the minimum y-value of all histograms
+
+    Args:
+        hists (list): list of ROOT.TH1 for which the minimum y-value should be
+            obtained
+
+    Returns:
+        float: The minimum y-value of all passed histograms
+    """
+    return min(h.GetBinContent(h.GetMinimumBin()) for h in hists)
+
+
 def get_x_max(hists):
     """
     Get the maximum x-value of all histograms
@@ -120,6 +135,19 @@ def get_x_max(hists):
     return max([h.GetBinLowEdge(max_bin(h)) + h.GetBinWidth(max_bin(h))
                 for h in hists])
 
+
+def get_x_min(hists):
+    """
+    Get the minimum x-value of all histograms
+
+    Args:
+        hists (list): list of ROOT.TH1 for which the minimum x-value should be
+            obtained
+
+    Returns:
+        float: The minimum x-value of all passed histograms
+    """
+    return min([h.GetBinLowEdge(1) for h in hists]) # 0 is underflow bin
 
 def set_range_hist(hist, x_range=None, y_range=None):
     """
@@ -151,23 +179,28 @@ def set_range_hists(hists, x_range=None, y_range=None):
         set_range_hist(hist, x_range, y_range)
 
 
-def set_common_range(hists, axis='xy', dscale=0.1):
+def set_common_range(hists, axis='xy', dscale=0.1, drange=[None, None]):
     """
     Set the same range to all histograms
 
-    Determine the the range such that all points from all histograms fit an set
-    it to all histograms.
+    Determine the range such that all points from all histograms fit an set it
+    to all histograms. It is also possible to pass in a default range that
+    overrides the automatically determined ranges
 
     Args:
         hists (list): ROOT.TH1s for which the range should be unified
         axis (str, optional): Axis for which the range should be unified.
             Defaults to 'xy' so that the x and y axis will be set to the same
             range on all histograms
-        dscale(float, optional): Scale factor to be applied to the minimum and
+        dscale (float, optional): Scale factor to be applied to the minimum and
             maximum before setting the range.
+        drange (list, optional): Default range. If any of the two values is
+            not None, this value will be used instead of the automatically
+            determined
+
     """
-    x_range = None
-    y_range = None
+    if drange is None: # "normalize" None input
+        drange = [None, None]
 
     # depending on the sign of the min and maximum values it is necessary to
     # either add or subtract from the values to have the widening in range go
@@ -175,17 +208,27 @@ def set_common_range(hists, axis='xy', dscale=0.1):
     dmin = lambda val: dscale * val if val < 0 else -dscale * val
     dmax = lambda val: dscale * val if val > 0 else -dscale * val
 
-    if 'y' in axis.lower():
-        y_min = min([h.GetBinContent(h.GetMinimumBin()) for h in hists])
-        y_max = get_y_max(hists)
-        y_range = [y_min + dmin(y_min), y_max + dmax(y_max)]
+    # define dict for mapping axis directions to corresponding functions for
+    # obtaining extremal values
+    rfuncs = {
+        'y': {'max': get_y_max, 'min': get_y_min},
+        'x': {'max': get_x_max, 'min': get_x_min}
+    }
+    ranges = {'x': None, 'y': None}
 
-    if 'x' in axis.lower():
-        x_min = min([h.GetBinLowEdge(1) for h in hists]) # 0 is underflow bin
-        x_max = get_x_max(hists)
-        x_range = [x_min + dmin(x_min), x_max + dmax(x_max)]
+    # Define a lambda that gives either the default value (that is provided) as
+    # an argument to this function or use the value determined from the
+    # histograms. (Use a lambda instead of a full blown function)
+    orideval = lambda val, dval, defv: val + dval(val) if defv is None else defv
 
-    set_range_hists(hists, x_range, y_range)
+    for axd in ['x', 'y']:
+        if axd in axis:
+            amin = rfuncs[axd]['min'](hists)
+            amax = rfuncs[axd]['max'](hists)
+            ranges[axd] = [orideval(amin, dmin, drange[0]),
+                           orideval(amax, dmax, drange[1])]
+
+    set_range_hists(hists, ranges['x'], ranges['y'])
 
 
 def get_quantiles(hist, quantiles):

@@ -178,13 +178,15 @@ def mkplot(pltables, **kwargs):
     Keyword Args:
         colors (list. optional): list of colors to be used for plotting
             (otherwise default colors will be used)
-        drawOpt (Ste, optional): option that will be passed to the Draw() method
+        drawOpt (str, optional): option that will be passed to the Draw() method
         leg (ROOT.TLegend, optional): Put the passed TLegend onto the plot
         legEntries (list): list of string (at least as long as the plot list)
             from which the keys for the legend are taken
-        autoRange (bool): Automatically determine the y-range from the passed
-            histograms and set it such that all points should fit (not taking)
-            into account error bars
+        yRange, xRange (list): Two element list defining the range for the given
+            axis. Valid options are: two floats or any mixture of one float and
+            a None value or even two None values. For any passed value that
+            value will be used as axis range, for any None value an appropriate
+            value will be determined from the passed pltables
 
     Returns:
         ROOT.TCanvas: Canvas with all the plotables drawn onto it
@@ -196,10 +198,14 @@ def mkplot(pltables, **kwargs):
     can_name = create_random_str()
     can = r.TCanvas(can_name, '', 50, 50, 600, 600)
 
-    if kwargs.pop('autoRange', False) and all(p.InheritsFrom('TH1')
-                                              for p in pltables):
-        set_common_range(pltables, axis='y', dscale=0.05)
+    only_hists = all(p.InheritsFrom('TH1') for p in pltables)
+
+    x_range = kwargs.pop('xRange', None)
+    if x_range is not None and only_hists:
+        set_common_range(pltables, axis='x', dscale=0.05, drange=x_range)
+    y_range = kwargs.pop('yRange', None)
+    if y_range is not None and only_hists:
+        set_common_range(pltables, axis='y', dscale=0.05, drange=y_range)
 
     plot_on_canvas(can, pltables, **kwargs)
-
     return can
