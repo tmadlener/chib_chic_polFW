@@ -298,7 +298,8 @@ def get_ratio_hists(hists, baseline):
     return ratio_h
 
 
-def make_quantile_ratio_plots(rfile, var, state, quantile_pairs, savename_base):
+def make_quantile_ratio_plots(rfile, var, state, quantile_pairs, savename_base,
+                              **kwargs):
     """
     Make ratio plots w.r.t. no selection and quantile selection
 
@@ -322,25 +323,29 @@ def make_quantile_ratio_plots(rfile, var, state, quantile_pairs, savename_base):
                                             select_trigger()]))
     full_hist = get_histogram(rfile, var, state, select_trigger())
 
+    x_label, y_label = kwargs.pop('x_label', ''), kwargs.pop('y_label', '')
+    for h in mass_cut_hists + [full_hist, base_hist]:
+        set_labels(h, x_label, y_label)
+
     leg = r.TLegend(0.1, 0.91, 0.9, 0.95)
     leg.SetNColumns(len(quantile_pairs) + 2)
     leg.SetBorderSize(0)
 
     can = mkplot(mass_cut_hists + [full_hist, base_hist],
                  leg=leg, legEntries=leg_entries + ['no cut', 'baseline'],
-                 autoRange=True)
+                 yRange=[0, None])
     can.SaveAs(savename_base + '_dists.pdf')
 
     full_ratios = get_ratio_hists(mass_cut_hists, full_hist)
     leg.Clear()
     leg.SetNColumns(len(quantile_pairs))
-    can = mkplot(full_ratios, leg=leg, legEntries=leg_entries, autoRange=True)
+    can = mkplot(full_ratios, leg=leg, legEntries=leg_entries, yRange=[0, None])
     can.SaveAs(savename_base + '_ratio_full.pdf')
 
 
     base_ratios = get_ratio_hists(mass_cut_hists, base_hist)
     leg.Clear()
-    can = mkplot(base_ratios, leg=leg, legEntries=leg_entries, autoRange=True)
+    can = mkplot(base_ratios, leg=leg, legEntries=leg_entries, yRange=[0, None])
     can.SaveAs(savename_base + '_ratio_base.pdf')
 
 
@@ -351,7 +356,11 @@ def main(args):
     mcfile = r.TFile.Open(args.mcfile)
     frames = ['CS', 'HX', 'PX']
     frame_vars = ['TMath::Abs(costh_{})', 'phi_{}']
+    x_axis_labels_frame = ['|cos#theta^{{}}|', '#phi^{{{0}}}_{{folded}}']
+
     frame_indep_vars = ['TMath::Abs(cosalpha_HX)']
+    x_axis_labels = ['|cos#alpha|']
+
     quantile_pairs = [[0.05, 0.99], [0.1, 0.95], [0.2, 0.9]]
 
     outdir = args.outdir
@@ -367,17 +376,21 @@ def main(args):
 
     # frame independent and frame dependent plots split by state
     for state in ['chic1', 'chic2']:
-        for var in frame_indep_vars:
+        for i, var in enumerate(frame_indep_vars):
             save_base = '_'.join([get_plot_varname(var), state, 'quantile'])
+            x_label = x_axis_labels[i]
             make_quantile_ratio_plots(mcfile, var, state, quantile_pairs,
-                                      '/'.join([outdir, save_base]))
+                                      '/'.join([outdir, save_base]),
+                                      x_label=x_label)
 
         for frame in frames:
-            for var in frame_vars:
+            for i, var in enumerate(frame_vars):
                 fvar = var.format(frame)
+                x_label = x_axis_labels_frame[i].format(frame)
                 save_base = '_'.join([get_plot_varname(fvar), state, 'quantile'])
                 make_quantile_ratio_plots(mcfile, fvar, state, quantile_pairs,
-                                          '/'.join([outdir, save_base]))
+                                          '/'.join([outdir, save_base]),
+                                          x_label=x_label)
 
 
 if __name__ == '__main__':
