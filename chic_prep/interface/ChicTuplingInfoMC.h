@@ -47,6 +47,11 @@ struct MCAddInfoOut {
     t->Branch("gen_phi_CS", &phi_CS);
     t->Branch("gen_cosalpha_CS", &cosalpha_CS);
 
+    t->Branch("muP_pt", &muP_pt);
+    t->Branch("muN_pt", &muN_pt);
+    t->Branch("muP_eta", &muP_eta);
+    t->Branch("muN_eta", &muN_eta);
+
     t->Branch("trigger", &trigger);
   }
 
@@ -61,6 +66,11 @@ struct MCAddInfoOut {
   double costh_CS;
   double phi_CS;
   double cosalpha_CS;
+
+  double muP_pt;
+  double muN_pt;
+  double muP_eta;
+  double muN_eta;
 
   int trigger;
 };

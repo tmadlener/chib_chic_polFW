@@ -56,6 +56,11 @@ bool chicMCTupling(const ChicMCInputEvent& inEvent, ChicMCTupleEvent& event)
 
   event.info().trigger = inEvent.info().trigger;
 
+  event.info().muP_pt = inEvent.muP().Pt();
+  event.info().muN_pt = inEvent.muN().Pt();
+  event.info().muP_eta = inEvent.muP().Eta();
+  event.info().muN_eta = inEvent.muN().Eta();
+
   return true; // simply accept all events
 }
 
