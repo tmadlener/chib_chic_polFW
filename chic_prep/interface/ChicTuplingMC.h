@@ -55,6 +55,7 @@ bool chicMCTupling(const ChicMCInputEvent& inEvent, ChicMCTupleEvent& event)
   event.info().cosalpha_PX = genAnglesPX.cosalpha;
 
   event.info().trigger = inEvent.info().trigger;
+  event.info().vtxProb = inEvent.info().vtxProb;
 
   event.info().muP_pt = inEvent.muP().Pt();
   event.info().muN_pt = inEvent.muN().Pt();

@@ -86,9 +86,11 @@ def base_selection():
         str: Selection string to be used in TTree::Draw()
     """
     mass_hist_settings = get_hist_settings('chicMass')
+    mass_sel = var_selection('chicMass', mass_hist_settings['min'],
+                             mass_hist_settings['max'])
+    vtx_prob_sel = 'vtxProb > 0.01'
 
-    return var_selection('chicMass', mass_hist_settings['min'],
-                         mass_hist_settings['max'])
+    return combine_cuts([mass_sel, vtx_prob_sel])
 
 
 def get_histogram(rfile, var, state, selection, treename='chic_mc_tuple'):

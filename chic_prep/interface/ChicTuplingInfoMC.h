@@ -21,6 +21,7 @@ struct MCAddInfoIn {
     t->SetBranchAddress("gen_muonP_p4", &gen_muP);
     t->SetBranchAddress("gen_muonM_p4", &gen_muN);
     t->SetBranchAddress("trigger", &trigger);
+    t->SetBranchAddress("probFit1S", &vtxProb);
   }
 
   TLorentzVector* gen_jpsi{nullptr};
@@ -29,6 +30,7 @@ struct MCAddInfoIn {
   TLorentzVector* gen_muN{nullptr};
 
   int trigger;
+  double vtxProb;
 };
 
 
@@ -53,6 +55,7 @@ struct MCAddInfoOut {
     t->Branch("muN_eta", &muN_eta);
 
     t->Branch("trigger", &trigger);
+    t->Branch("vtxProb", &vtxProb);
   }
 
   double costh_HX;
@@ -73,6 +76,7 @@ struct MCAddInfoOut {
   double muN_eta;
 
   int trigger;
+  double vtxProb;
 };
 
 
