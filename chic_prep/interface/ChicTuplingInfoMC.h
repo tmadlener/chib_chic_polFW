@@ -56,6 +56,9 @@ struct MCAddInfoOut {
 
     t->Branch("trigger", &trigger);
     t->Branch("vtxProb", &vtxProb);
+
+    t->Branch("jpsiPt", &jpsiPt);
+    t->Branch("jpsiRap", &jpsiRap);
   }
 
   double costh_HX;
@@ -77,6 +80,9 @@ struct MCAddInfoOut {
 
   int trigger;
   double vtxProb;
+
+  double jpsiPt;
+  double jpsiRap;
 };
 
 
