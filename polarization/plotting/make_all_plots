@@ -2,14 +2,30 @@
 set -e
 
 if [[ $# -lt 2 ]]; then
-    echo "Usage: make_all_plots HIST_FILE OUT_BASE [-nz]"
+    echo "Usage: make_all_plots HIST_FILE OUT_BASE [-nz] [-nr] [--no-ratio] [--no-dist]"
     exit 64
 fi
 if $(check_args_flag "-nz" ${@}); then
     echo "Normalizing distribution hists at zero"
     NORM_AT_0="--normalize-at-zero"
 fi
-
+if $(check_args_flag "-nr" ${@}); then
+    echo "Normalizing ratio hists by const factor from fit"
+    NORM_RATIO="--norm-ratio"
+fi
+if $(check_args_flag "--no-ratio" ${@}); then
+    echo "Not producing ratio plots"
+    NO_RATIOS=1
+fi
+if $(check_args_flag "--no-dist" ${@}); then
+    echo "Not producing distribution plots"
+    NO_DISTS=1
+fi
+PLOT_FMT=".pdf"
+if $(check_args_flag "-svg" ${@}); then
+    echo "Producing svg plots instead of pdf"
+    PLOT_FMT=".svg"
+fi
 INPUTFILE=${1}
 OUTPUTBASE=${2}
 FRAMES=(HX CS)
@@ -43,14 +59,16 @@ function ratio_dist_plots() {
 
     plotter=${CHIB_CHIC_POLFW_DIR}/polarization/plotting/make_plot.py
 
-    ${plotter} --input="${INPUT_2012_DATA}" --input="${INPUT_2012_MC}" --input="${INPUT_2016_DATA}" \
-               --variable=${var} --frame=${frame} --ptbin=${ptbin} --output=${output_base}_ratio.pdf \
-               ${NORM_AT_0} --ratio ${INPUTFILE}
-
-    ${plotter} --input="${INPUT_2012_DATA}" --input="${INPUT_2012_MC}" --input="${INPUT_2016_DATA}" \
-               --variable=${var} --frame=${frame} --ptbin=${ptbin} --output=${output_base}_dists.pdf \
-               ${NORM_AT_0} --dist ${INPUTFILE}
-
+    if [[ ${NO_RATIOS} -eq 0 ]]; then
+        ${plotter} --input="${INPUT_2012_DATA}" --input="${INPUT_2012_MC}" --input="${INPUT_2016_DATA}" \
+                   --variable=${var} --frame=${frame} --ptbin=${ptbin} --output=${output_base}_ratio${PLOT_FMT} \
+                   ${NORM_RATIO} --ratio ${INPUTFILE}
+    fi
+    if [[ ${NO_DISTS} -eq 0 ]]; then
+        ${plotter} --input="${INPUT_2012_DATA}" --input="${INPUT_2012_MC}" --input="${INPUT_2016_DATA}" \
+                   --variable=${var} --frame=${frame} --ptbin=${ptbin} --output=${output_base}_dists${PLOT_FMT} \
+                   ${NORM_AT_0} --dist ${INPUTFILE}
+    fi
 }
 
 for var in ${VARIABLES[@]}; do

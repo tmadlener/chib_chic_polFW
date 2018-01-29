@@ -70,7 +70,7 @@ def set_bins_to_zero(hist, thresh=0):
         thresh (float, optional): Threshold below which bins should be set to 0.
         verbose (bool, optional): Make function print out the bins it sets to 0.
     """
-    logging.info('Checking {} for bins with entries below {}'
+    logging.debug('Checking {} for bins with entries below {}'
                   .format(hist.GetName(), thresh))
     neg_bins = [(i, b) for i, b in enumerate(hist) if b < thresh]
     for negb, cont in neg_bins:

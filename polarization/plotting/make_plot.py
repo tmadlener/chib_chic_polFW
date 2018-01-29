@@ -122,8 +122,35 @@ def normalize_histos(hchic1, hchic2, norm_mode):
                          .format(hchic1.GetName(), hchic2.GetName()))
 
 
+def normalize_ratio(hratio, fit_range=(0, 0.5)):
+    """
+    Normalize the ratio histogram by a constant obtained from a fit to a
+    constant.
+
+    TODO: proper doc
+    """
+    log_level = logging.getLogger().getEffectiveLevel()
+    logging.debug('Fitting ratio hist {} to constant in range: [{}, {}]'
+                  .format(hratio.GetName(), *fit_range))
+    const_func = r.TF1('const_func', '[0]', *fit_range)
+    fit_opt = 'SR0' if log_level == logging.DEBUG else 'SRq0'
+    fit_rlt = hratio.Fit(const_func, fit_opt)
+
+    if int(fit_rlt) != 0:
+        logging.warning('Problem in fitting ratio histogram to constant')
+        return -1, -1
+
+    if log_level == logging.DEBUG:
+        fit_rlt.Print()
+
+    norm = fit_rlt.Parameter(0)
+    hratio.Scale(1.0 / norm)
+
+    return fit_rlt.Chi2(), fit_rlt.Ndf()
+
+
 def get_plot_hists(pserver, trg_years, ratio, var, frame, pt,
-                   norm_mode='nsignal'):
+                   norm_mode='nsignal', norm_ratio=False):
     """
     Get all plots that are necessary for the desired plot
 
@@ -137,10 +164,13 @@ def get_plot_hists(pserver, trg_years, ratio, var, frame, pt,
             hist = pserver.get_hist(dmc, year, trg, pt, var, frame, 'ratio')
             if hist is not None:
                 hists[(year, dmc, 'ratio')] = hist
+                if norm_ratio:
+                    chi2, ndf = normalize_ratio(hists[(year, dmc, 'ratio')],
+                                                (0, 0.5))
         else:
             hist = pserver.get_hist(dmc, year, trg, pt, var, frame, 'chic1')
             hists[(year, dmc, 'chic1')] = hist
-            hist = pserver.get_hist(dmc, year, trg, pt, var, frame, 'chic1')
+            hist = pserver.get_hist(dmc, year, trg, pt, var, frame, 'chic2')
             hists[(year, dmc, 'chic2')] = hist
 
             normalize_histos(hists[(year, dmc, 'chic1')],
@@ -190,6 +220,21 @@ def get_xlabel(var, frame):
     return '|{0}^{{{1}}}|'.format(x_label, frame)
 
 
+def get_ylabel(dist, norm_at_zero, norm_ratio):
+    """
+    Get appropriate y-label
+    """
+    y_label = '#chi_{c2} / #chi_{c1}'
+    if norm_ratio:
+        y_label += ' (normalized by fit to const.)'
+    if dist:
+        if norm_at_zero:
+            y_label = 'events (arb. units)'
+        else:
+            y_label = 'events / sum of signal #chi_{c1} and #chi_{c2} events'
+    return y_label
+
+
 def main(args):
     """Main"""
     # need PlotServer here, to keep the root file open
@@ -199,7 +244,7 @@ def main(args):
 
     year_trg_ids, leg_entries = get_trigger_year_info(args.input)
     hists = get_plot_hists(pserver, year_trg_ids, args.ratio, args.variable,
-                           args.frame, args.ptbin, norm_mode)
+                           args.frame, args.ptbin, norm_mode, args.norm_ratio)
 
     # split into data and mc hist due to different plotting styles for the two
     data_hists = {k: hists[k] for k in hists if 'data' in k}
@@ -225,12 +270,7 @@ def main(args):
     dpl_attr = [get_plot_attributes(*k) for k in data_hists]
     mpl_attr = [get_plot_attributes(*k) for k in mc_hists]
 
-    y_label = '#chi_{c2} / #chi_{c1}'
-    if not args.ratio:
-        if not args.normalize_at_zero:
-            y_label = 'events / sum of signal #chi_{c1} and #chi_{c2} events'
-        else:
-            y_label = 'events (arb. units)'
+    y_label = get_ylabel(not args.ratio, args.normalize_at_zero, args.norm_ratio)
     x_label = get_xlabel(args.variable, args.frame)
 
     # to have same y-range for everything, have to do it manually, as
@@ -238,12 +278,14 @@ def main(args):
     y_max = get_y_max(data_hists.values() + mc_hists.values()) * 1.1
 
     set_TDR_style()
-    can = mkplot(data_hists.values(), yRange=[0, y_max], drawOpt='E1',
-                 attributes=dpl_attr, leg=leg, legEntries=data_leg,
-                 legOpt='PLE', xLabel=x_label, yLabel=y_label)
+    can = None # declare here to be able to switch the two calls below
     can = mkplot(mc_hists.values(), yRange = [0, y_max], drawOpt='E2',
                  attributes=mpl_attr, can=can, leg=leg, legEntries=mc_leg,
                  legOpt='F', xLabel=x_label, yLabel=y_label)
+    can = mkplot(data_hists.values(), yRange=[0, y_max], drawOpt='E1',
+                 attributes=dpl_attr, can=can, leg=leg, legEntries=data_leg,
+                 legOpt='PLE', xLabel=x_label, yLabel=y_label)
+
     can.SaveAs(args.output)
 
 
@@ -277,6 +319,10 @@ if __name__ == '__main__':
                         action='store_true', help='Normalize distribution plots'
                         ' at their value at 0. Default is to normalize by the '
                         'sum of the chic1 and chic2 Integrals')
+    parser.add_argument('-nr', '--norm-ratio', help='Normalize the ratio by a '
+                        'factor obtained from a fit to a constant',
+                        action='store_true', default=False)
+
 
     plot_type = parser.add_mutually_exclusive_group(required=True)
     plot_type.add_argument('-r', '--ratio', action='store_true',
