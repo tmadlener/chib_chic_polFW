@@ -14,31 +14,18 @@ private:
   std::vector<std::string> triggers;
 
   // Variables for new branches
+ 
+  std::vector<std::vector<std::string>> var_collections;
 
-  Double_t dimuon_mass;
-  Double_t chi_mass;
-  Double_t dimuon_pt;
-  Double_t chi_pt;
-  Double_t dimuon_rap;
-  Double_t chi_rap;
+  std::vector<Double_t> out_vars;
+  std::vector<Double_t> out_vars_rf1S;
+  std::vector<Double_t> out_vars_rf2S;
+  std::vector<Double_t> out_vars_rf3S;
 
-  Double_t costh_hx;
-  Double_t phi_hx;
-  Double_t cosalpha_hx;
-  Double_t costh_px;
-  Double_t phi_px;
-  Double_t cosalpha_px;
-  Double_t costh_cs;
-  Double_t phi_cs;
-  Double_t cosalpha_cs;
-
-  Double_t delta_phi;
-
-  Double_t eta_mupos;
-  Double_t pt_mupos;
-  Double_t phi_mupos;
-  Double_t eta_muneg;
-  Double_t pt_muneg;
-  Double_t phi_muneg;
+  int make_lorentz_flat(std::vector<Double_t> & vars, TLorentzVector* chi, TLorentzVector* dimuon = nullptr);
+  void make_mu_things(std::vector<Double_t> & vars, TLorentzVector* muPos, TLorentzVector *muNeg, int start);
+  void setup_collections(const std::string & varsuffix, std::vector<Double_t> & vars, bool only_chi = false);
+  
+  bool accept_muon(const TLorentzVector * mu);
   
 };

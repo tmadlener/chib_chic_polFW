@@ -25,7 +25,7 @@ const std::string Fitter::dataset_name = "dataset";
 const std::string Fitter::snapshot_name = "results";
 
 
-void Fitter::Fit(int numCPUs, bool enableMinos)
+void Fitter::Fit(int numCPUs, bool enableMinos, bool extendedFit)
 {
   scopeLog log("Fitter");
   if (!params_ok()) return;
@@ -80,7 +80,7 @@ void Fitter::Fit(int numCPUs, bool enableMinos)
   {
     scopeLog log("Fitting");
     stopwatch watch("Fitting");
-    fit_results.reset(model->fitTo(ds, RooFit::NumCPU(numCPUs), RooFit::Minos(enableMinos), RooFit::Save(true)));
+    fit_results.reset(model->fitTo(ds, RooFit::NumCPU(numCPUs), RooFit::Minos(enableMinos), RooFit::Save(true), RooFit::Extended(extendedFit)));
     fit_results->Print();
   }
 

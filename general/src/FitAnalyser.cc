@@ -16,10 +16,12 @@
 #include "TLegend.h"
 #include "TH1F.h"
 #include "TPaveText.h"
+#include "TFormula.h"
 
 #include <sstream>
 #include <memory>
 #include <iomanip>
+#include <regex>
 
 
 FitAnalyser::FitAnalyser(const Fitter &f)
@@ -102,6 +104,7 @@ void FitAnalyser::PlotFitResult(csr output_file)
   auto pull = var->frame();
   plot->SetTitle(("Fit results from " + m_wsname + ";" + var->GetTitle() + ";").c_str());
   pull->SetTitle(";;Pull");
+  plot->SetMinimum(0);
 
   // Legend - TODO: find a solution
   //https://root-forum.cern.ch/t/pdf-color-in-tlegend/26621
@@ -112,11 +115,11 @@ void FitAnalyser::PlotFitResult(csr output_file)
   {
     auto chi2_ndof = get_chi2_ndof();
     std::stringstream ss;
-    ss << std::fixed << std::setprecision(2);
-    ss << "#chi^{2}/N_{dof}: " << chi2_ndof.first << "/" << chi2_ndof.second;
+    ss << std::fixed << "#chi^{2}/N_{dof}: "
+      << std::setprecision(2) << chi2_ndof.first << "/"
+      << std::setprecision(0) << chi2_ndof.second;
     ibox->AddText(ss.str().c_str());
   }
-  ibox->AddText(("Number of Events: " + std::to_string(ds->numEntries())).c_str());
   ibox->AddText("");
 
   {
@@ -193,6 +196,34 @@ void FitAnalyser::PlotFitResult(csr output_file)
   pull->Draw();
 
   if (!output_file.empty()) canv->SaveAs(output_file.c_str());
+}
+
+double FitAnalyser::EvaluateFormula(csr formulastring, bool &ok)
+{
+  ok = false;
+  auto ws = GetWorkspace(true);
+  std::string formulaexpr(formulastring);
+  auto params = ws->allVars();
+  auto it = params.createIterator();
+
+  while (auto param = dynamic_cast<RooRealVar*>(it->Next())) {
+    std::string param_name(param->GetName());
+    if (param_name != m_fitvarname) {
+      std::regex reg("\\b" + param_name + "\\b");
+      std::string param_val(std::to_string(param->getVal()));
+
+      formulaexpr = std::regex_replace(formulaexpr, reg, param_val);
+    }
+  }
+
+  // Create a TFormula and check if it's valid
+  TFormula formula("temp_formula", formulaexpr.c_str());
+  if (!formula.IsValid()) {
+    std::cout << "Could not evaluate " << formulaexpr << " from workspace " << ws->GetName() << std::endl;
+    return 0;
+  }
+
+  return ok = true, formula.Eval(0.0);
 }
 
 TFile * FitAnalyser::open_file()

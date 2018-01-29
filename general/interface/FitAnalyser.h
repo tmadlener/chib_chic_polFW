@@ -48,6 +48,7 @@ public:
   RooAbsPdf *GetPdf(csr pdf_name = "");
   double GetVariableValue(csr variable_name, bool &ok);
   void PlotFitResult(csr output_file = "");
+  double EvaluateFormula(csr formula, bool &ok);
   
 private:
   std::string m_filename;

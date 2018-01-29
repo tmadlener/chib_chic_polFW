@@ -80,7 +80,7 @@ public:
     //TODO: implement
   }
 
-  void Fit(int numCPUs = 8, bool enableMinos = true);
+  void Fit(int numCPUs = 8, bool enableMinos = true, bool extendedFit = false);
 
   virtual ~Fitter();
 

@@ -1,0 +1,45 @@
+{
+  "input_data_file": "preselected_data.root",
+  "input_data_tree": "data",
+
+  "dimuon_model": [
+    "CBShape::ups1s_1(dimuon_mass, mu1s[9.5,9.3,9.7],sigma1s[0.075,0.01,0.25],a_l[0.5,5],5)",
+    "CBShape::ups1s_2(dimuon_mass, mu1s,sigma1s,a_r[-5,-0.5],5)",
+    "SUM::ups1s(tail_left[0.5,0.,1.]*ups1s_1,ups1s_2)",
+    "CBShape::ups2s(dimuon_mass, expr('mu1s*1.0595',mu1s),sigma2s[0.07,0.01,0.2],a2s[0.5,5],5)",
+    "CBShape::ups3s(dimuon_mass,  expr('mu1s*1.0946',mu1s),sigma3s[0.07,0.01,0.2],a3s[0.5,5],5)",
+    "Exponential::background(dimuon_mass,l[-0.14,-0.9,-0.001])",
+    "SUM::model(frac1s[0.3,0.,1]*ups1s, frac2s[0.1,0.,1]*ups2s, frac3s[0.06,0.,1]*ups3s, background)"
+  ],
+
+  "dimuon_fitvar": "dimuon_mass",
+  "dimuon_modelname": "model",
+
+  "dimuon_cut_formula": {
+    "min": "mu1s-2*sigma1s",
+    "max": "mu1s+2*sigma1s"
+  },
+
+  "dimuon_fitrange": {
+    "min": 8.7,
+    "max": 11
+  },
+
+  "chi_fitvar": "chi_mass_rf1S",
+  "chi_modelname": "model",
+
+  "chi_fitrange": {
+    "min": 9,
+    "max": 11
+  },
+
+  "chi_model": [
+    "CBShape::chib1(chi_mass_rf1S, mu1[9.86,9.902],sigma1[0.001,0.01],a1[0.5,10],n1[1,5])",
+    "CBShape::chib2(chi_mass_rf1S, mu2[9.902,9.94],sigma2[0.001,0.01],a2[0.5,10],n2[1,5])",
+    "expr::delta('chi_mass_rf1S - q0',chi_mass_rf1S,q0[9.68,9.0,15.])",
+    "CEXPR::background('(TMath::Sign( -1, delta) + 1 ) * 0.5 * pow( fabs(delta), alpha) * exp(beta * delta)',delta, alpha[1.,0.1,15], beta[-1.,-10.,-0.1])",
+    "SUM::model(N1[0,2e6]*chib1, N2[0,2e6]*chib2, Nbg[0,2e6]*background)"
+  ],
+
+  "extendedmll_chifit": true
+}

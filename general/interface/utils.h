@@ -21,7 +21,8 @@
 // Single functions
 
 bool file_exists(const std::string &fileName);
-
+bool is_directory(const std::string &dirName);
+std::string get_current_workingdir();
 
 
 // Structs and classes

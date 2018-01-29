@@ -23,13 +23,13 @@ defaulttarget:
 	@echo "   preselection [cleanpreselection]"
 	@echo "   fitting [cleanfitting]"
 
-
+	
 #####################
 # CHIB PRESELECTION 
 
 preselection : $(BUILDDIR)/preselection.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/treeproc.o
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)
-$(BUILDDIR)/preselection.o: $(SRCDIR)/chib_preselection.cc $(INCDIR)/chib_preselection.h  $(GENINCDIR)/calcAngles.h  $(GENINCDIR)/misc_utils.h
+$(BUILDDIR)/preselection.o: $(SRCDIR)/chib_preselection.cc $(INCDIR)/chib_preselection.h  $(GENINCDIR)/calcAngles.h  $(GENINCDIR)/misc_utils.h $(looper_header)
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
 cleanpreselection:
 	rm -f $(BUILDDIR)/preselection.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/treeproc.o $(TARGET)/preselection
@@ -40,9 +40,9 @@ cleanpreselection:
 #####################
 # CHIB FITTING 
 
-fitting : $(BUILDDIR)/fitting.o $(BUILDDIR)/fitter.o $(BUILDDIR)/fitanalyser.o $(BUILDDIR)/utils.o
+fitting : $(BUILDDIR)/fitting.o $(BUILDDIR)/fitter.o $(BUILDDIR)/fitanalyser.o $(BUILDDIR)/utils.o $(BUILDDIR)/chiorganizer.o
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB) $(ROOFITLIBS)
-$(BUILDDIR)/fitting.o: $(SRCDIR)/chib_fitting.cc
+$(BUILDDIR)/fitting.o: $(SRCDIR)/chib_fitting.cc $(fit_header)
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
 cleanfitting:
 	rm -f $(BUILDDIR)/fitting.o $(BUILDDIR)/fitter.o $(BUILDDIR)/fitanalyser.o $(TARGET)/fitting
@@ -52,6 +52,13 @@ cleanfitting:
 
 
 
+_looper_header := ParallelTreeLooper.h TreeProcessor.h utils.h 
+looper_header := $(patsubst %,$(GENINCDIR)/%,$(_looper_header))
+
+_fit_header := FitAnalyser.h Fitter.h utils.h
+fit_header := $(patsubst %,$(GENINCDIR)/%,$(_fit_header)) $(INCDIR)/ChiOrganizer.h
+
+all_header := $(fit_header) $(looper_header)
 
 #
 # PARALLEL TREE LOOPER	
@@ -82,4 +89,10 @@ $(BUILDDIR)/fitanalyser.o: $(GENSRCDIR)/FitAnalyser.cc $(GENINCDIR)/FitAnalyser.
 # UTILS
 #
 $(BUILDDIR)/utils.o: $(GENSRCDIR)/utils.cc $(GENINCDIR)/utils.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+
+#
+# CHIORGANIZER
+#
+$(BUILDDIR)/chiorganizer.o: $(SRCDIR)/ChiOrganizer.cc $(INCDIR)/ChiOrganizer.h $(GENINCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c

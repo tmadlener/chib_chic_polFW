@@ -112,7 +112,7 @@ void ParallelTreeLooper::printVariables(cs file, cs tree) {
 TTree* ParallelTreeLooper::openOutTree(cs filename, cs treename) {
   TFile *f = nullptr;
   TTree *t = nullptr;
-  
+
   //open file
   f = new TFile(filename.c_str(), "RECREATE");
   if (f->IsZombie()) {
@@ -189,7 +189,7 @@ long long ParallelTreeLooper::loop_multithreaded(long long nEvents, long long nT
     TList *trees = new TList;
     std::vector<TFile*> files;
     const std::string out_treename = m_out_tree->GetName();
-    for (const auto & filename: worker_filenames) {
+    for (const auto & filename : worker_filenames) {
       files.emplace_back(TFile::Open(filename.c_str()));
       auto f = files.back();
       if (!f || (f && f->IsZombie())) std::cout << "Problems opening file for merging: " << filename << std::endl;
@@ -235,7 +235,7 @@ void ParallelTreeLooper::worker(long long start_event, long long end_event, int 
 {
   {
     std::lock_guard<std::mutex> lock(cout_lock);
-    std::cout << "Starting thread " << worker_id << " from event " << start_event << " to event " << end_event << '.' << std::endl;
+    std::cout << "Starting thread " << worker_id << " from event " << start_event << " to event " << end_event - 1 << '.' << std::endl;
   }
 
   const std::string worker_treename_out = m_out_tree->GetName();
@@ -268,7 +268,7 @@ void ParallelTreeLooper::worker(long long start_event, long long end_event, int 
   }
 
   // Prevent original files from being closed (here because otherwise each clone() implementation has to take care of it)
-  looper->m_out_file = nullptr; 
+  looper->m_out_file = nullptr;
   looper->m_chain = nullptr;
 
   looper->m_out_tree = looper->openOutTree(worker_filename_out, worker_treename_out);
@@ -293,7 +293,7 @@ void ParallelTreeLooper::worker(long long start_event, long long end_event, int 
       ++count_out;
     }
 
-    if (!(i%update_every)){
+    if (!(i%update_every)) {
       std::lock_guard<std::mutex> lock(cout_lock);
       this->progress_update();
     }
@@ -304,7 +304,7 @@ void ParallelTreeLooper::worker(long long start_event, long long end_event, int 
   {
     std::lock_guard<std::mutex> lock(cout_lock);
     std::cout << "TreeLooper worker " << worker_id << " processed " << count_out << " events." << std::endl;
-  }  
+  }
 }
 
 void ParallelTreeLooper::progress_update()
@@ -312,13 +312,13 @@ void ParallelTreeLooper::progress_update()
   static std::mutex progress_lock;
   static const int prog_w = 7;
   static bool firstrun = true;
-  if (firstrun) firstrun = false, std::cout << std::string(prog_w,' ');
+  if (firstrun) firstrun = false, std::cout << std::string(prog_w, ' ');
 
   {
     std::lock_guard<std::mutex> lock(progress_lock);
     progress += progress_step;
   }
-  std::cout << std::string(prog_w, '\b') << std::setw(prog_w) << "\n" + std::to_string(progress) + " % " << (progress==100?"\n":"") << std::flush;
+  std::cout << std::string(prog_w, '\b') << std::setw(prog_w) << "\n" + std::to_string(progress) + " % " << (progress > 99 ? "\n" : "") << std::flush;
 }
 
 ParallelTreeLooper::ParallelTreeLooper(const std::vector<std::string>& in_file_names, cs intreename, cs outfilename, cs outtreename)
