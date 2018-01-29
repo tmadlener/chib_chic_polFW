@@ -8,6 +8,28 @@ logging.basicConfig(level=logging.INFO,
 
 import pandas as pd
 
+def check_branch_available(tree, branch):
+    """
+    Check if a branch with the passed name is available in the TTree
+
+    Args:
+        tree (ROOT.TTree): tree for which the check should be performed
+        branch (str): branch name
+
+    Returns:
+        bool: True if branch is in tree, else False
+    """
+    logging.debug('Checking if {} is available in {}'
+                  .format(branch, tree.GetName()))
+
+    all_branches = [b.GetName() for b in tree.GetListOfBranches()]
+    if branch in all_branches:
+        return True
+    logging.warning('Could not find branch \'{}\' in TTree \'{}\''
+                    .format(branch, tree.GetName()))
+    return False
+
+
 def store_dataframe(dfr, outfile, tname='chi2_values'):
     """
     Store the dataframe either into a pkl file or into a root file via

@@ -1,0 +1,74 @@
+#!/bin/bash
+
+## Script that helps in automating the creation of the histogram file that is expected by the make_plot.py script
+## Assumes that the data ntuples are stored in a directory structure where the folder name encodes the the year of data taking
+## and the used trigger (as this is what is used to store the histograms). In each of these folders the tuples are expected to
+## be stored in one pt-bin per file. For each of these files distribution and ratio histograms are created
+## NOTE: This script and also the called executables don't do very extensive checks if everything is in the necessary format,
+## (directory names and structures mostly.). However, the tuple files themselves should be in the expected format if they have
+## been produced with the 'create_chic_tuple' script
+
+## default variables:
+# default output value (can be overriden by second argument)
+DEF_OUTPUT=./histograms.root
+# cutsigma for discarding bins where, number of events is too small (cutsigma^2 is the actual cut!)
+CUTSIGMA=$(python -c 'from math import sqrt; print sqrt(10)') # cut at 10 events at the moment
+# global flag for indicating processing of MC workflow (set via cl flag)
+
+## collect all histograms from one directory (data)
+function collect_dir() {
+    path=${1}
+    outfile=${2}
+    year=$(echo $(basename ${path}) | awk -F '_' '{print $1}')
+    trigger=$(echo $(basename ${path}) | awk -F '_' 'BEGIN{OFS="_";} {print $2 $3}')
+
+    collector=${CHIB_CHIC_POLFW_DIR}/polarization/plotting/collect_histograms.py
+
+    mc_flag=""
+    treename="chic_tuple"
+    if [[ ${MC_WORKFLOW} -eq 1 ]]; then
+        mc_flag="-mc"
+        treename="chic_mc_tuple"
+        trigger="8_Jpsi" # TODO: adapt this for 2016 MC
+        year="2012" # TODO: adapt this for 2016 MC
+    fi
+
+    for f in ${1}/*pt?.root; do
+        pt_bin=${f: -6:1} # assuming that pT bin is only 1 digit here. TODO: make this more stable or a separate function (2nd use here)
+
+        ${collector} --year=${year} --triggerpath=${trigger} --ptbin=${pt_bin} --frames="HX,CS,PX" \
+                     --cutsigma=${CUTSIGMA} --treename=${treename} ${mc_flag} ${f} ${outfile}
+
+    done
+}
+
+## collect all histograms from one directory (data)
+function collect_dirs() {
+    path=${1}
+    outfile=${2}
+    for dir in $(ls -d ${path}*/); do
+        collect_dir ${dir} ${outfile}
+    done
+}
+
+## Check if we have an output file in arguments or if the default one should be used
+if [[ $# -lt 1 ]]; then
+    echo "Usage: collect_hists BASE_INPUT_DIR [OUTPUT_FILE] [-mc]"
+    exit 64
+fi
+if [[ $# -lt 2 ]]; then
+    output=${DEF_OUTPUT}
+    echo "Using "${output}" as output file"
+else
+    output=${2}
+fi
+if [[ $# -eq 3 ]]; then
+    if [[ $(echo ${3} | tr '[:lower:]' '[:upper:]') = "-MC" ]]; then
+        echo "Using MC workflow"
+        MC_WORKFLOW=1
+    else
+        echo "Uncrecognoed input flag: "${3}". Ignoring it"
+    fi
+fi
+
+collect_dirs ${1} ${output}
