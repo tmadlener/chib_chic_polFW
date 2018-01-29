@@ -1,0 +1,57 @@
+#!/bin/bash
+set -e
+
+INPUTFILE=./histograms.root
+OUTPUTBASE=./plots_test/
+FRAMES=(HX CS)
+NORM_AT_0="-nz" # set to "-nz" or "--normalize-at-zero" to normalize hists at 0
+
+mkdir -p ${OUTPUTBASE}
+
+
+## create associative array for 2016 triggers (pt bin to trigger)
+declare -A TRIG_2016_PT=( [1]=Dimuon10_Jpsi_Barrel \
+                              [2]=Dimuon16_Jpsi \
+                              [3]=Dimuon20_Jpsi \
+                              [4]=Dimuon20_Jpsi \
+                              [5]=Dimuon16_Jpsi ) # TODO: Use Dimuon20 when data available
+
+TRIG_2012=Dimuon8_Jpsi
+INPUT_2012_DATA="2012:${TRIG_2012}:data:8 TeV"
+INPUT_2012_MC="2012:${TRIG_2012}:mc:8 TeV (MC)"
+
+VARIABLES=( costh cosalpha phi )
+PT_BINS=$(echo {1..5})
+
+## make the ratio and dist plots for a given input
+function ratio_dist_plots() {
+    var=${1}
+    frame=${2}
+    ptbin=${3}
+    output_base=${4}
+
+    INPUT_2016_DATA="2016:${TRIG_2016_PT[${ptbin}]}:data:13 TeV"
+
+    input="--input=""\"${INPUT_2012_DATA}"\"" --input=""\"${INPUT_2012_MC}"\"" --input=""\"${INPUT_2016_DATA}"\"""
+
+    plotter=${CHIB_CHIC_POLFW_DIR}/polarization/plotting/make_plot.py
+
+    ${plotter} --input="${INPUT_2012_DATA}" --input="${INPUT_2012_MC}" --input="${INPUT_2016_DATA}" \
+               --variable=${var} --frame=${frame} --ptbin=${ptbin} --output=${output_base}_ratio.pdf \
+               ${NORM_AT_0} --ratio ${INPUTFILE}
+
+    ${plotter} --input="${INPUT_2012_DATA}" --input="${INPUT_2012_MC}" --input="${INPUT_2016_DATA}" \
+               --variable=${var} --frame=${frame} --ptbin=${ptbin} --output=${output_base}_dists.pdf \
+               ${NORM_AT_0} --dist ${INPUTFILE}
+
+}
+
+for var in ${VARIABLES[@]}; do
+    for frame in ${FRAMES[@]}; do
+        for pt in ${PT_BINS[@]}; do
+            outbase=${OUTPUTBASE}/${var}_${frame}_pt${pt}
+
+            ratio_dist_plots ${var} ${frame} ${pt} ${outbase}
+        done
+    done
+done

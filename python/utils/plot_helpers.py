@@ -14,7 +14,7 @@ import ROOT as r
 
 from collections import Iterable
 from utils.misc_helpers import create_random_str
-from utils.hist_utils import set_common_range
+from utils.hist_utils import set_common_range, set_labels
 
 _colors = []
 _color_indices = []
@@ -154,9 +154,12 @@ def plot_on_canvas(can, plots, **kwargs):
 
     get_att = lambda i: attributes[ i % len(attributes) ]
 
+    leg_option = kwargs.pop('legOpt', '')
+    draw_option = kwargs.pop('drawOpt')
+    if not leg_option:
+        leg_option = draw_option
+    draw_option = ''.join(['same', draw_option])
 
-    leg_option = kwargs.pop('drawOpt', '')
-    draw_option = ''.join(['same', leg_option])
     legend = kwargs.pop('leg', None)
     leg_entries = kwargs.pop('legEntries', [h.GetName() for h in plots])
 
@@ -187,7 +190,9 @@ def mkplot(pltables, **kwargs):
     Plot all pltables onto a canvas and return the canvas
 
     Args:
-        pltables: single plotable ROOT object or list of plotable ROOT objects
+        pltables: single plotable ROOT object or list of plotable ROOT objects.
+            If this is an empty list an empty canvas (or the passed in canvas)
+            will be returned
 
     Keyword Args:
         colors (list. optional): list of colors to be used for plotting
@@ -201,16 +206,26 @@ def mkplot(pltables, **kwargs):
             a None value or even two None values. For any passed value that
             value will be used as axis range, for any None value an appropriate
             value will be determined from the passed pltables
+        can (ROOT.TCanvas): Do not create new canvas but use passed canvas to
+            plot on
 
     Returns:
-        ROOT.TCanvas: Canvas with all the plotables drawn onto it
+        ROOT.TCanvas: Canvas with all the plotables drawn onto it.
     """
     # allow single plots to be handled the same as a list of plots
     if not isinstance(pltables, Iterable):
         pltables = [pltables]
 
-    can_name = create_random_str()
-    can = r.TCanvas(can_name, '', 50, 50, 600, 600)
+    can = kwargs.pop('can', None)
+    if can is None:
+        can_name = create_random_str()
+        can = r.TCanvas(can_name, '', 50, 50, 600, 600)
+
+    # Check if at least one pltable has been passed and return the canvas if not
+    # NOTE: Can't return earlier with None, since a canvas is expected to be
+    # returned, and only here is it certain, that we return the right canvas
+    if len(pltables) < 1:
+        return can
 
     only_hists = all(p.InheritsFrom('TH1') for p in pltables)
 
@@ -220,6 +235,12 @@ def mkplot(pltables, **kwargs):
     y_range = kwargs.pop('yRange', None)
     if y_range is not None and only_hists:
         set_common_range(pltables, axis='y', dscale=0.05, drange=y_range)
+
+    y_label = kwargs.pop('yLabel', '')
+    x_label = kwargs.pop('xLabel', '')
+    if (y_label or x_label) and only_hists:
+        for h in pltables:
+            set_labels(h, x_label, y_label)
 
     plot_on_canvas(can, pltables, **kwargs)
     return can
