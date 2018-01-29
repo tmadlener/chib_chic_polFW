@@ -4,6 +4,10 @@ Module containing helper functions for handling ROOT TH1Ds (or similar)
 
 import numpy as np
 
+import logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(levelname) - %(funcName)s: %(message)s')
+
 def draw_var_to_hist(tree, hist, var, cut='', weight=None):
     """
     Fill passed variable from TTree into TH1 using TTree.Draw().
@@ -58,7 +62,7 @@ def set_hist_opts(hist):
     hist.Sumw2()
 
 
-def set_bins_to_zero(hist, thresh=0, verbose=False):
+def set_bins_to_zero(hist, thresh=0):
     """Set bins under threshold to zero.
 
     Args:
@@ -66,16 +70,13 @@ def set_bins_to_zero(hist, thresh=0, verbose=False):
         thresh (float, optional): Threshold below which bins should be set to 0.
         verbose (bool, optional): Make function print out the bins it sets to 0.
     """
+    logging.info('Checking {} for bins with entries below {}'
+                  .format(hist.GetName(), thresh))
     neg_bins = [(i, b) for i, b in enumerate(hist) if b < thresh]
     for negb, cont in neg_bins:
         hist.SetBinContent(negb, 0)
         hist.SetBinError(negb, 0)
-
-    if verbose:
-        print('checked {} for bins with entries below {}'.
-              format(hist.GetName(), thresh))
-        for negb, cont in neg_bins:
-            print('Set bin {} to 0, content was {}'.format(negb, cont))
+        logging.debug('Set bin {} to 0, content was {}'.format(negb, cont))
 
 
 def set_labels(hist, xlabel='', ylabel=''):
