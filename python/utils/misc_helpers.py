@@ -88,4 +88,4 @@ def create_random_str(length=32):
     Returns:
         str: Non-cryptographically safe random string
     """
-    return '.'.join(choice(ascii_letters + digits) for _ in xrange(length))
+    return ''.join(choice(ascii_letters + digits) for _ in xrange(length))
