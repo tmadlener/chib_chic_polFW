@@ -23,9 +23,12 @@ defaulttarget:
 	@echo "   preselection [cleanpreselection]"
 	@echo "   fitting [cleanfitting]"
 
-	
+all: _dir_setup preselection fitting
+
+clean: _dir_cleanup
+
 #####################
-# CHIB PRESELECTION 
+# CHIB PRES ELECTION
 
 preselection : $(BUILDDIR)/preselection.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/treeproc.o
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)
@@ -38,7 +41,7 @@ cleanpreselection:
 
 
 #####################
-# CHIB FITTING 
+# CHIB FITTING
 
 fitting : $(BUILDDIR)/fitting.o $(BUILDDIR)/fitter.o $(BUILDDIR)/fitanalyser.o $(BUILDDIR)/utils.o $(BUILDDIR)/chiorganizer.o
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB) $(ROOFITLIBS)
@@ -52,7 +55,7 @@ cleanfitting:
 
 
 
-_looper_header := ParallelTreeLooper.h TreeProcessor.h utils.h 
+_looper_header := ParallelTreeLooper.h TreeProcessor.h utils.h
 looper_header := $(patsubst %,$(GENINCDIR)/%,$(_looper_header))
 
 _fit_header := FitAnalyser.h Fitter.h utils.h
@@ -61,7 +64,7 @@ fit_header := $(patsubst %,$(GENINCDIR)/%,$(_fit_header)) $(INCDIR)/ChiOrganizer
 all_header := $(fit_header) $(looper_header)
 
 #
-# PARALLEL TREE LOOPER	
+# PARALLEL TREE LOOPER
 #
 $(BUILDDIR)/paralooper.o: $(GENSRCDIR)/ParallelTreeLooper.cc $(GENINCDIR)/ParallelTreeLooper.h $(GENINCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
@@ -70,8 +73,8 @@ $(BUILDDIR)/paralooper.o: $(GENSRCDIR)/ParallelTreeLooper.cc $(GENINCDIR)/Parall
 # TREE PROCESSOR
 #
 $(BUILDDIR)/treeproc.o: $(GENSRCDIR)/TreeProcessor.cc $(GENINCDIR)/TreeProcessor.h $(GENINCDIR)/ParallelTreeLooper.h $(GENINCDIR)/utils.h
-	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c 
-		
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+
 #
 # FITTER
 #
@@ -96,3 +99,11 @@ $(BUILDDIR)/utils.o: $(GENSRCDIR)/utils.cc $(GENINCDIR)/utils.h
 #
 $(BUILDDIR)/chiorganizer.o: $(SRCDIR)/ChiOrganizer.cc $(INCDIR)/ChiOrganizer.h $(GENINCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+
+#
+# DIRECTORY SETUP AND CLEANUP
+#
+_dir_setup:
+	mkdir -p $(TARGET) $(BUILDDIR)
+_dir_cleanup:
+	rm -rf $(TARGET) $(BUILDDIR)
