@@ -48,3 +48,6 @@ RooCFAuto*
 
 # Backup files
 *~
+
+# json (header only library)
+general/interface/json.hpp
