@@ -67,7 +67,7 @@ def set_color(pltable, col):
         pltable (ROOT.TObject): Plottable root object
         col (int): Color index to use for the plottable
     """
-    col_attributes = ['SetLineColor', 'SetMarkerColor']
+    col_attributes = ['SetLineColor', 'SetMarkerColor', 'SetFillColor']
     for attr in col_attributes:
         if hasattr(pltable, attr):
             getattr(pltable, attr)(col)
@@ -89,6 +89,9 @@ def set_attributes(pltable, **kwargs):
         line (int): Towline style index
         width (int): TLine width (in pixels)
         size (float): TMarker size
+        fillalpha (tuple): TColor index specifying fill color and float between
+            0 and 1 specifying fill alpha
+        fillstyle (int): A fillstyle to be set
     """
     def conditional_set(key, set_func):
         """
@@ -109,7 +112,9 @@ def set_attributes(pltable, **kwargs):
         ('marker', lambda p, m: p.SetMarkerStyle(m)),
         ('size', lambda p, s: p.SetMarkerSize(s)),
         ('width', lambda l, w: l.SetLineWidth(w)),
-        ('line', lambda l, s: l.SetLineStyle(s))
+        ('line', lambda l, s: l.SetLineStyle(s)),
+        ('fillalpha', lambda p, fa: p.SetFillColorAlpha(fa[0], fa[1])),
+        ('fillstyle', lambda p, s: p.SetFillStyle(s))
     )
 
     for arg, func in arg_func_pairs:
@@ -132,14 +137,23 @@ def plot_on_canvas(can, plots, **kwargs):
         leg (ROOT.TLegend, optional): Put the passed TLegend onto the plot
         legEntries (list): list of string (at least as long as the plot list)
             from which the keys for the legend are taken
+        attributes (list of dicts, optional): list of attributes to pass to the
+            set_attributes function. Overrides color argument!
 
     Returns:
         ROOT.TCanvas: TCanvas that has been passed in
     """
     can.cd()
 
-    colors = kwargs.pop('colors', default_colors())
-    get_col = lambda i: colors[ i % len(colors) ]
+    attributes = kwargs.pop('attributes', None)
+    if attributes is None:
+        colors = kwargs.pop('colors', default_colors())
+        attributes = []
+        for col in colors:
+            attributes.append({'color': col})
+
+    get_att = lambda i: attributes[ i % len(attributes) ]
+
 
     leg_option = kwargs.pop('drawOpt', '')
     draw_option = ''.join(['same', leg_option])
@@ -154,7 +168,7 @@ def plot_on_canvas(can, plots, **kwargs):
         leg_option = 'ple'
 
     for i in range(len(plots)):
-        set_color(plots[i], get_col(i))
+        set_attributes(plots[i], **get_att(i))
         plots[i].Draw(draw_option)
 
         if legend is not None:
