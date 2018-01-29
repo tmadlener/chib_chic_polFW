@@ -79,13 +79,9 @@ if [[ $# -lt 2 ]]; then
     echo "Usage: create_chic_tuple FIT_BASE_DIR OUT_DIR [-mc]"
     exit 64
 fi
-if [[ $# -eq 3 ]]; then
-    if [[ $(echo ${3} | tr '[:lower:]' '[:upper:]') = "-MC" ]]; then
-        echo "Using MC workflow"
-        MC_WORKFLOW=1
-    else
-        echo "Unrecognized input flag. Ignoring it"
-    fi
+if $(check_args_flag "-mc" ${@}); then
+    echo "Using MC worfklow"
+    MC_WORKFLOW=1
 fi
 
 if [[ ${MC_WORKFLOW} -eq 0 ]]; then

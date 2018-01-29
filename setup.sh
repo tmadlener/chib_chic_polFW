@@ -17,6 +17,8 @@ function check_args_flag() {
     return 1
 }
 
+## export function to have it available in other scripts
+export -f check_args_flag
 
 ## chib preparation needs cpp json (header only) library. This function checks if the file exists and if not
 ## gets it from github. If it exists nothing is done unless the --update flag is passed
@@ -41,9 +43,9 @@ function fetch_json_header() {
 }
 
 
-# first check if setup already happened, and only do it if not.
+# first check if setup already happened, and only do it if not or if --force flag is passed.
 # In this way, this script can be sourced multiple times or from within bash scripts
-if [[ -z "${CHIB_CHIC_POLFW_DIR+x}" ]]; then
+if [[ -z "${CHIB_CHIC_POLFW_DIR+x}" ]] || $(check_args_flag "--force" ${@}); then
 
     ## get the absolute directory of this script, regardless of where it's called from
     export CHIB_CHIC_POLFW_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"

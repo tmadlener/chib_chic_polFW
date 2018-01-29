@@ -62,13 +62,8 @@ if [[ $# -lt 2 ]]; then
 else
     output=${2}
 fi
-if [[ $# -eq 3 ]]; then
-    if [[ $(echo ${3} | tr '[:lower:]' '[:upper:]') = "-MC" ]]; then
-        echo "Using MC workflow"
-        MC_WORKFLOW=1
-    else
-        echo "Uncrecognoed input flag: "${3}". Ignoring it"
-    fi
+if $(check_args_flag "-mc" ${@}); then
+    echo "Using MC worfklow"
+    MC_WORKFLOW=1
 fi
-
 collect_dirs ${1} ${output}
