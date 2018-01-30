@@ -14,14 +14,40 @@ logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
 from utils.plot_helpers import mkplot, default_colors
-from utils.setup_plot_style import set_TDR_style
+from utils.setup_plot_style import set_TDR_style, add_lumi_info
 from utils.PlotServer import PlotServer
 from utils.hist_utils import get_y_max
+from utils.data_base import JsonDataBase
+from utils.misc_helpers import get_full_trigger
 
 # values at which chic1 and chic2 should be normalized to at 0 if that
 # normalization option is chosen
 chic1_norm_0 = 1.0
 chic2_norm_0 = 0.5
+
+def get_lumi_text(trg_years):
+    """
+    Get the integrated lumi text for
+
+    TODO: proper doc
+    """
+    lumi_db = JsonDataBase()
+    lumi_text_frags = []
+    for year, trg, dmc in trg_years:
+        if dmc == 'mc': # NOTE: no lumi for MC at the moment
+            continue
+        trigger = get_full_trigger(trg)
+        trg_lumi = lumi_db.get_int_lumi(year, trigger)
+        energy = lumi_db.get_energy(year)
+        logging.debug('Got int. lumi = {} and cms energy = {} for year {} and'
+                      'trigger {}'.format(trg_lumi, energy, year, trigger))
+        if trg_lumi > 0:
+            lumi_text_frags.append('{0:.1f} fb^{{-1}} ({1} TeV)'
+                                   .format(trg_lumi, energy))
+
+    if len(lumi_text_frags) > 1:
+        return ' + '.join(lumi_text_frags)
+    return lumi_text_frags[0]
 
 
 def get_plot_attributes(year, dmc, plot):
@@ -286,6 +312,8 @@ def main(args):
                  attributes=dpl_attr, can=can, leg=leg, legEntries=data_leg,
                  legOpt='PLE', xLabel=x_label, yLabel=y_label)
 
+    lumi_text = get_lumi_text(year_trg_ids)
+    add_lumi_info(can, lumi_text)
     can.SaveAs(args.output)
 
 

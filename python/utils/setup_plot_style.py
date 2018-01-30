@@ -162,6 +162,30 @@ def get_pad_margins(pad):
     return pad_info
 
 
+def setup_basic_latex():
+    """Create a basic latex object"""
+    latex = r.TLatex()
+    latex.SetNDC()
+    latex.SetTextAngle(0)
+    latex.SetTextColor(r.kBlack)
+    return latex
+
+
+def add_lumi_info(pad, lumi_text):
+    """Add the integrated lumi info"""
+    LUMI_TEXT_SIZE = 0.6
+    LUMI_TEXT_OFFSET = 0.2
+
+    pad.cd()
+    PAD = get_pad_margins(pad)
+
+    latex = setup_basic_latex()
+    latex.SetTextFont(42)
+    latex.SetTextAlign(31)
+    latex.SetTextSize(LUMI_TEXT_SIZE * PAD['t'])
+    latex.DrawLatex(1-PAD['r'], 1-PAD['t']+LUMI_TEXT_OFFSET*PAD['t'], lumi_text)
+
+
 def add_auxiliary_info(pad, years, pos='right'):
     """Add the auxiliary information to the passed pad"""
     LUMINOSITY = {'2012': '19.7 fb^{-1} (8 TeV)',
@@ -178,8 +202,7 @@ def add_auxiliary_info(pad, years, pos='right'):
     EXTRA_TEXT_FONT = 52
     EXTRA_TEXT_SIZE = 0.76 * CMS_TEXT_SIZE
 
-    LUMI_TEXT_SIZE = 0.6
-    LUMI_TEXT_OFFSET = 0.2
+
 
     REL_POS_X = 0.045
     REL_POS_Y = 0.065
@@ -190,17 +213,11 @@ def add_auxiliary_info(pad, years, pos='right'):
 
     pad.cd()
     # latex used to draw everything
-    latex = r.TLatex()
-    latex.SetNDC()
-    latex.SetTextAngle(0)
-    latex.SetTextColor(r.kBlack)
+    latex = setup_basic_latex()
 
     # lumi info
     lumi_text = ' + '.join([LUMINOSITY[y] for y in years])
-    latex.SetTextFont(42)
-    latex.SetTextAlign(31)
-    latex.SetTextSize(LUMI_TEXT_SIZE * PAD['t'])
-    latex.DrawLatex(1-PAD['r'], 1-PAD['t']+LUMI_TEXT_OFFSET*PAD['t'], lumi_text)
+    add_lumi_info(pad, lumi_text)
 
     if pos == 'right':
         pos_x = 1 - PAD['r'] - REL_POS_X * (1 - PAD['l'] - PAD['r'])
