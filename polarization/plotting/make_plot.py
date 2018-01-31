@@ -25,6 +25,13 @@ from utils.misc_helpers import get_full_trigger
 chic1_norm_0 = 1.0
 chic2_norm_0 = 0.5
 
+# fit ranges for different variables
+const_fit_range = {
+    'costh': (0, 0.5),
+    'phi': (0, 90), # full range
+    'cosalpha': (0, 1) # full range
+}
+
 def get_lumi_text(trg_years):
     """
     Get the integrated lumi text for
@@ -186,13 +193,15 @@ def get_plot_hists(pserver, trg_years, ratio, var, frame, pt,
     """
     hists = {}
     for year, trg, dmc in trg_years: # discard leg entries for now
+        logging.debug('pt = {}, year = {}, dmc = {}, var = {}, frame = {}'
+                              .format(pt, year, dmc, var, frame))
         if ratio:
             hist = pserver.get_hist(dmc, year, trg, pt, var, frame, 'ratio')
             if hist is not None:
                 hists[(year, dmc, 'ratio')] = hist
                 if norm_ratio:
                     chi2, ndf = normalize_ratio(hists[(year, dmc, 'ratio')],
-                                                (0, 0.5))
+                                                const_fit_range[var])
         else:
             hist = pserver.get_hist(dmc, year, trg, pt, var, frame, 'chic1')
             hists[(year, dmc, 'chic1')] = hist
