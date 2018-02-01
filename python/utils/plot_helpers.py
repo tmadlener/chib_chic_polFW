@@ -155,7 +155,7 @@ def plot_on_canvas(can, plots, **kwargs):
     get_att = lambda i: attributes[ i % len(attributes) ]
 
     leg_option = kwargs.pop('legOpt', '')
-    draw_option = kwargs.pop('drawOpt')
+    draw_option = kwargs.pop('drawOpt', '')
     if not leg_option:
         leg_option = draw_option
     draw_option = ''.join(['same', draw_option])
