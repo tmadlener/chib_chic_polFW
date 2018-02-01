@@ -50,7 +50,7 @@ std::string getBinString(const T iRap, const T iPt)
 template<typename T>
 inline bool inRange(const T val, const T min, const T max)
 {
-  return (val > min && val < max);
+  return (val >= min && val < max);
 }
 
 /**
