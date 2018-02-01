@@ -41,6 +41,36 @@ def cond_mkdir_file(filename):
     cond_mkdir(path)
 
 
+def replace_all(string, repl_pairs, reverse=False):
+    """
+    Replace all occurrences of different sub strings with other specified
+    substrings.
+
+    Args:
+        string (str): input string
+        repl_pairs (list of tuples): list containing tuples where the first
+            element is the string to be replaced and the second element is the
+            replacement
+        reverse (bool): Reverse the ordering of the repl_pair list entries (i.e.
+            when applying the function a second time, with reverse set to True
+            the original string will be returned)
+
+    Returns:
+        str: string with all sub strings in the first element of the repl_pairs
+            replaced with the accompanying second element
+    """
+    ret_str = string
+    if reverse:
+        for rep, sym in repl_pairs:
+            ret_str = ret_str.replace(sym, rep)
+    else:
+        for sym, rep in repl_pairs:
+            ret_str = ret_str.replace(sym, rep)
+
+    return ret_str
+
+
+
 def stringify(selection, reverse=False):
     """Get a string representation of a selection string
 
@@ -71,14 +101,7 @@ def stringify(selection, reverse=False):
     )
 
     ret_str = selection.replace(' ', '')
-    if reverse:
-        for rep, sym in repl_pairs:
-            ret_str = ret_str.replace(sym, rep)
-    else:
-        for sym, rep in repl_pairs:
-            ret_str = ret_str.replace(sym, rep)
-
-    return ret_str
+    return replace_all(ret_str, repl_pairs, reverse)
 
 
 def create_random_str(length=32):
@@ -136,3 +159,26 @@ def get_full_trigger(subpath):
     logging.warning('Could not uniquely identify a trigger path from the sub '
                     'expression: {}'.format(subpath))
     return ''
+
+
+def get_storable_name(name, reverse=False):
+    """
+    Get a name that can be stored as a TBranch such that it can also be read
+    afterwards
+
+    E.g. '-' and '.' are characters that cannot appear in the branch name if
+    the TTree::Draw() command should be usable with the branch
+
+    Args:
+        name (str): Original name of the branch
+        reverse (bool): If passed a storable name, return the original one,
+           making this the inverse of the function
+
+    Returns:
+        str: storeable name or original name, depending on argument of reverse
+    """
+    repl_pairs = (
+        ('-', '_m_'),
+        ('.', '_p_')
+    )
+    return replace_all(name, repl_pairs, reverse)

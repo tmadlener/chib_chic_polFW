@@ -53,7 +53,7 @@ def store_dataframe(dfr, outfile, tname='chi2_values'):
         outfile = re.sub(r'(.*\.)(\w*)$', r'\1pkl', outfile)
         logging.debug('Output filename after substitution: {}'.format(outfile))
 
-    logging.info('Writing resulting DataFramet to: {}'.format(outfile))
+    logging.info('Writing resulting DataFrame to: {}'.format(outfile))
     # if .root is requested check if root_pandas is here, otherwise go to .pkl
     if outfile.endswith('.root'):
         try:
