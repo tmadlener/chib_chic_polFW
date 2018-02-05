@@ -8,6 +8,9 @@ import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(levelname) - %(funcName)s: %(message)s')
 
+from collections import Iterable
+
+
 def draw_var_to_hist(tree, hist, var, cut='', weight=None):
     """
     Fill passed variable from TTree into TH1 using TTree.Draw().
@@ -36,7 +39,7 @@ def draw_var_to_hist(tree, hist, var, cut='', weight=None):
     return tree.Draw(plot_str, cut)
 
 
-def combine_cuts(cuts):
+def combine_cuts(cuts, comb=' && '):
     """Concatenate list of cuts into a cut expression.
 
     Concatenates the list of cuts into an expression where all the cuts will be
@@ -44,22 +47,26 @@ def combine_cuts(cuts):
 
     Args:
         cuts (list of str): the individual cuts that should be combined into one
+        comb (str): Logical expression to combine the cuts (e.g. && or ||)
 
     Returns:
         str: A cut expression string with all cuts combined via &&
     """
     safe_cuts = ("".join(["(", cut, ")"]) for cut in cuts)
-    return " && ".join(safe_cuts)
+    return comb.join(safe_cuts)
 
 
-def set_hist_opts(hist):
+def set_hist_opts(hists):
     """Set some 'sane' default options to the passed histogram.
 
     Args:
-        hist (ROOT.TH1): the histogram to set the options to.
+        hists (ROOT.TH1 or list): the histogram(s) to set the options to.
     """
-    hist.SetStats(0) # disable stat box
-    hist.Sumw2()
+    if not isinstance(hists, Iterable):
+        hists = [hists]
+    for hist in hists:
+        hist.SetStats(0) # disable stat box
+        hist.Sumw2()
 
 
 def set_bins_to_zero(hist, thresh=0):

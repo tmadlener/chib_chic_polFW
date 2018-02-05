@@ -43,6 +43,16 @@ function fetch_json_header() {
 }
 
 
+## get the pt bin from the file-ending
+## WARNING: NO CHECK OF ARGUMENTS
+function get_pt() {
+    file=$1
+    pt_bin=${file: -6:1} # assuming that pT bin is only 1 digit here. TODO: make this more stable
+    echo $pt_bin
+}
+export -f get_pt
+
+
 # first check if setup already happened, and only do it if not or if --force flag is passed.
 # In this way, this script can be sourced multiple times or from within bash scripts
 if [[ -z "${CHIB_CHIC_POLFW_DIR+x}" ]] || $(check_args_flag "--force" ${@}); then

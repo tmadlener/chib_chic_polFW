@@ -34,7 +34,7 @@ function collect_dir() {
     fi
 
     for f in ${1}/*pt?.root; do
-        pt_bin=${f: -6:1} # assuming that pT bin is only 1 digit here. TODO: make this more stable or a separate function (2nd use here)
+        pt_bin=$(get_pt ${f})
 
         ${collector} --year=${year} --triggerpath=${trigger} --ptbin=${pt_bin} --frames="HX,CS,PX" \
                      --cutsigma=${CUTSIGMA} --treename=${treename} ${mc_flag} ${f} ${outfile}

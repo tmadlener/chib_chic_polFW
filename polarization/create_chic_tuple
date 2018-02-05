@@ -67,7 +67,7 @@ function create_all_tuples() {
 
     # simply run over all available fit files
     for f in ${fit_file_base}*.root; do
-        pt_bin=${f: -6:1} # assuming that pT bin is only 1 digit here. TODO: make this more stable or a separate function
+        pt_bin=$(get_pt ${f})
         out_file=${out_dir}/${OUTFILE_BASENAME}_pt${pt_bin}.root
 
         create_tuple ${data_file} ${f} ${out_file}
