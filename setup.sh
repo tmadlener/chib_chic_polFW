@@ -42,6 +42,17 @@ function fetch_json_header() {
     fi
 }
 
+## get a variable length random string that can be used to name temp directories
+function rand_str() {
+    if [[ $# -eq 0 ]]; then
+        length=16
+    else
+        length=$1
+    fi
+
+    echo $(cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w ${length} | head -n 1)
+}
+export -f rand_str
 
 ## get the pt bin from the file-ending
 ## WARNING: NO CHECK OF ARGUMENTS
