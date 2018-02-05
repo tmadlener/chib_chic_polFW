@@ -78,7 +78,7 @@ def make_plot(rfile, var, x_label, savename):
     leg = r.TLegend(0.5, 0.91, 0.9, 0.94)
     leg.SetNColumns(2)
 
-    can = mkplot([r_nocut, r_fidcuts], leg=leg, yRange=[0, 1],
+    can = mkplot([r_nocut, r_fidcuts], leg=leg, yRange=[0, None],
                  yLabel='#chi_{c2} / #chi_{c1}', xLabel=x_label,
                  legEntries=['no cuts', 'std fid cuts'])
     can.SaveAs(savename)
@@ -114,7 +114,7 @@ def main(args):
 
             make_plot(mcfile, plot_var, x_label, save_name)
 
-    make_plot(mcfile, 'TMath::Abs(cosalpha_HX)', '|cos#alpha^{HX}|',
+    make_plot(mcfile, 'TMath::Abs(cosalpha_HX)', '|cos#alpha|',
               get_savename(args.outdir, 'abs_cosalpha_fidcuts_ratio',
                            args.extension))
 
