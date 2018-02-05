@@ -67,12 +67,12 @@ def get_chic_ratio(rfile, var, selection):
     return ratio
 
 
-def make_plot(rfile, var, x_label, savename):
+def make_plot(rfile1, rfile2, var, x_label, savename):
     """
     Make plot of a specific variable
     """
-    r_nocut = get_chic_ratio(rfile, var, select_trigger())
-    r_fidcuts = get_chic_ratio(rfile, var,
+    r_nocut = get_chic_ratio(rfile1, var, select_trigger())
+    r_fidcuts = get_chic_ratio(rfile2, var,
                                combine_cuts([select_trigger(), get_fidcuts()]))
 
     leg = r.TLegend(0.5, 0.91, 0.9, 0.94)
@@ -95,7 +95,8 @@ def get_savename(outdir, plot_name, extension):
 
 def main(args):
     """Main"""
-    mcfile = r.TFile.Open(args.mcfile)
+    mcfile1 = r.TFile.Open(args.mcfile1)
+    mcfile2 = r.TFile.Open(args.mcfile2)
 
     frames = ['CS', 'HX', 'PX']
     variables = ['TMath::Abs(costh_{})', 'phi_{}_fold']
@@ -112,9 +113,9 @@ def main(args):
                                   'fidcut', 'ratio'])
             save_name = get_savename(args.outdir, plot_name, args.extension)
 
-            make_plot(mcfile, plot_var, x_label, save_name)
+            make_plot(mcfile1, mcfile2, plot_var, x_label, save_name)
 
-    make_plot(mcfile, 'TMath::Abs(cosalpha_HX)', '|cos#alpha|',
+    make_plot(mcfile1, mcfile2, 'TMath::Abs(cosalpha_HX)', '|cos#alpha|',
               get_savename(args.outdir, 'abs_cosalpha_fidcuts_ratio',
                            args.extension))
 
@@ -124,7 +125,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script for producing plots '
                                      'for studying effects of single muon '
                                      'fiducial cuts')
-    parser.add_argument('mcfile', help='File containing reconstructed MC '
+    parser.add_argument('mcfile1', help='File containing reconstructed MC '
+                        'events')
+    parser.add_argument('mcfile2', help='File containing reconstructed MC '
                         'events')
     parser.add_argument('-o', '--outdir', type=str, default='.',
                         help='output directory of plots')

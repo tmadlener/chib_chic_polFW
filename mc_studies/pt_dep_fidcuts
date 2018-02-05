@@ -3,9 +3,10 @@
 # script for producing pt dependent fiducial cut study plots
 
 function run_file() {
-    file=${1}
-    outdir=${2}
-    pt_bin=$(get_pt ${file})
+    file1=${3}
+    file2=${2}
+    outdir=${1}
+    pt_bin=$(get_pt ${file1})
 
     mkdir -p ${outdir} # make the base output dir in any case and only get an error when tmp dir already exists
     tmpdir=${outdir}/$(rand_str 32)
@@ -13,7 +14,7 @@ function run_file() {
 
     plotter=${CHIB_CHIC_POLFW_DIR}/mc_studies/chic_fidcuts_effects.py
 
-    python ${plotter} --outdir ${tmpdir} --extension ${OUTPUTFORMAT} ${file}
+    python ${plotter} --outdir ${tmpdir} --extension ${OUTPUTFORMAT} ${file1} ${file2}
 
     # add pt info to filenames and move them from the temp folder to the output folder
     for f in ${tmpdir}/*ratio.???; do
@@ -24,22 +25,26 @@ function run_file() {
     rmdir ${tmpdir} # only remove silently when dir is empty here
 }
 
+function run_dir() {
+    base_dir=${1}
+    out_dir=${2}
+    for pt in {1..5}; do
+        pt_files=$(ls ${base_dir}/*__?_pt${pt}.root)
+        run_file ${out_dir} ${pt_files}
+    done
+}
 
-if [[ $# -lt 1 ]]; then
-    echo "Usage: pt_dep_fidcuts OUTDIR [-svg] [INPUT_FILES INPUT_FILES] [-svg]"
+
+if [[ $# -lt 2 ]]; then
+    echo "Usage: pt_dep_fidcuts OUTDIR INPUT_DIR [-svg]"
 fi
-if [[ $# -gt 1 ]]; then
-    output=${1}
-    shift
-fi
+output=${1}
+inbase=${2}
 if $(check_args_flag "-svg" ${@}); then
     echo "Producing svg plots instead of pdf"
     OUTPUTFORMAT="svg"
-    shift
 else
     OUTPUTFORMAT="pdf"
 fi
 
-for file in ${@}; do
-    run_file ${file} ${output}
-done
+run_dir ${inbase} ${output}
