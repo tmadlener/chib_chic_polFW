@@ -67,7 +67,7 @@ def set_color(pltable, col):
         pltable (ROOT.TObject): Plottable root object
         col (int): Color index to use for the plottable
     """
-    col_attributes = ['SetLineColor', 'SetMarkerColor', 'SetFillColor']
+    col_attributes = ['SetLineColor', 'SetMarkerColor']
     for attr in col_attributes:
         if hasattr(pltable, attr):
             getattr(pltable, attr)(col)
@@ -89,6 +89,7 @@ def set_attributes(pltable, **kwargs):
         line (int): Towline style index
         width (int): TLine width (in pixels)
         size (float): TMarker size
+        fill (int): FillColor
         fillalpha (tuple): TColor index specifying fill color and float between
             0 and 1 specifying fill alpha
         fillstyle (int): A fillstyle to be set
@@ -113,6 +114,7 @@ def set_attributes(pltable, **kwargs):
         ('size', lambda p, s: p.SetMarkerSize(s)),
         ('width', lambda l, w: l.SetLineWidth(w)),
         ('line', lambda l, s: l.SetLineStyle(s)),
+        ('fill', lambda p, c: p.SetFillColor(c)),
         ('fillalpha', lambda p, fa: p.SetFillColorAlpha(fa[0], fa[1])),
         ('fillstyle', lambda p, s: p.SetFillStyle(s))
     )
@@ -133,11 +135,11 @@ def plot_on_canvas(can, plots, **kwargs):
     Keyword Args:
         colors (list. optional): list of colors to be used for plotting
             (otherwise default colors will be used)
-        drawOpt (Ste, optional): option that will be passed to the Draw() method
+        drawOpt (str, optional): option that will be passed to the Draw() method
         leg (ROOT.TLegend, optional): Put the passed TLegend onto the plot
         legEntries (list): list of string (at least as long as the plot list)
             from which the keys for the legend are taken
-        attributes (list of dicts, optional): list of attributes to pass to the
+        attr (list of dicts, optional): list of attributes to pass to the
             set_attributes function. Overrides color argument!
 
     Returns:
@@ -145,7 +147,7 @@ def plot_on_canvas(can, plots, **kwargs):
     """
     can.cd()
 
-    attributes = kwargs.pop('attributes', None)
+    attributes = kwargs.pop('attr', None)
     if attributes is None:
         colors = kwargs.pop('colors', default_colors())
         attributes = []

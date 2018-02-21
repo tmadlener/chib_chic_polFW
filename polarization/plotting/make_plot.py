@@ -315,10 +315,10 @@ def main(args):
     set_TDR_style()
     can = None # declare here to be able to switch the two calls below
     can = mkplot(mc_hists.values(), yRange = [0, y_max], drawOpt='E2',
-                 attributes=mpl_attr, can=can, leg=leg, legEntries=mc_leg,
+                 attr=mpl_attr, can=can, leg=leg, legEntries=mc_leg,
                  legOpt='F', xLabel=x_label, yLabel=y_label)
     can = mkplot(data_hists.values(), yRange=[0, y_max], drawOpt='E1',
-                 attributes=dpl_attr, can=can, leg=leg, legEntries=data_leg,
+                 attr=dpl_attr, can=can, leg=leg, legEntries=data_leg,
                  legOpt='PLE', xLabel=x_label, yLabel=y_label)
 
     lumi_text = get_lumi_text(year_trg_ids)
