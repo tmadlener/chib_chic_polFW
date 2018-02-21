@@ -58,11 +58,11 @@ def calc_weights_2d(costh, phi, lth, lph):
 def main(args):
     """Main"""
     lth, lph, frame = args.lambda_theta, args.lambda_phi, args.frame
-    weight_name = get_storable_name('wPol_lth_{:.2f}'.format(lth))
+    weight_name = get_storable_name('wPol_{}_lth_{:.2f}'.format(frame, lth))
 
     if lph is not None:
-        weight_name = get_storable_name('wPol_lth_{:.2f}_lph_{:.2f}'
-                                        .format(lth, lph))
+        weight_name = get_storable_name('wPol_{}_lth_{:.2f}_lph_{:.2f}'
+                                        .format(frame, lth, lph))
 
     mc_frame = get_dataframe(args.inputfile)
     if weight_name in mc_frame.columns:

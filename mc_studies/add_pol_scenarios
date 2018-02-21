@@ -1,0 +1,55 @@
+#!/bin/bash
+
+# script for adding some commonly used pol scenarios to the mc tuple
+
+## Do reweighting in 1D or 2D (need to define 2D scenarios)
+REWEIGHT_2D=0
+## frame to reweight in
+FRAME=HX
+
+SCENARIOS=(1 0.5 -0.3 -0.6)
+
+
+function add_scenario() {
+    if [[ $# -lt 3 ]]; then
+        echo "ERROR: add_scenario() needs at least an input file, a frame and one lambda paramater"
+        return 1
+    fi
+    file=${1}
+    frame=${2}
+    shift 2
+
+    weight_adder=${CHIB_CHIC_POLFW_DIR}/mc_studies/reweight_pol_mc.py
+
+    if [[ ${REWEIGHT_2D} -eq 1 ]]; then
+        if [[ -$# -lt 2 ]]; then
+            echo "ERROR: add_scenario() needs 2 lambda parameters for 2d reweighting"
+            return 1
+        fi
+        lth=${1}
+        lph=${2}
+
+        ${weight_adder} --lambda-theta=${lth} --lambda-phi=${lph} --frame=${frame} ${file}
+        exc_weighting=$?
+    else
+        if [[ $# -lt 1 ]]; then
+            echo "ERROR: add_scenario() needs lambda theta paramter for 1d reweighting"
+            return 1
+        fi
+        lth=${1}
+
+        ${weight_adder} --lambda-theta=${lth} --frame=${frame} ${file}
+        exc_weighting=$?
+    fi
+
+    return ${exc_weighting}
+}
+
+if [[ $# -lt 1 ]]; then
+    echo "Usage: add_pol_scenarios MCFILE"
+    exit 64
+fi
+
+for scen in ${SCENARIOS[@]}; do
+    add_scenario ${1} ${FRAME} ${scen}
+done
