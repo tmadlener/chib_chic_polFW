@@ -105,6 +105,27 @@ def chi_mass_model(ws, mname='chicMass'):
     ws.factory('SUM::M_fullModel(Nsignal * M_signal, Nbkg *  M_background)')
 
 
+
+def print_fit_results(wsp, pdfname):
+    """
+    Make a quick and dirty plot of the fit results
+
+    Args:
+        wsp (ROOT.RooWorkspace): workspace containing the pdf to be printed
+        pdfname (str): filename under which the generated plot should be saved
+    """
+    frame = wsp.var('chicMass').frame(rf.Title('Fit Results'))
+    full_pdf = wsp.pdf('M_fullModel')
+
+    full_pdf.paramOn(frame, rf.Layout(0.1, 0.9, 0.9),
+                     rf.Format('NEU', rf.AutoPrecision(2)))
+
+    can = r.TCanvas('rcan', 'rcan', 600, 600)
+    can.cd()
+    frame.findObject('{}_paramBox'.format(full_pdf.GetName())).Draw()
+    can.SaveAs(pdfname)
+
+
 def make_mass_fit_plot(ws, pdfname, mname='chicMass', add_cut=''):
     """
     Make plot of mass fit

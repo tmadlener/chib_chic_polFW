@@ -210,7 +210,7 @@ def get_equi_pop_bins(dfr, get_var, n_bins):
     return zip(binb[:-1], binb[1:])
 
 
-def get_costh_binning(dfr, n_bins, selection=None):
+def get_costh_binning(dfr, n_bins, full_range=False, selection=None):
     """
     Get an equi-populated binning in abs(costh_HX)
 
@@ -218,8 +218,10 @@ def get_costh_binning(dfr, n_bins, selection=None):
         dfr (pandas.DataFrame): DataFrame containing all the data that should be
             considered for the binning
         n_bins (int): Number of bins
+        full_range (bool): Make the last bin span the full range up to 1 (True)
+            or stop at the maximum observed value (False)
         selection (numpy.array, optional): Selection array that can be used in a
-            DataFrame indexing to select certain events, defaults to None, when
+            DataFrame indexing to select certain events, defaults to None, where
             all entries are used
 
     Returns:
@@ -236,5 +238,78 @@ def get_costh_binning(dfr, n_bins, selection=None):
     binning = get_equi_pop_bins(sel_dfr, abs_costh, n_bins)
     # replace the lowest and highest bin border
     binning[0] = (0, binning[0][1])
-    binning[-1] = (binning[-1][0], 1)
+    if full_range:
+        binning[-1] = (binning[-1][0], 1)
     return binning
+
+
+def get_bin_means(dfr, get_var, bins, selection=None):
+    """
+    Get the the mean value in all bins from the data
+
+    Args:
+        dfr (pandas.DataFrame): DataFrame containing the data
+        get_var (function): Function taking a DataFrame as only argument and
+            returning one value for every row in the DataFrame. The return
+            value of this will be used to calculate the mean in each bin
+        bins (list of tuples): list of tuples containing the bin borders for
+            each bin
+        selection (numpy.array, optional): Selection array that can be used in a
+            DataFrame indexing to select certain events, defaults to None, where
+            all entries are used
+
+    Returns:
+        list: list of mean values for each bin
+    """
+    if selection is not None:
+        sel_dfr = dfr[selection]
+    else:
+        sel_dfr = dfr
+
+    var = get_var(sel_dfr)
+    means = []
+    for low, high in bins:
+        var_bin = var[(var > low) & (var < high)]
+        means.append(np.mean(var_bin))
+
+    return means
+
+
+def get_bin_cut_df(dfr, bin_var, bin_low, bin_up):
+    """
+    Get the binning selection for a variable in a format suitable for dataframes
+
+    Args:
+        dfr (pandas.DataFrame): The dataframe from which the selection is done
+        bin_var (str or function): The variable for which the binning should be
+            done. If it is a function it has to take the dfr as single argument
+            and return a value for each row in the dataframe, such that it can
+            be used to index into the dataframe
+        bin_low (float): lower edge of bin
+        bin_up (float): upper edge of bin
+
+    Returns:
+        pandas.Series: A series that can be used to index into the originally
+            passed DataFrame to select only events fullfilling the binn criteria
+    """
+    if hasattr(bin_var, '__call__'):
+        # if bin_Var is a function call it on the dataframe to decide the cut
+        cut = (bin_var(dfr) > bin_low) & (bin_var(dfr) < bin_up)
+    else:
+        cut = (dfr[bin_var] > bin_low) & (dfr[bin_var] < bin_up)
+    return cut
+
+
+def get_bin_cut_root(bin_var, bin_low, bin_up):
+    """
+    Get the binning cut for a variable in a format root understands
+
+    Args:
+        bin_var (str): Name of the branch that is used for binning
+        bin_low (float): lower edge of bin
+        bin_up (float): upper edge of bin
+
+    Returns:
+        str: The selection string that specifies the cut for the bin
+    """
+    return '{0} > {1} && {0} < {2}'.format(bin_var, bin_low, bin_up)
