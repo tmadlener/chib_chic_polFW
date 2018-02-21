@@ -5,6 +5,7 @@ things concerning os or python built-ins.
 
 import os
 import re
+import numpy as np
 from random import choice
 from string import ascii_letters, digits
 
@@ -182,3 +183,58 @@ def get_storable_name(name, reverse=False):
         ('.', '_p_')
     )
     return replace_all(name, repl_pairs, reverse)
+
+
+def get_equi_pop_bins(dfr, get_var, n_bins):
+    """
+    Get equi-populated bins for the data
+
+    Args:
+        dfr (pandas.DataFrame): DataFrame containing all the data that should
+            be considered for the binning
+        get_var (function): Function taking a DataFrame as only argument and
+            returning one value for every row in the DataFrame. The return value
+            of this function will be the variable in which the binning is done.
+        n_bins (int): The number of bins
+
+    Returns:
+        list: List of tuples with two elements, where the [0] element is the
+            lower bound of the bin and [1] the upper bound of the bin
+    """
+    bin_var = np.sort(get_var(dfr))
+    dbin = bin_var.shape[0] / n_bins # number of events per bin
+    # bin borders are the elements at the positions i * dbin - 1
+    binb = [bin_var[0]] + [bin_var[i * dbin - 1] for i in xrange(1, n_bins)]
+    binb += [bin_var[-1]] # the last bin has to include everything up to the max
+
+    return zip(binb[:-1], binb[1:])
+
+
+def get_costh_binning(dfr, n_bins, selection=None):
+    """
+    Get an equi-populated binning in abs(costh_HX)
+
+    Args:
+        dfr (pandas.DataFrame): DataFrame containing all the data that should be
+            considered for the binning
+        n_bins (int): Number of bins
+        selection (numpy.array, optional): Selection array that can be used in a
+            DataFrame indexing to select certain events, defaults to None, when
+            all entries are used
+
+    Returns:
+        list: list of tuples with the bin borders for all the bins, where the
+            first bin starts at 0 and the last one ends at 1, regardless of the
+            exact values for the bin borders
+    """
+    if selection is not None:
+        sel_dfr = dfr[selection]
+    else:
+        sel_dfr = dfr
+
+    abs_costh = lambda d: np.abs(d.costh_HX)
+    binning = get_equi_pop_bins(sel_dfr, abs_costh, n_bins)
+    # replace the lowest and highest bin border
+    binning[0] = (0, binning[0][1])
+    binning[-1] = (binning[-1][0], 1)
+    return binning
