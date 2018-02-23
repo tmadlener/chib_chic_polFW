@@ -313,3 +313,26 @@ def get_bin_cut_root(bin_var, bin_low, bin_up):
         str: The selection string that specifies the cut for the bin
     """
     return '{0} > {1} && {0} < {2}'.format(bin_var, bin_low, bin_up)
+
+
+def get_vals_from_rwbuffer(rw_buffer, n_points):
+    """
+    Get the first n_points from a read-write buffer
+
+    TGraphAsymmErrors returns read-write buffers without an appropriate size.
+    Thus it is necessary to read the points using the knowledge of how many
+    values to read.
+
+    Args:
+        rw_buffer (read-write buffer): read-write buffer returned by ROOT
+            functions returning a Double_t* in C++
+        n_points (int): Number of values to read from buffer
+
+    Returns:
+        numpy.array: numpy array containing the values
+    """
+    vals = [0] * n_points
+    for i in xrange(n_points):
+        vals[i] = rw_buffer[i]
+
+    return np.array(vals)

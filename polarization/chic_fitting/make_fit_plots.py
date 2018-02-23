@@ -25,6 +25,7 @@ from utils.plot_helpers import plot_on_canvas, default_colors
 from utils.data_handling import get_dataframe
 from utils.roofit_utils import get_var
 from utils.setup_plot_style import set_TDR_style
+from utils.graph_utils import scale_graph
 
 
 mc_attributes = [
@@ -217,11 +218,41 @@ def analytical_ratio(name):
     return ffunc
 
 
+def fit_const(graph):
+    """
+    fit a constant to the graph and return it (incl. uncertainties)
+    """
+    const_func = r.TF1('const_func', '[0]', 0, 1)
+    fit_res = graph.Fit(const_func, 'EX00S')
+
+    if int(fit_res) != 0:
+        logging.error('Problem in fitting constant to graph')
+        return -1, -1
+
+    return fit_res.Parameter(0), fit_res.Error(0)
+
+
+def rescale_MC_graphs(data_graph, mc_graphs):
+    """
+    rescale the MC graphs for an easier comparison of shapes
+
+    Returns rescaled graphs
+    """
+    data_c = fit_const(data_graph)[0]
+    r_graphs = []
+    for graph in mc_graphs:
+        mc_const = fit_const(graph)[0]
+        logging.debug('Rescaling graph by {}'.format(data_c / mc_const))
+        r_graphs.append(scale_graph(graph, data_c / mc_const))
+
+    return r_graphs
+
+
 def setup_legend():
     """
     Setup the legend
     """
-    leg = r.TLegend(0.5, 0.75, 0.95, 0.9)
+    leg = r.TLegend(0.2, 0.15, 0.65, 0.3)
     leg.SetFillColor(0)
     leg.SetTextFont(42)
     leg.SetTextSize(0.04)
@@ -267,29 +298,17 @@ def main(args):
     extreme = get_mc_graph(mcdf[mc_sel], (1, -0.6),
                            costh_bins, costh_means, data_mc_cw)
 
-
-    ffunc = analytical_ratio('fit_func')
-    ffunc.FixParameter(1, 0)
-    ffunc.FixParameter(2, 0)
-    unpol.Fit(ffunc, 'EX00')
-
-    ffunc.FixParameter(1, 0.5)
-    ffunc.FixParameter(2, -0.3)
-    nrqcd.Fit(ffunc, 'EX00')
-
-    ffunc.FixParameter(1, 1)
-    ffunc.FixParameter(2, -0.6)
-    extreme.Fit(ffunc, 'EX00')
+    scaled_graphs = rescale_MC_graphs(dgraph, [unpol, nrqcd, extreme])
 
     set_TDR_style()
     can = r.TCanvas('rcan', 'rcan', 50, 50, 600, 600)
-    frame = can.DrawFrame(0, 0, 1, 1)
+    frame = can.DrawFrame(0, 0, 1, 0.65)
     frame.SetXTitle('|cos#theta^{HX}|')
     frame.SetYTitle('#chi_{c2} / #chi_{c1}')
 
     leg = setup_legend()
 
-    plot_on_canvas(can, [unpol, nrqcd, extreme], drawOpt='sameP2',
+    plot_on_canvas(can, scaled_graphs, drawOpt='sameP2',
                    attr=mc_attributes, leg=leg, legOpt='PF',
                    legEntries=['unpolarized', 'nrqcd', 'extreme'])
     plot_on_canvas(can, [dgraph], drawOpt='PE', attr=data_attributes, leg=leg,
