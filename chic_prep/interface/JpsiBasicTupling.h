@@ -93,6 +93,8 @@ int triggerDecision(const std::vector<int>& triggers)
 bool BasicJpsiTupling(const JpsiBasicTuplingInEvent& inEvent, JpsiBasicTuplingOutEvent& event)
 {
   event.info().trigger = triggerDecision(inEvent.info().trigger_branches);
+  if (!event.info().trigger) return false;
+
   event.info().vtxProb = inEvent.info().vtxProb;
   event.info().JpsictErr = inEvent.info().JpsictErr;
   event.Jpsict = inEvent.Jpsict;
