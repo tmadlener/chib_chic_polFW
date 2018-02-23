@@ -1,7 +1,7 @@
 #ifndef CHIBCHICPOLFW_CHICPREP_CHICTUPLEEVENT_H__
 #define CHIBCHICPOLFW_CHICPREP_CHICTUPLEEVENT_H__
 
-#include "ChicInputEvent.h"
+#include "ChicInputEvent.h" // VoidInfo
 
 #include "TTree.h"
 

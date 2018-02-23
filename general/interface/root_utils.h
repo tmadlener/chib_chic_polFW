@@ -3,6 +3,7 @@
 
 #include "TFile.h"
 #include "TTree.h"
+#include "TChain.h"
 #include "RooWorkspace.h"
 #include "RooRealVar.h"
 
@@ -93,5 +94,26 @@ inline void setVarConstant(RooWorkspace* ws, const std::string& name, const doub
   getVar(ws, name)->setVal(val);
   getVar(ws, name)->setConstant(true);
 }
+
+/** Create TChain from passed file names and name of TTree. */
+TChain* createTChain(const std::vector<std::string>& fileNames, const std::string& treename)
+{
+  TChain* inChain = new TChain(treename.c_str());
+  for (const auto& name : fileNames) {
+    inChain->Add(name.c_str());
+  }
+  return inChain;
+}
+
+/** Create TChain from passed file name and name of TTree. */
+TChain* createTChain(const std::string& filename, const std::string& treename)
+{
+  TChain* inChain = new TChain(treename.c_str());
+  inChain->Add(filename.c_str());
+  return inChain;
+}
+
+
+
 
 #endif
