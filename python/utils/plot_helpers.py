@@ -160,7 +160,7 @@ def plot_on_canvas(can, plots, **kwargs):
     draw_option = kwargs.pop('drawOpt', '')
     if not leg_option:
         leg_option = draw_option
-    draw_option = ''.join(['same', draw_option])
+    # draw_option = ''.join(['same', draw_option])
 
     legend = kwargs.pop('leg', None)
     leg_entries = kwargs.pop('legEntries', [h.GetName() for h in plots])
@@ -172,12 +172,15 @@ def plot_on_canvas(can, plots, **kwargs):
     if not leg_option or leg_option == 'H':
         leg_option = 'ple'
 
-    for i in range(len(plots)):
-        set_attributes(plots[i], **get_att(i))
-        plots[i].Draw(draw_option)
+    for i, plot in enumerate(plots):
+        set_attributes(plot, **get_att(i))
+        if i == 0:
+            plot.Draw(draw_option)
+        else:
+            plot.Draw(draw_option + 'same')
 
         if legend is not None:
-            legend.AddEntry(plots[i], leg_entries[i], leg_option)
+            legend.AddEntry(plot, leg_entries[i], leg_option)
 
     if legend is not None:
         legend.Draw()
