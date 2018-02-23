@@ -130,35 +130,10 @@ def get_sum_var_bins(wsp, var, costh_bins):
     return var_sum
 
 
-def get_corr_weight(mcdf, wsp, costh_bins):
-    """
-    Get the data - mc correction weight to ensure the fraction of chic2 / chic1
-    events is the same as on data
-    """
-    d_N1 = get_sum_var_bins(wsp, 'Nchic1', costh_bins)
-    d_N2 = get_sum_var_bins(wsp, 'Nchic2', costh_bins)
-
-    mc_N1 = mcdf.wChic1.sum()
-    mc_N2 = mcdf.wChic2.sum()
-
-    corr_w = d_N2 / d_N1 * mc_N1 / mc_N2
-
-    print('Corr weight: N1_data, N2_data, r_data, N1_mc, N2_mc, r_mc, corr_w')
-    print('{:.1f}, {:.1f}, {:.3f}, {}, {}, {:.3f}, {:.3f}'
-          .format(d_N1, d_N2, d_N2 / d_N1, mc_N1, mc_N2, mc_N2 / mc_N1, corr_w))
-
-    return corr_w
-
-
-def get_mc_ratios(mcdf, pol_scen, costh_bins, corr_weight=1):
+def get_mc_ratios(mcdf, pol_scen, costh_bins):
     """
     Get the MC ratios from the passed dataframe for a given polarization
     scenario
-
-    corr_weight is used to ensure that the fraction of chic2 events in all
-    signal events is the same as on data:
-
-    --> N_1_mc / N_2_mc == N_1_data / N_2_data
     """
     if pol_scen is None:
         w_chic1, w_chic2 = 'wChic1', 'wChic2'
@@ -176,7 +151,7 @@ def get_mc_ratios(mcdf, pol_scen, costh_bins, corr_weight=1):
         chic2_sel = mcdf.wChic2 == 1
 
         n_chic1 = mcdf[costh_sel & chic1_sel][w_chic1].sum()
-        n_chic2 = mcdf[costh_sel & chic2_sel][w_chic2].sum() * corr_weight
+        n_chic2 = mcdf[costh_sel & chic2_sel][w_chic2].sum()
 
         ratio = n_chic2 / n_chic1
         ratio_err = ratio * np.sqrt(1.0 / n_chic1 + 1.0 / n_chic2)
@@ -187,11 +162,11 @@ def get_mc_ratios(mcdf, pol_scen, costh_bins, corr_weight=1):
     return ratios
 
 
-def get_mc_graph(mcdf, pol_scen, costh_bins, costh_means, corr_weight):
+def get_mc_graph(mcdf, pol_scen, costh_bins, costh_means):
     """
     Get the MC graph for a given polarization scenario
     """
-    ratios = get_mc_ratios(mcdf, pol_scen, costh_bins, corr_weight)
+    ratios = get_mc_ratios(mcdf, pol_scen, costh_bins)
     return create_graph(ratios, costh_bins, costh_means)
 
 
@@ -291,14 +266,10 @@ def main(args):
              (get_bin_cut_df(mcdf, 'chicPt', 0, 990)) & \
              (get_bin_cut_df(mcdf, 'JpsiPt', ptmin, ptmax))
 
-    data_mc_cw = get_corr_weight(mcdf[mc_sel], ws, costh_bins)
 
-    unpol = get_mc_graph(mcdf[mc_sel], None,
-                         costh_bins, costh_means, data_mc_cw)
-    nrqcd = get_mc_graph(mcdf[mc_sel], (0.5, -0.3),
-                         costh_bins, costh_means, data_mc_cw)
-    extreme = get_mc_graph(mcdf[mc_sel], (1, -0.6),
-                           costh_bins, costh_means, data_mc_cw)
+    unpol = get_mc_graph(mcdf[mc_sel], None, costh_bins, costh_means)
+    nrqcd = get_mc_graph(mcdf[mc_sel], (0.5, -0.3), costh_bins, costh_means)
+    extreme = get_mc_graph(mcdf[mc_sel], (1, -0.6), costh_bins, costh_means)
 
     scaled_graphs = rescale_MC_graphs(dgraph, [unpol, nrqcd, extreme])
 
