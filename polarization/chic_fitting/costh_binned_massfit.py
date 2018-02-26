@@ -5,6 +5,7 @@ Script for running costh binned mass fits
 
 import re
 import pickle
+import sys
 
 import numpy as np
 
@@ -122,34 +123,66 @@ def do_binned_fits(mass_model, wsp, basic_sel, costh_bins):
         mass_model.fit(wsp, savename, bin_sel)
 
 
-def main(args):
-    """Main"""
-    dataf = r.TFile.Open(args.datafile)
-    treename = 'chic_tuple' if args.state == 'chic' else 'jpsi_tuple'
-    datat = dataf.Get(treename)
-    cond_mkdir_file(args.outfile)
+def rw_bin_sel_pklfile(args):
+    """
+    Read and update the pickle file for J/psi or create it for chic
+    """
+    if args.state == 'jpsi' and not args.pklfile:
+        logging.fatal('Need a pickle file containing the costh binning for '
+                      'doing jpsi fits')
+        sys.exit(1)
 
-    df = get_dataframe(args.datafile, treename)
-    basic_sel_bin = (basic_sel_df(df, args.state)) & \
-                    (get_bin_cut_df(df, 'JpsiPt', args.ptmin, args.ptmax)) & \
-                    (np.abs(df.Jpsict / df.JpsictErr) < 2.5)
-    costh_bins = get_costh_binning(df, args.nbins, selection=basic_sel_bin)
-    costh_means = get_bin_means(df, lambda d: np.abs(d.costh_HX),
-                                costh_bins, basic_sel_bin)
-
-    # get prompt events
+    # get prompt events (state dependency in basic selection)
     basic_sel = combine_cuts([basic_sel_root(args.state),
                               'TMath::Abs(Jpsict / JpsictErr) < 2.5',
                               get_bin_cut_root('JpsiPt', args.ptmin, args.ptmax)])
 
-    bin_sel_info = {
-        'costh_bins': costh_bins,
-        'costh_means': costh_means,
-        'basic_sel': basic_sel
-    }
-    with open(args.outfile.replace('.root', '_bin_sel_info.pkl'), 'w') as pklf:
-        pickle.dump(bin_sel_info, pklf)
+    # if chic: determine the costh binning and create the pkl file
+    if args.state == 'chic':
+        if not args.pklfile:
+            pklfile = args.outfile.replace('.root', '_bin_sel_info.pkl')
+        else:
+            pklfile = args.pklfile
 
+        dfr = get_dataframe(args.datafile, 'chic_tuple')
+        basic_sel_bin = (basic_sel_df(dfr, args.state)) & \
+                        (get_bin_cut_df(dfr, 'JpsiPt', args.ptmin, args.ptmax)) &\
+                        (np.abs(dfr.Jpsict / dfr.JpsictErr) < 2.5)
+        costh_bins = get_costh_binning(dfr, args.nbins, selection=basic_sel_bin)
+        costh_means = get_bin_means(dfr, lambda d: np.abs(d.costh_HX),
+                                    costh_bins, basic_sel_bin)
+
+        bin_sel_info = {
+            'costh_bins': costh_bins,
+            'costh_means': costh_means,
+            'basic_sel': basic_sel
+        }
+        with open(pklfile, 'w') as pklf:
+            pickle.dump(bin_sel_info, pklf)
+
+    # if jpsi: read the pklfile, get the costh information and update the basic
+    # selection and store a new pickle file
+    else:
+        with open(args.pklfile, 'r') as pklf:
+            bin_sel_info = pickle.load(pklf)
+            bin_sel_info['basic_sel'] = basic_sel # update info
+            costh_bins = bin_sel_info['costh_bins']
+        # write updated file
+        with open(args.pklfile.replace('.pkl', '_jpsi.pkl'), 'w') as pklf:
+            pickle.dump(bin_sel_info, pklf)
+
+    return costh_bins, basic_sel
+
+
+def main(args):
+    """Main"""
+    # Make output directory here, since next function wants to write to it
+    cond_mkdir_file(args.outfile)
+    costh_bins, basic_sel = rw_bin_sel_pklfile(args)
+
+    dataf = r.TFile.Open(args.datafile)
+    treename = 'chic_tuple' if args.state == 'chic' else 'jpsi_tuple'
+    datat = dataf.Get(treename)
 
     # create the workspace
     ws = r.RooWorkspace('ws_mass_fit')
@@ -177,6 +210,9 @@ if __name__ == '__main__':
     parser.add_argument('--ptmax', type=float, default=20, help='maximum pt')
     parser.add_argument('-n', '--nbins', type=int, default=4,
                         help='number of costh bins')
+    parser.add_argument('-pf', '--pklfile', help='Pickle file containing the '
+                        'costh binning. Required  as input for J/psi. Overrides'
+                        ' default name for chic.', type=str, default='')
 
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--chic', action='store_const', dest='state',
