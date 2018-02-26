@@ -23,37 +23,71 @@ from utils.misc_helpers import (
 from utils.hist_utils import combine_cuts
 from utils.roofit_utils import get_var, ws_import
 from utils.chic_fitting import ChicMassModel
+from utils.jpsi_fitting import JpsiMassModel
 
-
-def basic_sel_root():
+def basic_sel_root(state):
     """
     Get the basic selection in a format that can be processed by root
     """
-    cuts = ['chicPt < 990', 'vtxProb > 0.01', 'TMath::Abs(JpsiRap) < 1.2',
-            'chicMass > 3.325 && chicMass < 3.725']
-    return combine_cuts(cuts)
+    logging.debug('Getting basic selection for {}'.format(state))
+    cuts = {
+        'chic': [
+            'chicPt < 990', 'vtxProb > 0.01', 'TMath::Abs(JpsiRap) < 1.2',
+            'chicMass > 3.325 && chicMass < 3.725'
+        ],
+        'jpsi': [
+            'vtxProb > 0.01', 'TMath::Abs(JpsiRap) < 1.2',
+            'JpsiMass > 2.8 && JpsiMass < 3.3'
+        ]
+    }
+    return combine_cuts(cuts[state])
 
 
-def basic_sel_df(dfr):
+def basic_sel_df(dfr, state):
     """
     Get the basic selection in a format suitable for data frames
     """
-    cut = (dfr.chicPt < 990) & (dfr.vtxProb > 0.01) & \
-          (np.abs(dfr.JpsiRap) < 1.2) & \
-          (dfr.chicMass > 3.325) & (dfr.chicMass < 3.725)
+    logging.debug('Getting basic dataframe selection for {}'.format(state))
+    if state == 'chic':
+        cut = (dfr.chicPt < 990) & (dfr.vtxProb > 0.01) & \
+              (np.abs(dfr.JpsiRap) < 1.2) & \
+              (dfr.chicMass > 3.325) & (dfr.chicMass < 3.725)
+    elif state == 'jpsi':
+        cut = (np.abs(dfr.JpsiRap) < 1.2) & (dfr.vtxProb > 0.01) & \
+              (dfr.JpsiMass > 2.8) & (dfr.JpsiMass < 3.3)
+
     return cut
 
 
-def import_data(wsp, datatree):
+def get_ws_vars(state):
+    """
+    Get the workspace variables for the given state (jpsi or chic)
+    """
+    logging.debug('Getting workspace variables for {}'.format(state))
+    wsvars = {
+        'chic': [
+            'chicMass[3.325, 3.725]', 'costh_HX[-1, 1]', 'Jpsict[-0.1, 1]',
+            'vtxProb[0.01, 1]', 'JpsiRap[-1.2, 1.2]', 'JpsiPt[0, 100]',
+            'chicPt[0, 990]', 'JpsictErr[0, 1]'
+        ],
+        'jpsi': [
+            'JpsiMass[2.8, 3.3]', 'costh_HX[-1, 1]', 'Jpsict[-0.1, 1]',
+            'JpsictErr[0, 1]', 'JpsiRap[-1.2, 1.2]', 'vtxProb[0.01, 1]',
+            'JpsiPt[0, 100]'
+        ]
+    }
+
+    return wsvars[state]
+
+
+def import_data(wsp, datatree, state):
     """
     Import all data that is necessary to the workspace
     """
     # definition of variables to be created in the workspace
     # NOTE: some of them act as preselection (e.g. vtxProb and JpsiRap)
     logging.info('Importing dataset')
-    dvars = ['chicMass[3.325, 3.725]', 'costh_HX[-1, 1]', 'Jpsict[-0.1, 1]',
-             'vtxProb[0.01, 1]', 'JpsiRap[-1.2, 1.2]', 'JpsiPt[0, 100]',
-             'chicPt[0, 990]', 'JpsictErr[0, 1]']
+    dvars = get_ws_vars(state)
 
     # deactivate all branches and just activate the used ones
     datatree.SetBranchStatus('*', 0)
@@ -91,11 +125,12 @@ def do_binned_fits(mass_model, wsp, basic_sel, costh_bins):
 def main(args):
     """Main"""
     dataf = r.TFile.Open(args.datafile)
-    datat = dataf.Get('chic_tuple')
+    treename = 'chic_tuple' if args.state == 'chic' else 'jpsi_tuple'
+    datat = dataf.Get(treename)
     cond_mkdir_file(args.outfile)
 
-    df = get_dataframe(args.datafile, 'chic_tuple')
-    basic_sel_bin = (basic_sel_df(df)) & \
+    df = get_dataframe(args.datafile, treename)
+    basic_sel_bin = (basic_sel_df(df, args.state)) & \
                     (get_bin_cut_df(df, 'JpsiPt', args.ptmin, args.ptmax)) & \
                     (np.abs(df.Jpsict / df.JpsictErr) < 2.5)
     costh_bins = get_costh_binning(df, args.nbins, selection=basic_sel_bin)
@@ -103,7 +138,8 @@ def main(args):
                                 costh_bins, basic_sel_bin)
 
     # get prompt events
-    basic_sel = combine_cuts([basic_sel_root(), 'TMath::Abs(Jpsict / JpsictErr) < 2.5',
+    basic_sel = combine_cuts([basic_sel_root(args.state),
+                              'TMath::Abs(Jpsict / JpsictErr) < 2.5',
                               get_bin_cut_root('JpsiPt', args.ptmin, args.ptmax)])
 
     bin_sel_info = {
@@ -117,8 +153,11 @@ def main(args):
 
     # create the workspace
     ws = r.RooWorkspace('ws_mass_fit')
-    import_data(ws, datat)
-    mass_model = ChicMassModel('chicMass')
+    import_data(ws, datat, args.state)
+    if args.state == 'chic':
+        mass_model = ChicMassModel('chicMass')
+    else:
+        mass_model = JpsiMassModel('JpsiMass')
     mass_model.define_model(ws)
     ws.Print()
 
@@ -139,5 +178,13 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--nbins', type=int, default=4,
                         help='number of costh bins')
 
+    state_sel = parser.add_mutually_exclusive_group()
+    state_sel.add_argument('--chic', action='store_const', dest='state',
+                           const='chic', help='Do mass fits for chic data')
+    state_sel.add_argument('--jpsi', action='store_const', dest='state',
+                           const='jpsi', help='Do mass fits for jpsi data')
+    parser.set_defaults(state='chic')
+
     clargs = parser.parse_args()
+
     main(clargs)
