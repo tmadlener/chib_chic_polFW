@@ -22,7 +22,7 @@ from utils.misc_helpers import (
 )
 from utils.hist_utils import combine_cuts
 from utils.roofit_utils import get_var, ws_import
-from utils.chic_fitting import chi_mass_model, do_mass_fit
+from utils.chic_fitting import ChicMassModel
 
 
 def basic_sel_root():
@@ -70,30 +70,22 @@ def import_data(wsp, datatree):
     ws_import(wsp, data)
 
 
-def create_workspace(name, datatree):
+def get_bin_sel(basic_sel, costh_bin):
     """
-    Create the workspace
+    Get the selection string for the passed costh_bin
     """
-    wsp = r.RooWorkspace(name)
-    import_data(wsp, datatree)
-    chi_mass_model(wsp, 'chicMass')
-
-    wsp.Print()
-
-    return wsp
-
-
-def do_fit_in_bin(wsp, basic_sel, costh_bin, bin_idx):
-    """
-    Do the fit in the passed costh bin
-    """
-    logging.info('Doing mass fit in costh bin {}: {:.2f}, {:.2f}'
-                 .format(bin_idx, *costh_bin))
     costh_sel = get_bin_cut_root('TMath::Abs(costh_HX)', *costh_bin)
-    savename = 'costh_bin_{}'.format(bin_idx)
-    bin_sel = combine_cuts([basic_sel, costh_sel])
+    return combine_cuts([basic_sel, costh_sel])
 
-    do_mass_fit(wsp, savename, bin_sel)
+
+def do_binned_fits(mass_model, wsp, basic_sel, costh_bins):
+    """
+    Do the fits in all costh bins
+    """
+    for ibin, ctbin in enumerate(costh_bins):
+        bin_sel = get_bin_sel(basic_sel, ctbin)
+        savename = 'costh_bin_{}'.format(ibin)
+        mass_model.fit(wsp, savename, bin_sel)
 
 
 def main(args):
@@ -122,9 +114,15 @@ def main(args):
     with open(args.outfile.replace('.root', '_bin_sel_info.pkl'), 'w') as pklf:
         pickle.dump(bin_sel_info, pklf)
 
-    ws = create_workspace('ws_mass_fit', datat)
-    for ibin, ct_bin in enumerate(costh_bins):
-        do_fit_in_bin(ws, basic_sel, ct_bin, ibin)
+
+    # create the workspace
+    ws = r.RooWorkspace('ws_mass_fit')
+    import_data(ws, datat)
+    mass_model = ChicMassModel('chicMass')
+    mass_model.define_model(ws)
+    ws.Print()
+
+    do_binned_fits(mass_model, ws, basic_sel, costh_bins)
 
     ws.writeToFile(args.outfile)
 

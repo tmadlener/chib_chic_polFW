@@ -16,7 +16,8 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
-from utils.chic_fitting import make_mass_fit_plot, print_fit_results
+# from utils.chic_fitting import make_mass_fit_plot, print_fit_results
+from utils.chic_fitting import ChicMassModel
 from utils.hist_utils import combine_cuts
 from utils.misc_helpers import (
     get_bin_cut_root, get_storable_name, cond_mkdir, get_bin_cut_df
@@ -58,16 +59,17 @@ def make_fit_res_plots(wsp, costh_bins, base_sel, outdir):
     """
     Make the plots with the fit results
     """
+    chic_model = ChicMassModel('chicMass')
     for i, ctbin in enumerate(costh_bins):
         costh_cut = get_bin_cut_root('TMath::Abs(costh_HX)', *ctbin)
         snapname = 'snap_costh_bin_{}'.format(i)
-        wsp.loadSnapshot(snapname)
         full_selection = combine_cuts([costh_cut, base_sel])
 
         pdfname = '/'.join([outdir, 'mass_fit_chic_costh_bin_{}.pdf'.format(i)])
 
-        make_mass_fit_plot(wsp, pdfname, 'chicMass', full_selection)
-        print_fit_results(wsp, pdfname.replace('.pdf', '_fit_res.pdf'))
+        chic_model.plot(wsp, pdfname, snapname, full_selection)
+        chic_model.plot_fit_params(wsp, pdfname.replace('.pdf', '_fit_res.pdf'),
+                                   snapname)
 
 
 def get_ratio_in_bin(wsp, costh_bin):
