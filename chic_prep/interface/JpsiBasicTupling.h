@@ -49,6 +49,13 @@ struct BasicJpsiAddInfo {
 
   int trigger;
 
+  // for 2012 MC the soft muon id has to be applied using these branches
+  int muPos_id;
+  int muPos_qual;
+  int muNeg_id;
+  int muNeg_qual;
+
+  double wJpsi;
   std::vector<int> trigger_branches;
 
   void Init(TTree *t)
@@ -61,6 +68,11 @@ struct BasicJpsiAddInfo {
       trigger_branches.push_back(-1);
       t->SetBranchAddress(triggerBranches[i], &trigger_branches[i]);
     }
+
+    t->SetBranchAddress("muPosP_id", &muPos_id);
+    t->SetBranchAddress("muPosP_qual", &muPos_qual);
+    t->SetBranchAddress("muNegP_id", &muNeg_id);
+    t->SetBranchAddress("muNegP_qual", &muNeg_qual);
   }
 
   void Create(TTree *t)
@@ -76,6 +88,12 @@ struct BasicJpsiAddInfo {
     t->Branch("muP_pt", &muP_pt);
     t->Branch("muP_eta", &muP_eta);
     t->Branch("trigger", &trigger);
+    t->Branch("wJpsi", &wJpsi);
+  }
+
+  bool SoftMuonId() const
+  {
+    return muPos_id > 0 && muNeg_id > 0 && muPos_qual > 0 && muNeg_qual > 0;
   }
 };
 
@@ -90,11 +108,8 @@ int triggerDecision(const std::vector<int>& triggers)
   return 0;
 }
 
-bool BasicJpsiTupling(const JpsiBasicTuplingInEvent& inEvent, JpsiBasicTuplingOutEvent& event)
+void fillEvent(const JpsiBasicTuplingInEvent& inEvent, JpsiBasicTuplingOutEvent& event)
 {
-  event.info().trigger = triggerDecision(inEvent.info().trigger_branches);
-  if (!event.info().trigger) return false;
-
   event.info().vtxProb = inEvent.info().vtxProb;
   event.info().JpsictErr = inEvent.info().JpsictErr;
   event.Jpsict = inEvent.Jpsict;
@@ -122,9 +137,32 @@ bool BasicJpsiTupling(const JpsiBasicTuplingInEvent& inEvent, JpsiBasicTuplingOu
   event.costh_CS = angles_CS.costh;
   event.phi_CS = angles_CS.phi;
   event.cosalpha_CS = angles_CS.cosalpha;
+}
+
+bool BasicJpsiTupling(const JpsiBasicTuplingInEvent& inEvent, JpsiBasicTuplingOutEvent& event)
+{
+  event.info().trigger = triggerDecision(inEvent.info().trigger_branches);
+  if (!event.info().trigger) return false;
+
+  fillEvent(inEvent, event);
 
   return true;
 }
 
+
+
+
+bool BasicJpsiMCTupling(const JpsiBasicTuplingInEvent& inEvent, JpsiBasicTuplingOutEvent& event)
+{
+  if (!inEvent.info().SoftMuonId()) return false;
+  event.info().trigger = triggerDecision(inEvent.info().trigger_branches);
+  if (!event.info().trigger) return false;
+
+  fillEvent(inEvent, event);
+
+  event.info().wJpsi = 1; // only signal in MC
+
+  return true;
+}
 
 #endif

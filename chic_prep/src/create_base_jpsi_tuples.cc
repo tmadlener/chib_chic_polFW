@@ -4,6 +4,8 @@
 #include "general/interface/TTreeLooper.h"
 #include "general/interface/root_utils.h"
 
+#include "TObject.h"
+
 #include <string>
 #include <vector>
 
@@ -15,6 +17,8 @@ int main(int argc, char *argv[])
   const auto outfile = parser.getOptionVal<std::string>("--outfile");
   const auto intree = parser.getOptionVal<std::string>("--intree", "data");
   const auto outtree = parser.getOptionVal<std::string>("--outtree", "jpsi_tuple");
+  const auto isMC = parser.getOptionVal<bool>("--mc", false);
+  const auto nEvents = parser.getOptionVal<int>("--nevents", -1);
 
   auto *inTree = createTChain(inputFiles, intree);
   auto *outFile = new TFile(outfile.c_str(), "recreate");
@@ -23,10 +27,13 @@ int main(int argc, char *argv[])
 
 
   TTreeLooper<JpsiBasicTuplingInEvent, JpsiBasicTuplingOutEvent> treeLooper(inTree, outTree);
-  treeLooper.loop(BasicJpsiTupling, -1);
+  if (isMC) {
+    treeLooper.loop(BasicJpsiMCTupling, nEvents);
+  } else {
+    treeLooper.loop(BasicJpsiTupling, nEvents);
+  }
 
-
-  outFile->Write();
+  outFile->Write("", TObject::kWriteDelete);
   outFile->Close();
 
   return 0;
