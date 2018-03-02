@@ -23,7 +23,7 @@ class JpsiMassModel(FitModel):
         self.mname = mname
 
         self.components = (
-            (self.signal, 7, 417),
+            (self.signal, 7, 632),
             (self.bkg_model, 7, 1)
         )
 
