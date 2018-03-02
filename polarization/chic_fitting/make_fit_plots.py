@@ -21,9 +21,11 @@ from utils.misc_helpers import cond_mkdir, get_bin_cut_root
 from common_func import get_bin_sel_info
 
 
-def make_fit_res_plots(wsp, costh_bins, base_sel, state, outdir):
+def make_fit_res_plots(wsp, costh_bins, base_sel, state, outdir, **kwargs):
     """
     Make the plots with the fit results
+
+    kwargs forwarded to FitModel.plot
     """
     if state == 'chic':
         mass_model = ChicMassModel('chicMass')
@@ -38,7 +40,7 @@ def make_fit_res_plots(wsp, costh_bins, base_sel, state, outdir):
         pdfname = '/'.join([outdir, 'mass_fit_{}_costh_bin_{}.pdf'
                             .format(state, i)])
 
-        mass_model.plot(wsp, pdfname, snapname, full_selection)
+        mass_model.plot(wsp, pdfname, snapname, full_selection, **kwargs)
         mass_model.plot_fit_params(wsp, pdfname.replace('.pdf', '_fit_res.pdf'),
                                    snapname)
 
@@ -56,7 +58,8 @@ def main(args):
     cond_mkdir(outdir)
 
     make_fit_res_plots(ws, bin_sel_info['costh_bins'],
-                       bin_sel_info['basic_sel'], args.state, outdir)
+                       bin_sel_info['basic_sel'], args.state, outdir,
+                       logy=args.logy)
 
 
 if __name__ == '__main__':
@@ -72,6 +75,8 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--outdir', help='Directory to which the plots '
                         'get stored (defaults to same directory as fitfile)',
                         default='', type=str)
+    parser.add_argument('--logy', default=False, action='store_true',
+                        help='Use log-scale on y-axis')
 
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--chic', action='store_const', dest='state',

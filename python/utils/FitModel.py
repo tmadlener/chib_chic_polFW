@@ -70,7 +70,7 @@ class FitModel(object):
         ws_import(wsp, fit_results)
 
 
-    def plot(self, wsp, pdfname, snapname='', add_cut=''):
+    def plot(self, wsp, pdfname, snapname='', add_cut='', **kwargs):
         """
         Make a plot of the model and the fitted data and save as pdf.
 
@@ -84,6 +84,9 @@ class FitModel(object):
             add_cut (str, optional): Additional cut to apply to the dataset
                 before plotting. NOTE: all used variables have to be present in
                 the dataset
+
+        Keyword Args:
+            logy (bool): Set log on y scale of distribution plot
         """
         if snapname:
             wsp.loadSnapshot(snapname)
@@ -132,6 +135,9 @@ class FitModel(object):
         r.SetOwnership(pad, False)
         pad.Draw()
         pad.cd()
+        if kwargs.pop('logy', False):
+            pad.SetLogy()
+            pdfname = pdfname.replace('mass_fit', 'mass_fit_log')
         frame.Draw()
 
         can.cd()
