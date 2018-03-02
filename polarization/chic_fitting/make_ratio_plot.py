@@ -287,6 +287,7 @@ def do_chic_ratio(args):
         'xtitle': '|cos#theta^{HX}|', 'ytitle': '#chi_{c2} / #chi_{c1}'
     }
 
+    plot_name ='{}/chic2_chic1_pt{}_{}_nbins{}_costh_HX.pdf'.format(outdir, ptmin, ptmax, len(costh_bins))
     make_plot(graph, mc_graphs, 'test.pdf', plot_sett)
 
 
@@ -300,33 +301,73 @@ def do_jpsi_ratios(args):
     jpsi_ws = jpsi_ff.Get('ws_mass_fit')
     outdir = get_outdir(args.outdir, args.chic_ff)
 
-    bin_info_chic = get_bin_sel_info(args.pklfile_chic, args.chic_ff)
-    costh_bins = bin_info_chic['costh_bins']
-    costh_means = bin_info_chic['costh_means']
-    # Not yet needed
-    # bin_info_jpsi = get_bin_sel_info(args.pklfile_jpsi, args.jpsi_ff)
+    # Only need the chic information here, since the information in the J/psi
+    # file that is needed here is redundant
+    bin_info = get_bin_sel_info(args.pklfile_chic, args.chic_ff)
+    costh_bins = bin_info['costh_bins']
+    costh_means = bin_info['costh_means']
 
     chic1_graph = get_ratio_graph(chic_ws, 'Nchic1', jpsi_ws, 'Njpsi',
                                   costh_bins, costh_means)
     chic2_graph = get_ratio_graph(chic_ws, 'Nchic2', jpsi_ws, 'Njpsi',
                                   costh_bins, costh_means)
 
+    ptmin, ptmax = get_pt_range(bin_info['basic_sel'])
+
+    chic_df = get_dataframe(args.mc_chic, 'chic_mc_tuple')
+    chic_sel_mc = (np.abs(chic_df.JpsiRap) < 1.2) & \
+                  ((chic_df.trigger & 2) == 2) & (chic_df.vtxProb > 0.01) & \
+                  (get_bin_cut_df(chic_df, 'chicPt', 0, 990)) & \
+                  (get_bin_cut_df(chic_df, 'JpsiPt', ptmin, ptmax))
+
+    jpsi_df = get_dataframe(args.mc_jpsi, 'jpsi_mc_tuple')
+    jpsi_sel_mc = (np.abs(jpsi_df.JpsiRap) < 1.2) & (jpsi_df.trigger == 1) & \
+                  (jpsi_df.vtxProb > 0.01) & \
+                  (get_bin_cut_df(jpsi_df, 'JpsiPt', ptmin, ptmax))
+
+
+    unpol = get_mc_ratio_graph(chic_df[chic_sel_mc], jpsi_df[jpsi_sel_mc],
+                               'wChic1', 'wJpsi', costh_bins, costh_means,
+                               None, None)
+    nrqcd = get_mc_ratio_graph(chic_df[chic_sel_mc], jpsi_df[jpsi_sel_mc],
+                               'wChic1', 'wJpsi', costh_bins, costh_means,
+                               0.5, None)
+    extreme = get_mc_ratio_graph(chic_df[chic_sel_mc], jpsi_df[jpsi_sel_mc],
+                                 'wChic1', 'wJpsi', costh_bins, costh_means,
+                                 1, None)
     can = r.TCanvas('rcan', 'rcan', 50, 50, 600, 600)
     frame = can.DrawFrame(0, 0, 1, 0.1)
 
 
     mc_graphs = {
-        # TODO
+        'unpol': unpol, 'nrqcd': nrqcd, 'extreme': extreme
     }
     plot_sett = {
-        'range': [0, 0, 1, 0.1],
+        'range': [0, 0, 1, 0.125],
         'xtitle': '|cos#theta^{HX}|', 'ytitle': '#chi_{c1} / J/#psi'
     }
-    make_plot(chic1_graph, mc_graphs, 'test_chic1.pdf', plot_sett)
+    plot_name = '{}/chic1_jpsi_pt{}_{}_nbins{}_costh_HX.pdf'.format(outdir, ptmin, ptmax, len(costh_bins))
+    make_plot(chic1_graph, mc_graphs, plot_name, plot_sett)
 
-    plot_sett['range'] = [0, 0, 1, 0.05]
+
+    unpol = get_mc_ratio_graph(chic_df[chic_sel_mc], jpsi_df[jpsi_sel_mc],
+                               'wChic2', 'wJpsi', costh_bins, costh_means,
+                               None, None)
+    nrqcd = get_mc_ratio_graph(chic_df[chic_sel_mc], jpsi_df[jpsi_sel_mc],
+                               'wChic2', 'wJpsi', costh_bins, costh_means,
+                               -0.3, None)
+    extreme = get_mc_ratio_graph(chic_df[chic_sel_mc], jpsi_df[jpsi_sel_mc],
+                                 'wChic2', 'wJpsi', costh_bins, costh_means,
+                                 -0.6, None)
+    mc_graphs = {
+        'unpol': unpol, 'nrqcd': nrqcd, 'extreme': extreme
+    }
+
+
+    plot_sett['range'] = [0, 0, 1, 0.075]
     plot_sett['ytitle'] = '#chi_{c2} / J/#psi'
-    make_plot(chic2_graph, mc_graphs, 'test_chic2.pdf', plot_sett)
+    plot_name = plot_name.replace('chic1', 'chic2')
+    make_plot(chic2_graph, mc_graphs, plot_name, plot_sett)
 
 
 def add_chic_parser(parsers):
@@ -362,8 +403,12 @@ def add_jpsi_parser(parsers):
                                'with the chic fit results')
     jpsi_r_parser.add_argument('jpsi_ff', help='file containing the workspace '
                                'with the jpsi fit results')
-    # TODO: add MC files
-
+    jpsi_r_parser.add_argument('mc_chic', help='mc file containing flat tuple '
+                               'and all weights for the desired polarization '
+                               'scenarios for the chic')
+    jpsi_r_parser.add_argument('mc_jpsi', help='mc file containing flat tuple '
+                               'and all weights for the desired polarization '
+                               'scenarios for the jpsi')
     jpsi_r_parser.add_argument('-pfc', '--pklfile-chic', help='Pickle file '
                                'containing the costh binning and selection '
                                'information for the chic.')
