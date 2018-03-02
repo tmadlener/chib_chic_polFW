@@ -88,20 +88,60 @@ class FitModel(object):
         if snapname:
             wsp.loadSnapshot(snapname)
 
+        # Starting from ROOT v6.12 it is possible to set this on individual axis
+        r.TGaxis.SetMaxDigits(3)
+
+        mvar = get_var(wsp, self.mname)
         plot_data = wsp.data('full_data').reduce(add_cut)
-        frame = get_var(wsp, self.mname).frame(rf.Bins(80))
+        frame = mvar.frame(rf.Bins(80))
+        frame.SetTitle("")
+        frame.GetYaxis().SetTitleOffset(1.3)
+        frame.GetYaxis().SetTitle('Events / {:.1f} MeV'
+                                  .format((mvar.getMax() - mvar.getMin()) / 80 * 1000))
+
         full_pdf = wsp.pdf(self.full_model)
 
-        plot_data.plotOn(frame, rf.MarkerSize(0.8))
-        full_pdf.plotOn(frame, rf.LineWidth(2))
+        plot_data.plotOn(frame, rf.MarkerSize(0.8), rf.Name('data_hist'))
+        full_pdf.plotOn(frame, rf.LineWidth(2),
+                        # rf.ProjWData(plot_data),
+                        rf.Name('full_pdf_curve'))
 
         for name, lst, lcol in self.components:
             full_pdf.plotOn(frame, rf.Components(name), rf.LineStyle(lst),
                             rf.LineColor(lcol), rf.LineWidth(2))
 
+        pull_frame = mvar.frame(rf.Bins(80))
+        hpull = frame.pullHist('data_hist', 'full_pdf_curve', True)
+        hpull.SetMarkerSize(0.8)
+        pull_frame.addPlotable(hpull, 'P')
+
+        pull_frame.SetTitle("")
+        pull_frame.GetYaxis().SetTitle("pull")
+        pull_frame.GetXaxis().SetTitleSize(0.08)
+        pull_frame.GetYaxis().SetTitleSize(0.08)
+        pull_frame.GetXaxis().SetLabelSize(0.08)
+        pull_frame.GetYaxis().SetLabelSize(0.08)
+        pull_frame.GetYaxis().SetTitleOffset(0.4)
+        pull_frame.GetYaxis().SetRangeUser(-5.99, 5.99)
+
+
         can = r.TCanvas(create_random_str(16), '', 50, 50, 600, 600)
         can.cd()
+
+        pad = r.TPad('mass_pad', 'mass_pad', 0, 0.3, 1, 1)
+        r.SetOwnership(pad, False)
+        pad.Draw()
+        pad.cd()
         frame.Draw()
+
+        can.cd()
+        pull_pad = r.TPad('pull_pad', 'pull_pad', 0, 0, 1, 0.3)
+        r.SetOwnership(pull_pad, False)
+        pull_pad.Draw()
+        pull_pad.SetGridy()
+        pull_pad.SetBottomMargin(0.2)
+        pull_pad.cd()
+        pull_frame.Draw()
 
         can.SaveAs(pdfname)
 
@@ -129,3 +169,26 @@ class FitModel(object):
         can.cd()
         frame.findObject('{}_paramBox'.format(full_pdf.GetName())).Draw()
         can.SaveAs(pdfname)
+
+
+    def fix_params(self, wsp, param_vals):
+        """
+        Fix the parameters in the workspace to given or current values
+
+        Args:
+            wsp (ROOT.RooWorkspace): workspace containing all the variables
+            param_vals (list of tuples): tuples where first element is the name
+                of the parameter and the second is the value to which it should
+                be fixed. If the second parameter is None, it will be fixed to
+                the current value in the workspace
+        """
+        for par, val in param_vals:
+            if val is None:
+                val = get_var(wsp, par).getVal()
+                debug_msg = 'Fixing {} to current value in workspace: {}'
+            else:
+                debug_msg = 'Fixing {} to {}'
+
+            logging.debug(debug_msg.format(par, val))
+            get_var(wsp, par).setVal(val)
+            get_var(wsp, par).setConstant(True)

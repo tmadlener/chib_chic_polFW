@@ -37,15 +37,64 @@ class JpsiMassModel(FitModel):
         Args:
             wsp (ROOT.RooWorkspace): workspace into which the fit model is imported
         """
-        wsp.factory('RooCBShape::{}({}, CBmass_jpsi[3.1, 2.95, 3.24],'
-                    'CBsigma_jpsi[0.0035, 0, 0.5], CBalpha_jpsi[0.6, 0.2, 2.5], '
-                    'CBn_jpsi[2.5, 1.8, 6])'.format(self.signal, self.mname))
+        # rapidity dependent sigma of J/psi
+        wsp.factory('CBsigma_p0_jpsi[0.02, 0.015, 0.025]')
+        wsp.factory('CBsigma_p1_jpsi[0, -0.01, 0.01]')
+        wsp.factory('CBsigma_p2_jpsi[0.01, 0.005, 0.025]')
+        CBsigma_jpsi = r.RooFormulaVar('CBsigma_jpsi',
+                                       '@0 + @1 * abs(@3) + @2 * abs(@3) * abs(@3)',
+                                       r.RooArgList(get_var(wsp, 'CBsigma_p0_jpsi'),
+                                                    get_var(wsp, 'CBsigma_p1_jpsi'),
+                                                    get_var(wsp, 'CBsigma_p2_jpsi'),
+                                                    get_var(wsp, 'JpsiRap')))
 
-        get_var(wsp, 'CBalpha_jpsi').setConstant(True)
-        get_var(wsp, 'CBn_jpsi').setConstant(True)
+        wsp.factory('CBalpha_p0_jpsi[1.729, 1.2, 2.5]')
+        wsp.factory('CBalpha_p1_jpsi[0.191, 0, 0.5]')
+        CBalpha_jpsi = r.RooFormulaVar('CBalpha_jpsi', '@0 + @1 * abs(@2)',
+                                       r.RooArgList(get_var(wsp, 'CBalpha_p0_jpsi'),
+                                                    get_var(wsp, 'CBalpha_p1_jpsi'),
+                                                    get_var(wsp, 'JpsiRap')))
+
+        wsp.factory('CBmass_p0_jpsi[3.094, 3.086, 3.098]')
+        wsp.factory('CBmass_p1_jpsi[0.001, -0.002, 0.002]')
+        wsp.factory('CBmass_p2_jpsi[-0.003, -0.005, 0.001]')
+        CBmass_jpsi = r.RooFormulaVar('CBmass_jpsi',
+                                      '@0 + @1 * abs(@3) + @2 * abs(@3) * abs(@3)',
+                                      r.RooArgList(get_var(wsp, 'CBmass_p0_jpsi'),
+                                                   get_var(wsp, 'CBmass_p1_jpsi'),
+                                                   get_var(wsp, 'CBmass_p2_jpsi'),
+                                                   get_var(wsp, 'JpsiRap')))
+
+        # Fraction to ensure that sigma 2 is smaller than sigma 1
+        wsp.factory('r_sigma2_jpsi[0.5, 0, 0.9]')
+        CBsigma2_jpsi = r.RooFormulaVar('CBsigma2_jpsi', '@0 * @1',
+                                        r.RooArgList(get_var(wsp, 'r_sigma2_jpsi'),
+                                                     CBsigma_jpsi))
+
+        ws_import(wsp, r.RooArgSet(CBalpha_jpsi, CBmass_jpsi, CBsigma2_jpsi))
+
+        wsp.factory('RooCBShape::{}({}, CBmass_jpsi, CBsigma_jpsi, CBalpha_jpsi,'
+                    'CBn_jpsi[2.5, 1.8, 6])'.format('CB_shape1_jpsi', self.mname))
+        wsp.factory('RooCBShape::{}({}, CBmass_jpsi, CBsigma2_jpsi, CBalpha_jpsi,'
+                    ' CBn_jpsi)'.format('CB_shape2_jpsi', self.mname))
+
+        wsp.factory('SUM::{}(frac_CB1[0.5, 0, 1] * CB_shape1_jpsi, CB_shape2_jpsi)'
+                    .format(self.signal))
 
         wsp.factory('RooExponential::{}({}, lambda_jpsi[0, -10, 10])'
                     .format(self.bkg_model, self.mname))
+
+        # fix some parameters (as was done previously, values also from there)
+        par_fix_vals = [
+            ('CBsigma_p1_jpsi', 0),
+            ('CBmass_p1_jpsi', 0),
+            ('CBmass_p2_jpsi', 0),
+            ('CBalpha_p1_jpsi', 0),
+            ('CBsigma_p2_jpsi', 0.0125),
+            ('CBn_jpsi', 2.5)
+        ]
+
+        self.fix_params(wsp, par_fix_vals)
 
         wsp.factory('Njpsi[1e6, 0, 5e7]')
         wsp.factory('Nbkg_jpsi[1e5, 0, 5e6]')
