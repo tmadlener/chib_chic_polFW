@@ -21,10 +21,9 @@ from utils.plot_helpers import plot_on_canvas, default_colors
 from utils.roofit_utils import get_var_err
 from utils.data_handling import get_dataframe
 from utils.setup_plot_style import set_TDR_style
-from utils.graph_utils import scale_graph
+from utils.graph_utils import scale_graph, get_y
 
 from common_func import get_bin_sel_info
-
 
 mc_attributes = [
     {'color': default_colors()[0], 'marker': 25, 'size': 1.5,
@@ -38,6 +37,10 @@ mc_attributes = [
 data_attributes = [
     {'color': 1, 'marker': 20, 'size': 1.5}
 ]
+
+# scale func that is used to normalize the MC and data graph against each other
+# default is to use the value in the first bin
+SCALE_FUNC = lambda g: get_y(g, 0)
 
 
 def create_graph(ratios, costh_bins, costh_means):
@@ -199,16 +202,16 @@ def fit_const(graph):
     return fit_res.Parameter(0), fit_res.Error(0)
 
 
-def rescale_MC_graphs(data_graph, mc_graphs):
+def rescale_MC_graphs(data_graph, mc_graphs, scale_func):
     """
     rescale the MC graphs for an easier comparison of shapes
 
     Returns rescaled graphs
     """
-    data_c = fit_const(data_graph)[0]
+    data_c = scale_func(data_graph)
     r_graphs = []
     for graph in mc_graphs:
-        mc_const = fit_const(graph)[0]
+        mc_const = scale_func(graph)
         logging.debug('Rescaling graph by {}'.format(data_c / mc_const))
         r_graphs.append(scale_graph(graph, data_c / mc_const))
 
@@ -240,7 +243,7 @@ def make_plot(data_graph, mc_graphs, pdfname, canvas_sett):
 
     leg = setup_legend()
 
-    mc_rescaled = rescale_MC_graphs(data_graph, mc_graphs.values())
+    mc_rescaled = rescale_MC_graphs(data_graph, mc_graphs.values(), SCALE_FUNC)
 
     plot_on_canvas(can, mc_rescaled, drawOpt='P2', leg=leg, legOpt='PF',
                    legEntries=mc_graphs.keys(), attr=mc_attributes)
@@ -287,8 +290,8 @@ def do_chic_ratio(args):
         'xtitle': '|cos#theta^{HX}|', 'ytitle': '#chi_{c2} / #chi_{c1}'
     }
 
-    plot_name ='{}/chic2_chic1_pt{}_{}_nbins{}_costh_HX.pdf'.format(outdir, ptmin, ptmax, len(costh_bins))
-    make_plot(graph, mc_graphs, 'test.pdf', plot_sett)
+    plot_name = '{}/chic2_chic1_pt{}_{}_nbins{}_costh_HX.pdf'.format(outdir, ptmin, ptmax, len(costh_bins))
+    make_plot(graph, mc_graphs, plot_name, plot_sett)
 
 
 def do_jpsi_ratios(args):
@@ -303,7 +306,7 @@ def do_jpsi_ratios(args):
 
     # Only need the chic information here, since the information in the J/psi
     # file that is needed here is redundant
-    bin_info = get_bin_sel_info(args.pklfile_chic, args.chic_ff)
+    bin_info = get_bin_sel_info(args.pklfile, args.chic_ff)
     costh_bins = bin_info['costh_bins']
     costh_means = bin_info['costh_means']
 
@@ -370,35 +373,28 @@ def do_jpsi_ratios(args):
     make_plot(chic2_graph, mc_graphs, plot_name, plot_sett)
 
 
-def add_chic_parser(parsers):
+def add_chic_parser(parsers, baseparser):
     """
     Add the chic ratio mode subparser to the subparsers
     """
     chic_r_parser = parsers.add_parser('chic', description='Produce '
-                                          'chic2 / chic1 ratio plots')
+                                       'chic2 / chic1 ratio plots',
+                                       parents=[baseparser])
     chic_r_parser.add_argument('fitfile', help='file containing the workspace '
                                'with the chic fit results')
     chic_r_parser.add_argument('mcfile', help='mc file containing flat tuple '
                                'and all weights for the desired polarization '
                                'scenarios')
-    chic_r_parser.add_argument('-pf', '--pklfile', help='Pickle file containing'
-                               ' the costh binning and selection information. '
-                               'Use this to override the default which derives '
-                               'the name from the fitfile', default='',
-                               type=str)
-    chic_r_parser.add_argument('-o', '--outdir', help='Directory to which the '
-                               'plots get stored (defaults to directory of '
-                               'fit file)',
-                               type=str, default='')
     chic_r_parser.set_defaults(func=do_chic_ratio)
 
 
-def add_jpsi_parser(parsers):
+def add_jpsi_parser(parsers, baseparser):
     """
     Add the jpsi ratio mode subparser to the subparsers
     """
     jpsi_r_parser = parsers.add_parser('jpsi', description='Produce '
-                                          'chicJ / Jpsi ratio plots')
+                                       'chicJ / Jpsi ratio plots',
+                                       parents=[baseparser])
     jpsi_r_parser.add_argument('chic_ff', help='file containing the workspace '
                                'with the chic fit results')
     jpsi_r_parser.add_argument('jpsi_ff', help='file containing the workspace '
@@ -409,16 +405,6 @@ def add_jpsi_parser(parsers):
     jpsi_r_parser.add_argument('mc_jpsi', help='mc file containing flat tuple '
                                'and all weights for the desired polarization '
                                'scenarios for the jpsi')
-    jpsi_r_parser.add_argument('-pfc', '--pklfile-chic', help='Pickle file '
-                               'containing the costh binning and selection '
-                               'information for the chic.')
-    jpsi_r_parser.add_argument('-pfj', '--pklfile-jpsi', help='Pickle file '
-                               'containing the costh binning and selection '
-                               'information for the jpsi.')
-    jpsi_r_parser.add_argument('-o', '--outdir', help='Directory to which the '
-                               'plots get stored (defaults to directory of '
-                               'the chic fit file)',
-                               type=str, default='')
     jpsi_r_parser.set_defaults(func=do_jpsi_ratios)
 
 
@@ -430,8 +416,28 @@ if __name__ == '__main__':
 
     subparsers = main_parser.add_subparsers(help='Mode to run', dest='mode')
 
-    add_chic_parser(subparsers)
-    add_jpsi_parser(subparsers)
+    # add another argument parser to hold the global flags and options
+    base_subparser = argparse.ArgumentParser(add_help=False)
+    base_subparser.add_argument('-nf', '--norm-fit', action='store_true',
+                                default=False, help='Fit the ratios with a '
+                                'constant to scale MC and data against each '
+                                'other')
+    base_subparser.add_argument('-o', '--outdir', help='Directory to which the '
+                                'plots get stored (defaults to directory of '
+                                'the chic fit file)',
+                                type=str, default='')
+    base_subparser.add_argument('-pf', '--pklfile', help='Pickle file '
+                                'contaiing the costh binning and selection '
+                                'information. Use this to override the default '
+                                'which derives the name from the fitfile',
+                                default='', type=str)
+
+    add_chic_parser(subparsers, base_subparser)
+    add_jpsi_parser(subparsers, base_subparser)
 
     clargs = main_parser.parse_args()
+
+    if clargs.norm_fit:
+        SCALE_FUNC = lambda g: fit_const(g)[0]
+
     clargs.func(clargs)

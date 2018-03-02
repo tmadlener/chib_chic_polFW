@@ -7,7 +7,32 @@ derivatives)
 import numpy as np
 import ROOT as r
 
+from decorator import decorator
+import logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(levelname)s: %(message)s')
+
 from utils.misc_helpers import get_vals_from_rwbuffer
+
+@decorator
+def out_of_range_default(func, *args):
+    """
+    Decorator for accessing points of a TGraph 'safely' by emitting a warning
+    and returning a nan value
+
+    Returns:
+        float: Return value of function taking graph as first argument and index
+            as second or nan if out of range
+    """
+    graph, idx = args[0:2]
+    n_points = graph.GetN()
+    if n_points < idx:
+        logging.error('Cannot access index {} in graph having only {} points'
+                      .format(idx, n_points))
+        return np.nan
+
+    return func(*args)
+
 
 def get_errors(graph):
     """
@@ -96,3 +121,20 @@ def scale_graph(graph, scale):
         return r.TGraphErrors(n_points, x_vals, y_vals, x_errs, y_errs)
 
     return r.TGraph(n_points, x_vals, y_vals)
+
+
+@out_of_range_default
+def get_y(graph, point_idx):
+    """
+    Get the y-value of a point
+
+    Args:
+        graph (ROOT.TGraph or inheriting): graph to obtain point from
+        point_idx (int): Index of the point in the graph (0 indexed)
+
+    Returns:
+        float: y-value of the graph at point_idx or nan (if out of range)
+    """
+    x, y = r.Double(0), r.Double(0)
+    graph.GetPoint(point_idx, x, y)
+    return y
