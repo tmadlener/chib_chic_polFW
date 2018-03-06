@@ -68,7 +68,7 @@ def get_plot_attributes(year, dmc, plot):
     }
     marker_style = {'2012': 20, '2016': 22, '2017': 23}
     marker_style_open = {'2012': 24, '2016': 26, '2017': 32}
-    fill_style = {'chic1': 3354, 'chic2': 3345, 
+    fill_style = {'chic1': 3354, 'chic2': 3345,
                   'chib1': 3354, 'chib2': 3345 }
     size = 2
     linewidth = 2
@@ -279,8 +279,8 @@ def main(args):
 
     year_trg_ids, leg_entries = get_trigger_year_info(args.input)
     hists = get_plot_hists(pserver, year_trg_ids, args.ratio, args.variable,
-                           args.frame, args.ptbin, state=args.state, 
-			   norm_mode=norm_mode, norm_ratio=args.norm_ratio)
+                           args.frame, args.ptbin, state=args.state,
+                           norm_mode=norm_mode, norm_ratio=args.norm_ratio)
 
 
     # split into data and mc hist due to different plotting styles for the two
@@ -308,7 +308,7 @@ def main(args):
     mpl_attr = [get_plot_attributes(*k) for k in mc_hists]
 
     y_label = get_ylabel(not args.ratio, args.normalize_at_zero, args.norm_ratio)
-    if args.state == 'chib': 
+    if args.state == 'chib':
         y_label = re.sub(r'c(\d)',r'b\1', y_label)
 
     x_label = get_xlabel(args.variable, args.frame)
@@ -349,12 +349,8 @@ if __name__ == '__main__':
                         help='variable to plot')
     parser.add_argument('-f', '--frame', type=str, default='HX',
                         help='reference frame')
-    parser.add_argument('-pt', '--ptbin', #type=int, default=1,
+    parser.add_argument('-pt', '--ptbin', type=int, default=0,
                         help='pt bin to plot')
-    # parser.add_argument('-y', '--ylabel', default='#chi_{c2} / #chi_{c1}',
-    #                     help='ylabel of the plot')
-    # parser.add_argument('-x', '--xlabel', default='|cos#theta^{HX}|',
-    #                     help='xlabel of the plot')
     parser.add_argument('-l', '--legend', action='store_true', default=False,
                         help='put legend onto the plot')
     parser.add_argument('-nz', '--normalize-at-zero', default=False,
@@ -372,12 +368,12 @@ if __name__ == '__main__':
     plot_type.add_argument('-d', '--dist', action='store_true',
                            help='Make dist plot')
 
-    
+
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--chic', action='store_const', dest='state',
-                           const='chic', help='TODO')
+                           const='chic', help='Do the plots for the chic')
     state_sel.add_argument('--chib', action='store_const', dest='state',
-                           const='chib', help='TODO')
+                           const='chib', help='Do the plots for the chib')
     parser.set_defaults(state='chic')
 
 

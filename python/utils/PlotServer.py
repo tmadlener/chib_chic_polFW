@@ -48,8 +48,8 @@ class PlotServer(object):
         self.hfile = r.TFile.Open(filename)
 
 
-    @try_file_access('Error in retrieving hist: year={1}, trigger={2}, pt={3}, '
-                     'var={4}, frame={5}, plot={6}, dmc={7}')
+    @try_file_access('Error in retrieving hist: year={2}, trigger={3}, pt={4}, '
+                     'var={5}, frame={6}, plot={7}, dmc={1}')
     def get_hist(self, dmc, year, trigger, pt, var, frame, plot):
         """
         Get a histogram from a file where the internal directory structure uses

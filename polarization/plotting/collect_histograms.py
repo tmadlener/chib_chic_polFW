@@ -230,7 +230,7 @@ if __name__ == '__main__':
                         help='MC or data sample (default data)')
     parser.add_argument('-trg', '--triggerpath', default='Dimuon8_Jpsi',
                         help='Essential parts of the trigger path')
-    parser.add_argument('-pt)', '--ptbin', default='0',
+    parser.add_argument('-pt', '--ptbin', default=0, type=int,
                         help='pT bin of this plot')
     parser.add_argument('-c', '--cutsigma', default=None, type=float,
                         help='Apply the passed cut on the distribution hists '
@@ -239,9 +239,11 @@ if __name__ == '__main__':
 
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--chic', action='store_const', dest='state',
-                           const='chic', help='TODO')
+                           const='chic', help='collect histograms and store '
+                           'them assuming that data is chic data')
     state_sel.add_argument('--chib', action='store_const', dest='state',
-                           const='chib', help='TODO')
+                           const='chib', help='collect histograms and store '
+                           'them assuming that data is chib data')
     parser.set_defaults(state='chic')
 
     clargs = parser.parse_args()
