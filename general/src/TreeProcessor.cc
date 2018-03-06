@@ -46,6 +46,7 @@ void TreeProcessor::fill_branch_maps()
   double_branches = new BranchHolder<Double_t>(m_in_tree, m_out_tree);
   int_branches = new BranchHolder<Int_t>(m_in_tree, m_out_tree);
   long64_branches = new BranchHolder<Long64_t>(m_in_tree, m_out_tree);
+  ulong64_branches = new BranchHolder<ULong64_t>(m_in_tree, m_out_tree);
   bool_branches = new BranchHolder<Bool_t>(m_in_tree, m_out_tree);
   uint_branches = new BranchHolder<UInt_t>(m_in_tree, m_out_tree);
   float_branches = new BranchHolder<Float_t>(m_in_tree, m_out_tree);
@@ -70,6 +71,7 @@ void TreeProcessor::fill_branch_maps()
     if (typestr == "Double_t") double_branches->addBranch(bi.first, bi.second);
     else if (typestr == "Int_t") int_branches->addBranch(bi.first, bi.second);
     else if (typestr == "Long64_t") long64_branches->addBranch(bi.first, bi.second);
+    else if (typestr == "ULong64_t") ulong64_branches->addBranch(bi.first, bi.second);
     else if (typestr == "Bool_t")  bool_branches->addBranch(bi.first, bi.second);
     else if (typestr == "UInt_t") uint_branches->addBranch(bi.first, bi.second);
     else if (typestr == "Float_t") float_branches->addBranch(bi.first, bi.second);
@@ -84,6 +86,7 @@ void TreeProcessor::set_branch_adresses()
   double_branches->setBranches();
   int_branches->setBranches();
   long64_branches->setBranches();
+  ulong64_branches->setBranches();
   bool_branches->setBranches();
   uint_branches->setBranches();
   float_branches->setBranches();
@@ -106,6 +109,7 @@ TreeProcessor::~TreeProcessor()
   delete double_branches;
   delete int_branches;
   delete long64_branches;
+  delete ulong64_branches;
   delete bool_branches;
   delete uint_branches;
   delete float_branches;

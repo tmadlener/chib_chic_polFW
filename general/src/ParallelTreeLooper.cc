@@ -14,6 +14,7 @@
 #include "TChain.h"
 #include "TChainElement.h"
 #include "TROOT.h"
+#include "TUUID.h"
 #endif
 
 void ParallelTreeLooper::loop(int max_events, int nThreads) {
@@ -57,7 +58,7 @@ void ParallelTreeLooper::loop(int max_events, int nThreads) {
   if (of) of->cd();
   else std::cout << "ERROR TreeLooper: Could not write output file." << std::endl;
   m_out_tree->Write("", TObject::kWriteDelete);
-  if (of) of->Write("", TObject::kWriteDelete);
+  //if (of) of->Write("", TObject::kWriteDelete);
 
   auto outfilename(of ? of->GetName() : "NONE");
   auto infilename(m_in_tree->GetCurrentFile() ? m_in_tree->GetCurrentFile()->GetName() : "NONE"); //TODO: chain has more than one file!
@@ -168,6 +169,9 @@ long long ParallelTreeLooper::loop_multithreaded(long long nEvents, long long nT
 
   long long events_per_worker = nEvents / nThreads;
   long long update_every = events_per_worker / (100. / nThreads);
+  if (update_every == 0) {
+    update_every = events_per_worker - 1;
+  }
 
   for (long long start = 0, end = events_per_worker, i = 0; i < nThreads; ++i, start = end, end += events_per_worker) {
     if (i == nThreads - 1) end = nEvents;
@@ -201,6 +205,7 @@ long long ParallelTreeLooper::loop_multithreaded(long long nEvents, long long nT
     init(); //call init AFTER cloning the Looper in the threads
     m_out_tree->Merge(trees, "fast");
     //m_out_tree->Print();
+    m_out_file->cd();
     m_out_tree->Write("", TObject::kWriteDelete);
     m_out_tree->GetCurrentFile()->Write("", TObject::kWriteDelete);
     for (auto f : files) delete f;
@@ -212,9 +217,12 @@ long long ParallelTreeLooper::loop_multithreaded(long long nEvents, long long nT
 
 long long ParallelTreeLooper::loop_singlethreaded(long long nEvents)
 {
-  const long long onepercent = nEvents / 100.;
+  const long long onepercent = (nEvents > 100 ? nEvents/100. : nEvents-1);
   unsigned long long count = 0;
   init();
+
+  if (hasError()) return 0;
+
   for (long long i = 0; i < nEvents; ++i) {
     if (m_in_tree->GetEntry(i) < 0) {
       std::cout << "\nI/O error while reading event " << i << " in TTree '" << m_in_tree->GetName() << "'" << std::endl;
@@ -237,13 +245,10 @@ void ParallelTreeLooper::worker(long long start_event, long long end_event, int 
     std::lock_guard<std::mutex> lock(cout_lock);
     std::cout << "Starting thread " << worker_id << " from event " << start_event << " to event " << end_event - 1 << '.' << std::endl;
   }
-
   const std::string worker_treename_out = m_out_tree->GetName();
   worker_filename_out = std::string(m_out_tree->GetCurrentFile()->GetName());
   worker_filename_out = worker_filename_out.substr(0, worker_filename_out.size() - 5);
-  worker_filename_out += "_wrk" + std::to_string(worker_id) + "_" +
-    std::to_string(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count()) + //unique ID, to avoid conflicts
-    ".root";
+  worker_filename_out += "_wrk" + std::to_string(worker_id) + "_" + TUUID().AsString() + ".root";
 
   // Read input filenames:
   auto in_tree_name = m_in_tree->GetName();
@@ -280,6 +285,8 @@ void ParallelTreeLooper::worker(long long start_event, long long end_event, int 
   //  std::cout << "Temporary file for thread " << worker_id << ": " << looper->m_out_tree->GetCurrentFile()->GetName() << std::endl;
   //}
 
+  if (looper->hasError()) return;
+
   count_out = 0;
   for (long long i = start_event; i < end_event; ++i) {
     if (looper->m_in_tree->GetEntry(i) < 0) {
@@ -299,8 +306,9 @@ void ParallelTreeLooper::worker(long long start_event, long long end_event, int 
     }
 
   }
+  looper->m_out_file->cd();
   looper->m_out_tree->Write("", TObject::kWriteDelete);
-  looper->m_out_file->Write("", TObject::kWriteDelete);
+  //looper->m_out_file->Write("", TObject::kWriteDelete);
   {
     std::lock_guard<std::mutex> lock(cout_lock);
     std::cout << "TreeLooper worker " << worker_id << " processed " << count_out << " events." << std::endl;
@@ -318,7 +326,7 @@ void ParallelTreeLooper::progress_update()
     std::lock_guard<std::mutex> lock(progress_lock);
     progress += progress_step;
   }
-  std::cout << std::string(prog_w, '\b') << std::setw(prog_w) << "\n" + std::to_string(progress) + " % " << (progress > 99 ? "\n" : "") << std::flush;
+  if(progress <= 100) std::cout << std::string(prog_w, '\b') << std::setw(prog_w) << "\n" + std::to_string(progress) + " % " << (progress > 99 ? "\n" : "") << std::flush;
 }
 
 ParallelTreeLooper::ParallelTreeLooper(const std::vector<std::string>& in_file_names, cs intreename, cs outfilename, cs outtreename)

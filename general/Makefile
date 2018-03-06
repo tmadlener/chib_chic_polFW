@@ -20,6 +20,7 @@ defaulttarget:
 	@echo "Available targets:"
 	@echo "   paralooper [cleanparalooper]"
 	@echo "   treeproc [cleantreeproc]"
+	@echo "   treemerger [cleantreemerger]"
 	@echo "   fitter [cleanfitter]"
 
 ################################
@@ -31,7 +32,7 @@ $(BUILDDIR)/testparalooper.o: $(TESTDIR)/paralleltreelooper_example.cc $(INCDIR)
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
 cleanparalooper:
 	rm -f $(BUILDDIR)/paralooper.o $(BUILDDIR)/testparalooper.o $(TARGET)/paralooper
-
+	
 ##########################
 # TREE PROCESSOR EXAMPLE #
 ##########################
@@ -43,11 +44,22 @@ cleantreeproc:
 	rm -f $(BUILDDIR)/testtreeproc.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/treeproc.o $(TARGET)/treeproc
 
 
+##########################
+# TREE MERGER EXAMPLE #
+##########################
+treemerger : $(BUILDDIR)/testtreemerger.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/treemerger.o
+	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)
+$(BUILDDIR)/testtreemerger.o: $(TESTDIR)/treemerger_example.cc $(INCDIR)/TreeMerger.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+cleantreemerger:
+	rm -f $(BUILDDIR)/testtreemerger.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/treemerger.o $(TARGET)/treemerger
+
+
 ##################
 # FITTER EXAMPLE #
 ##################
 fitter : $(BUILDDIR)/fitterexample.o $(BUILDDIR)/fitter.o $(BUILDDIR)/utils.o $(BUILDDIR)/fitanalyser.o
-	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)  -lRooFit -lRooFitCore
+	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)  -lRooFit -lRooFitCore -lRooStats
 $(BUILDDIR)/fitterexample.o: $(TESTDIR)/fitter_example.cc $(INCDIR)/Fitter.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
 cleanfitter:
@@ -60,11 +72,17 @@ cleanfitter:
 #
 $(BUILDDIR)/paralooper.o: $(SRCDIR)/ParallelTreeLooper.cc $(INCDIR)/ParallelTreeLooper.h $(INCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
-
+	
 #
 # TREE PROCESSOR
 #
 $(BUILDDIR)/treeproc.o: $(SRCDIR)/TreeProcessor.cc $(INCDIR)/TreeProcessor.h $(INCDIR)/ParallelTreeLooper.h $(INCDIR)/utils.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+
+#
+# TREE MERGER
+#
+$(BUILDDIR)/treemerger.o: $(SRCDIR)/TreeMerger.cc $(INCDIR)/TreeMerger.h $(INCDIR)/ParallelTreeLooper.h $(INCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
 	
 #

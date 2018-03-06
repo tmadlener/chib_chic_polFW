@@ -3,8 +3,15 @@
 #include "calcAngles.h"
 #include "misc_utils.h"
 
+#include "TFile.h"
+
+#include "TUUID.h"
+
 #include <string>
 #include <cmath>
+
+Long64_t ChibPreselection::entry_idx = 0;
+std::mutex ChibPreselection::entry_mtx;
 
 ChibPreselection::ChibPreselection(const std::vector<std::string>& infilenames, const std::string & outfilename, const std::string & intreename, const std::string & outtreename) :
   TreeProcessor(infilenames, outfilename, intreename, outtreename)
@@ -69,7 +76,7 @@ bool ChibPreselection::fill_and_cut_variables()
 
 
   // CUTS - TODO: LOGGING
-  
+
   //
   // Dimuon Cuts
   //
@@ -111,16 +118,47 @@ bool ChibPreselection::fill_and_cut_variables()
   make_lorentz_flat(out_vars_rf1S, chi_rf1s);
   make_lorentz_flat(out_vars_rf2S, chi_rf2s);
   make_lorentz_flat(out_vars_rf3S, chi_rf3s);
+  {
+    std::lock_guard<std::mutex> lock(entry_mtx);
+    // This copying to a local variable is important, 
+    // because when TTree::Fill is called the global ID probably already has another value,
+    // because it is no longer locked at that point.
+    local_entry_idx = ++entry_idx;
+  }
+  // RooDataset cannot store a Long_64t:
+  entry_idx_high = (local_entry_idx >> 32);
+  entry_idx_low = local_entry_idx;  
+  //-----------------------------------------------------
+  // REBUILD EntryID:
+  //-----------------------------------------------------
+  // Long64_t lowmask = 0xFFFFFFFF;
+  // Long64_t high_long = EntryID_high;
+  // high_long <<= 32;
+  // Long64_t EntryID_rebuild = EntryID_low & lowmask;
+  // EntryID_rebuild |= high_long;
+  //-----------------------------------------------------
 
   return true;
 }
 
 void ChibPreselection::setup_new_branches()
 {
+  // Add id for each entry
+  m_out_tree->Branch("EntryID", &local_entry_idx);
+  m_out_tree->Branch("EntryID_high", &entry_idx_high);
+  m_out_tree->Branch("EntryID_low", &entry_idx_low);
+
+  // Add file uid
+  get_outfile()->cd();
+  TUUID id; // NB: running the TreeLooper parallel, every worker will have another uuid, but at the end the one of the first worker is used.
+  TNamed id_s("FileID", id.AsString());
+  id_s.Write(0, TObject::kWriteDelete);
+
   setup_collections("", out_vars);
   setup_collections("_rf1S", out_vars_rf1S, true);
   setup_collections("_rf2S", out_vars_rf2S, true);
   setup_collections("_rf3S", out_vars_rf3S, true);
+
 }
 
 int ChibPreselection::make_lorentz_flat(std::vector<Double_t>& vars, TLorentzVector* chi, TLorentzVector * dimuon)
@@ -140,7 +178,7 @@ int ChibPreselection::make_lorentz_flat(std::vector<Double_t>& vars, TLorentzVec
   return id;
 }
 
-void ChibPreselection::make_mu_things(std::vector<Double_t>& vars, TLorentzVector * muPos, TLorentzVector * muNeg,int start)
+void ChibPreselection::make_mu_things(std::vector<Double_t>& vars, TLorentzVector * muPos, TLorentzVector * muNeg, int start)
 {
   int id = start;
 
@@ -228,6 +266,6 @@ bool ChibPreselection::accept_muon(const TLorentzVector * mu)
 
 
 int main() {
-  ChibPreselection preselection({ "/afs/hephy.at/work/j/jnecker/data/full/chib_2016.root" }, "preselected_data.root", "rootuple/chiTree", "data");
-  preselection.process(-1, 8);
+  ChibPreselection preselection({ "/afs/hephy.at/work/j/jnecker/data/full/chib_2016.root" }, "preselected_data_test.root", "rootuple/chiTree", "data");
+  preselection.process(100000, 8);
 }
