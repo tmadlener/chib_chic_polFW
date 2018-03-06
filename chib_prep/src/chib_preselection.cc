@@ -2,6 +2,7 @@
 
 #include "calcAngles.h"
 #include "misc_utils.h"
+#include "ArgParser.h"
 
 #include "TFile.h"
 
@@ -127,7 +128,7 @@ bool ChibPreselection::fill_and_cut_variables()
   }
   // RooDataset cannot store a Long_64t:
   entry_idx_high = (local_entry_idx >> 32);
-  entry_idx_low = local_entry_idx;  
+  entry_idx_low = local_entry_idx;
   //-----------------------------------------------------
   // REBUILD EntryID:
   //-----------------------------------------------------
@@ -150,8 +151,8 @@ void ChibPreselection::setup_new_branches()
 
   // Add file uid
   get_outfile()->cd();
-  TUUID id; // NB: running the TreeLooper parallel, every worker will have another uuid, but at the end the one of the first worker is used.
-  TNamed id_s("FileID", id.AsString());
+  // NB: running the TreeLooper parallel, every worker will have another uuid, but at the end the one of the first worker is used.
+  TNamed id_s("DataID", TUUID().AsString());
   id_s.Write(0, TObject::kWriteDelete);
 
   setup_collections("", out_vars);
@@ -231,17 +232,17 @@ void ChibPreselection::setup_collections(const std::string & varsuffix, std::vec
 
     // id == 5
 
-    m_out_tree->Branch(("cosTh_HX" + varsuffix).c_str(), &vars.at(++id));
+    m_out_tree->Branch(("costh_HX" + varsuffix).c_str(), &vars.at(++id));
     m_out_tree->Branch(("phi_HX" + varsuffix).c_str(), &vars.at(++id));
-    m_out_tree->Branch(("cosAlpha_HX" + varsuffix).c_str(), &vars.at(++id));
+    m_out_tree->Branch(("cosalpha_HX" + varsuffix).c_str(), &vars.at(++id));
 
-    m_out_tree->Branch(("cosTh_PX" + varsuffix).c_str(), &vars.at(++id));
+    m_out_tree->Branch(("costh_PX" + varsuffix).c_str(), &vars.at(++id));
     m_out_tree->Branch(("phi_PX" + varsuffix).c_str(), &vars.at(++id));
-    m_out_tree->Branch(("cosAlpha_PX" + varsuffix).c_str(), &vars.at(++id));
+    m_out_tree->Branch(("cosalpha_PX" + varsuffix).c_str(), &vars.at(++id));
 
-    m_out_tree->Branch(("cosTh_CS" + varsuffix).c_str(), &vars.at(++id));
+    m_out_tree->Branch(("costh_CS" + varsuffix).c_str(), &vars.at(++id));
     m_out_tree->Branch(("phi_CS" + varsuffix).c_str(), &vars.at(++id));
-    m_out_tree->Branch(("cosAlpha_CS" + varsuffix).c_str(), &vars.at(++id));
+    m_out_tree->Branch(("cosalpha_CS" + varsuffix).c_str(), &vars.at(++id));
     // id == 14
     m_out_tree->Branch(("delta_phi" + varsuffix).c_str(), &vars.at(++id));
 
@@ -265,7 +266,18 @@ bool ChibPreselection::accept_muon(const TLorentzVector * mu)
 }
 
 
-int main() {
-  ChibPreselection preselection({ "/afs/hephy.at/work/j/jnecker/data/full/chib_2016.root" }, "preselected_data_test.root", "rootuple/chiTree", "data");
-  preselection.process(100000, 8);
+int main(int argc, char **argv) {
+
+  ArgParser parser(argc, argv);
+  auto infiles = parser.getOptionVal<std::vector<std::string> >("--infiles");
+  auto outfile = parser.getOptionVal<std::string>("--outfile");
+  auto intree = parser.getOptionVal < std::string>("--intree");
+  auto outtree = parser.getOptionVal<std::string>("--outtree", "data");
+  auto nEvents = parser.getOptionVal<Long64_t>("--events", -1);
+  auto nThreads = parser.getOptionVal<Long64_t>("--threads", 8);
+
+  ChibPreselection preselection(infiles, outfile, intree, outtree);
+  // { "/afs/hephy.at/work/j/jnecker/data/full/chib_2016.root" }, "preselected_data_chib2016.root", "rootuple/chiTree", "data");
+  preselection.process(nEvents, nThreads);
+
 }

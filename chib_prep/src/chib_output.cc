@@ -1,5 +1,7 @@
 #include "TreeMerger.h"
 
+#include "ArgParser.h"
+
 #include "TTree.h"
 #include "TFile.h"
 
@@ -71,14 +73,23 @@ private:
   std::vector<Double_t> double_vars;
 };
 
-int main()
-{
-  std::string fitresult_filename = "fitresults-dimuon_mass_8p7_11p1-dimuon_pt_20_50.root";
-  std::string outfile = "fitresults-dimuon_mass_8p7_11p1-dimuon_pt_20_50_data_with_sWeights.root";
+int main (int argc, char **argv) {
+
+  ArgParser parser(argc, argv);
+  auto fitresult_filename = parser.getOptionVal<std::string> ("--infile");
+  auto outfile = parser.getOptionVal<std::string>("--outfile");
+  auto intree = parser.getOptionVal < std::string>("--intree", "data");
+  auto outtree = parser.getOptionVal<std::string>("--outtree", "data");
+  auto nEvents = parser.getOptionVal<Long64_t>("--events", -1);
+  auto nThreads = parser.getOptionVal<Long64_t>("--threads", 8);
+
+  //std::string fitresult_filename = "fitresults-dimuon_mass_8p7_11p1-dimuon_pt_20_50.root";
+  //std::string outfile = "fitresults-dimuon_mass_8p7_11p1-dimuon_pt_20_50_data_with_sWeights.root";
 
   std::string inputfile, sweightfile, inputtree, sweighttree; // To be read from workspace file
   std::vector<std::string> yield_names;
 
+  // Read file and yield names from workspace file
   {
     TFile file(fitresult_filename.c_str(), "read");
     if (file.IsZombie()) return -1;
@@ -98,7 +109,7 @@ int main()
       *(p.second) = tmp->GetTitle();
     }
     delete tmp;
-    
+
     // Read yield names
     TList *list;
     file.GetObject("sWeight_yield_names", list);
@@ -108,11 +119,35 @@ int main()
 
   }
 
+
+  // Check DataID to be sure that EntryIDs correspond
+  {
+    std::string DataID_fitresult;
+    std::string DataID_input;
+    TNamed *id = nullptr;
+    TFile fr(fitresult_filename.c_str());
+    TFile fi(inputfile.c_str());
+    if (!fr.IsZombie() && !fi.IsZombie()) {
+      fr.GetObject("DataID", id);
+      if (id) DataID_fitresult = id->GetTitle();
+      fi.GetObject("DataID", id);
+      if (id) DataID_input = id->GetTitle();
+    }
+    delete id;
+
+    if (DataID_fitresult.empty() || DataID_input.empty() || DataID_fitresult != DataID_input) {
+      std::cout << "chib_output: DataIDs from Input and from FitResult file do not match or are empty, stopping." << std::endl;
+      return 1;
+    }
+  }
+
+
   // Merge input data and sWeights data by EntryID
+
   ChibSWeightMerger merger(inputfile, sweightfile, inputtree, sweighttree, outfile);
   merger.SetYields(yield_names);
   merger.SetDoubleBranches({ "dimuon_mass", "dimuon_pt", "chi_mass_rf1S", "chi_pt_rf1S",
-    "cosTh_HX", "phi_HX", "cosTh_CS", "phi_CS", "cosTh_PX", "phi_PX", "cosAlpha_HX" });
-  merger.loop(-1, 1);
+    "costh_HX", "phi_HX", "costh_CS", "phi_CS", "costh_PX", "phi_PX", "cosalpha_HX" });
+  merger.loop(nEvents, nThreads);
 
 }

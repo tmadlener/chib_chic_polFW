@@ -10,7 +10,7 @@ r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
 
 import logging
-logging.basicConfig(level=logging.INFO,
+logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
 from utils.plot_helpers import mkplot, default_colors
@@ -68,12 +68,13 @@ def get_plot_attributes(year, dmc, plot):
     }
     marker_style = {'2012': 20, '2016': 22, '2017': 23}
     marker_style_open = {'2012': 24, '2016': 26, '2017': 32}
-    fill_style = {'chic1': 3354, 'chic2': 3345 }
+    fill_style = {'chic1': 3354, 'chic2': 3345, 
+                  'chib1': 3354, 'chib2': 3345 }
     size = 2
     linewidth = 2
 
     color = year_colors[year]
-    if plot == 'ratio' or plot == 'chic2':
+    if plot == 'ratio' or plot == 'chic2' or plot == 'chib2':
         marker = marker_style[year]
     else:
         marker = marker_style_open[year]
@@ -156,8 +157,7 @@ def normalize_histos(hchic1, hchic2, norm_mode):
 
 
 def normalize_ratio(hratio, fit_range=(0, 0.5)):
-    """
-    Normalize the ratio histogram by a constant obtained from a fit to a
+    """ Normalize the ratio histogram by a constant obtained from a fit to a
     constant.
 
     TODO: proper doc
@@ -182,7 +182,7 @@ def normalize_ratio(hratio, fit_range=(0, 0.5)):
     return fit_rlt.Chi2(), fit_rlt.Ndf()
 
 
-def get_plot_hists(pserver, trg_years, ratio, var, frame, pt,
+def get_plot_hists(pserver, trg_years, ratio, var, frame, pt, state='chic',
                    norm_mode='nsignal', norm_ratio=False):
     """
     Get all plots that are necessary for the desired plot
@@ -203,13 +203,13 @@ def get_plot_hists(pserver, trg_years, ratio, var, frame, pt,
                     chi2, ndf = normalize_ratio(hists[(year, dmc, 'ratio')],
                                                 const_fit_range[var])
         else:
-            hist = pserver.get_hist(dmc, year, trg, pt, var, frame, 'chic1')
-            hists[(year, dmc, 'chic1')] = hist
-            hist = pserver.get_hist(dmc, year, trg, pt, var, frame, 'chic2')
-            hists[(year, dmc, 'chic2')] = hist
+            hist = pserver.get_hist(dmc, year, trg, pt, var, frame, state + '1')
+            hists[(year, dmc, state + '1')] = hist
+            hist = pserver.get_hist(dmc, year, trg, pt, var, frame, state + '2')
+            hists[(year, dmc, state + '2')] = hist
 
-            normalize_histos(hists[(year, dmc, 'chic1')],
-                             hists[(year, dmc, 'chic2')], norm_mode)
+            normalize_histos(hists[(year, dmc, state + '1')],
+                             hists[(year, dmc, state + '2')], norm_mode)
 
     return hists
 
@@ -242,7 +242,7 @@ def get_trigger_year_info(inputlist):
 def nice_leg_entries(leg_entries):
     """Replace dict strings with nicer plotting strings"""
     for i, entry in enumerate(leg_entries):
-        leg_entries[i] = re.sub(r'chic(\d)', r'#chi_{c\1}', entry)
+        leg_entries[i] = re.sub(r'chi(c|b)(\d)', r'#chi_{\1\2}', entry)
 
     return leg_entries
 
@@ -279,7 +279,9 @@ def main(args):
 
     year_trg_ids, leg_entries = get_trigger_year_info(args.input)
     hists = get_plot_hists(pserver, year_trg_ids, args.ratio, args.variable,
-                           args.frame, args.ptbin, norm_mode, args.norm_ratio)
+                           args.frame, args.ptbin, state=args.state, 
+			   norm_mode=norm_mode, norm_ratio=args.norm_ratio)
+
 
     # split into data and mc hist due to different plotting styles for the two
     data_hists = {k: hists[k] for k in hists if 'data' in k}
@@ -306,6 +308,9 @@ def main(args):
     mpl_attr = [get_plot_attributes(*k) for k in mc_hists]
 
     y_label = get_ylabel(not args.ratio, args.normalize_at_zero, args.norm_ratio)
+    if args.state == 'chib': 
+        y_label = re.sub(r'c(\d)',r'b\1', y_label)
+
     x_label = get_xlabel(args.variable, args.frame)
 
     # to have same y-range for everything, have to do it manually, as
@@ -344,7 +349,7 @@ if __name__ == '__main__':
                         help='variable to plot')
     parser.add_argument('-f', '--frame', type=str, default='HX',
                         help='reference frame')
-    parser.add_argument('-pt', '--ptbin', type=int, default=1,
+    parser.add_argument('-pt', '--ptbin', #type=int, default=1,
                         help='pt bin to plot')
     # parser.add_argument('-y', '--ylabel', default='#chi_{c2} / #chi_{c1}',
     #                     help='ylabel of the plot')
@@ -366,6 +371,16 @@ if __name__ == '__main__':
                            help='Make ratio plot')
     plot_type.add_argument('-d', '--dist', action='store_true',
                            help='Make dist plot')
+
+    
+    state_sel = parser.add_mutually_exclusive_group()
+    state_sel.add_argument('--chic', action='store_const', dest='state',
+                           const='chic', help='TODO')
+    state_sel.add_argument('--chib', action='store_const', dest='state',
+                           const='chib', help='TODO')
+    parser.set_defaults(state='chic')
+
+
 
     clargs = parser.parse_args()
     main(clargs)

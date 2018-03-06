@@ -2,6 +2,8 @@
 #include "FitAnalyser.h"
 #include "ChiOrganizer.h"
 
+#include "ArgParser.h"
+
 #include "TROOT.h"
 #include "TUUID.h"
 #include "TTree.h"
@@ -14,7 +16,8 @@
 
 using strvec = std::vector<std::string>;
 
-int main() {
+int main(int argc, char **argv) {
+
 
   ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
   // PARAMETERS
@@ -26,20 +29,27 @@ int main() {
   // Overall configurations are in the config.json
   // Command-line argument are only used for the parameters that may change for each bin 
   //
-  // TODO: implement ArgParser for below parameter
-  //
+
+  ArgParser parser(argc, argv);
+  
+  // TODO: eventually out file argument for testing purposes
 
   // Mandatory
+  auto binvarname = parser.getOptionVal < std::string>("--binvar");
+  auto bin_min = parser.getOptionVal < double>("--binmin");
+  auto bin_max = parser.getOptionVal < double>("--binmax");
+
   std::map<std::string, std::pair<double, double> > p_binvars_min_max; // one entry per bin var: e.g. dimuon_rap(0,0.6), dimuon_pt(10,20)
-  p_binvars_min_max["dimuon_pt"] = { 20, 50 };
+  if (!binvarname.empty()) p_binvars_min_max[binvarname] = { bin_min, bin_max };
 
   // Optional
-  std::string p_model_folder = ""; // If empty the current workingdir is used
-  std::string p_configfile = ""; // if empty it is looked for config.json in the model folder
+  auto p_model_folder = parser.getOptionVal < std::string>("--folder", ""); // If empty the current workingdir is used
+  auto p_configfile = parser.getOptionVal < std::string>("--config", "");// if empty it is looked for config.json in the model folder
+  auto p_outfile = parser.getOptionVal < std::string>("--outfile", "");// mainly for testing purposes
 
-  bool c_force_file_recreation = false;
-  auto c_force_refit_dimuon = false;
-  auto c_force_refit_chi = false;
+  auto c_force_file_recreation = parser.getOptionVal <bool> ("--forceFileRecreation", false);
+  auto c_force_refit_dimuon = parser.getOptionVal <bool>("--forceDimuonRefit", false);
+  auto c_force_refit_chi = parser.getOptionVal <bool>("--forceChiRefit", false);
 
 
   //
@@ -101,32 +111,46 @@ int main() {
   // TODO: parameter for 1P->1S, or mu+/-3sigma
 
   // Get workspace and output file names
-  std::string h_outputfile = corg.FileName(c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max, p_binvars_min_max);
-  std::string h_dimuonwsname = corg.WorkspaceName(c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max, p_binvars_min_max);
-  std::string h_chiwsname = h_dimuonwsname + "_chib1P1S"; // TODO: dimuonwsname 1P->1S or mass regions, chib or chic
-  std::string h_dimuonplotname = corg.FileName(c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max, p_binvars_min_max, "_dimuonfit.pdf");
-  std::string h_chiplotname = corg.FileName(c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max, p_binvars_min_max, "_chifit1P1S.pdf");
-  std::string h_resultfilename = corg.FileName(c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max, p_binvars_min_max, "_chifit1P1S_outputtree.root");
+  std::string out_file_base = corg.FileName(c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max, p_binvars_min_max,"");
+  if (!p_outfile.empty()) {
+    std::regex e(R"(\.root\b)");
+    out_file_base = std::regex_replace(p_outfile, e, "");
+  }
 
+  std::string h_outputfile = out_file_base + ".root";
+  std::string h_dimuonwsname = corg.WorkspaceName(c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max, p_binvars_min_max); 
+  // TODO: dimuonwsname 1P->1S or mass regions, chib or chic
+  std::string h_chiwsname = h_dimuonwsname + "_chib1P1S";
+  std::string h_dimuonplotname = out_file_base + "_dimuonfit.pdf";
+  std::string h_chiplotname = out_file_base + "_chifit1P1S.pdf";
+  std::string h_resultfilename = out_file_base + "_chifit1P1S_outputtree.root";
+
+  std::string DataID;
+  {
+    TFile in(c_inputdata.c_str(), "read");
+    if (!in.IsZombie()) {
+      TNamed *id = nullptr;
+      in.GetObject("DataID", id);
+      if (id) DataID = id->GetTitle();
+      delete id;
+    }
+  }
 
   // Check if ID of data file changed, if yes force a refit
   bool data_FileID_changed = false;
-  {
-    TFile out(h_outputfile.c_str(), "read");
-    TFile in(c_inputdata.c_str(), "read");
-    if (!out.IsZombie() && !in.IsZombie()) {
-      std::string id_in, id_out;
-      TNamed *id = nullptr;
 
-      out.GetObject("FileID", id);
-      id_in = id->GetTitle();
-      in.GetObject("FileID", id);
-      id_out = id->GetTitle();
+  if (!c_force_file_recreation) {
+    TFile out(h_outputfile.c_str(), "read");
+    if (!out.IsZombie()) {
+      TNamed *id = nullptr;
+      std::string id_out;
+      out.GetObject("DataID", id);
+      if (id) id_out = id->GetTitle();
       delete id;
 
-      // Check ids
-      if (id_in != id_out) {
-        std::cout << "chib_fitting: FileID (data) changed, Forcing refit!" << std::endl;
+      // Check ids, only force recreation of file if both ids are available to not accidently delete fitresults
+      if ((!id_out.empty() && !DataID.empty()) && DataID != id_out) {
+        std::cout << "chib_fitting: DataID changed, forcing complete refit!" << std::endl;
         data_FileID_changed = true;
       }
     }
@@ -152,7 +176,7 @@ int main() {
   dimuon_fitter.SetModel(c_dimuon_model, c_dimuon_modelname, c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max);
   dimuon_fitter.Fit(8, true);
 
-  // Add input data FileID to workspace file
+  // Add input data DataID to workspace file
   {
     TFile f(h_outputfile.c_str(), "update");
     TFile in(c_inputdata.c_str(), "read");
@@ -164,7 +188,7 @@ int main() {
       file_list.Add(new TNamed("InputDataTree", c_inputtree));
       file_list.Add(new TNamed("OutputDataFile", h_resultfilename));
       file_list.Add(new TNamed("OutputDataTree", "data"));
-      TNamed *id = nullptr; in.GetObject("FileID", id);
+      TNamed *id = nullptr; in.GetObject("DataID", id);
       file_list.Add(id);
       f.cd();
       file_list.Write(0, TObject::kWriteDelete);
@@ -219,7 +243,7 @@ int main() {
 
 
   chi_fitter.SetModel(c_chi_model, c_chi_modelname, c_chi_fitvar, c_chi_fitrange_min, c_chi_fitrange_max);
-  chi_fitter.Fit(8, true, c_extended_chi_fit);
+  chi_fitter.Fit(8, false, c_extended_chi_fit);
 
   // Create output file with tree containing sWeights
 
@@ -260,11 +284,16 @@ int main() {
         long_e_high = e_high;
         long_e_high <<= 32;
         EntryID = e_low;
-        EntryID &= lowmask; 
+        EntryID &= lowmask;
         EntryID |= long_e_high;
         idbranch->Fill();
       }
+
+      // Write to file
+      f.cd();
       t->Write(0, TObject::kWriteDelete);
+      TNamed fid("DataID", DataID.c_str());
+      fid.Write(0, TObject::kWriteDelete);
     }
   }
 

@@ -37,7 +37,8 @@ proto_draw_expr = {
     'phi': 'phi_{}_fold',
     'cosalpha': 'TMath::Abs(cosalpha_{})'
 }
-weight_branches = {'chic1': 'wChic1', 'chic2': 'wChic2'}
+weight_branches = {'chic1': 'wChic1', 'chic2': 'wChic2', 
+                   'chib1': 'N1_sw', 'chib2': 'N2_sw'}
 
 
 
@@ -111,12 +112,14 @@ def divide_hists(hnum, hdenom, cutsigma=None):
     # NOTE: If there is no 'chic2' in the name this will probably overwrite the
     # original
     # TODO: make slightly more versatile (and move to hist_utils probably)
-    ratio = hnum.Clone(hnum.GetName().replace('chic2', 'ratio'))
+    rationame = re.sub(r'chi[b|c]\d', r'ratio', hnum.GetName())
+    ratio = hnum.Clone(rationame)
     ratio.Divide(hdenom)
     return ratio
 
 
-def get_hists_for_frame(tree, frame, pvars, cutsigma=None):
+def get_hists_for_frame(tree, frame, pvars, cutsigma=None, 
+                        states=['chic1', 'chic2']):
     """
     Get all histograms for a frame
 
@@ -128,19 +131,21 @@ def get_hists_for_frame(tree, frame, pvars, cutsigma=None):
         if not check_branch_available(tree, pvar):
             continue
         hists[var] = {}
-        for state in ['chic1', 'chic2']:
+        for state in states:
             hists[var][state] = get_proto_hist(pvar, '_'.join([state, pvar]))
             draw_expr = get_draw_expr(var, frame)
             weight = weight_branches[state]
             draw_var_to_hist(tree, hists[var][state], draw_expr, '', weight)
 
-        hists[var]['ratio'] = divide_hists(hists[var]['chic2'],
-                                           hists[var]['chic1'],
+        # assuming that second element in states is numerator
+        hists[var]['ratio'] = divide_hists(hists[var][states[1]],
+                                           hists[var][states[0]],
                                            cutsigma)
     return hists
 
 
-def get_hists_from_file(rfile, treename, frames, cutsigma=None):
+def get_hists_from_file(rfile, treename, frames, cutsigma=None,
+                        states=['chic1', 'chic2']):
     """
     Get all histograms from file
 
@@ -151,7 +156,7 @@ def get_hists_from_file(rfile, treename, frames, cutsigma=None):
     for frame in frames:
         hists[frame] = get_hists_for_frame(tree, frame,
                                            ['phi', 'costh', 'cosalpha'],
-                                           cutsigma)
+                                           cutsigma, states)
 
     return hists
 
@@ -192,8 +197,12 @@ def main(args):
     infile = r.TFile.Open(args.inputfile)
     frames = args.frames.split(',')
 
+    states = ['chic1', 'chic2']
+    if args.state == 'chib':
+        states = ['chib1', 'chib2']
+
     file_hists = get_hists_from_file(infile, args.treename, frames,
-                                     args.cutsigma)
+                                     args.cutsigma, states)
 
     trigger = get_full_trigger(args.triggerpath)
     subdir = get_unique_subdir(args.year, trigger, args.mc, args.ptbin)
@@ -227,6 +236,13 @@ if __name__ == '__main__':
                         help='Apply the passed cut on the distribution hists '
                         'to get rid of bins that are compatible to zero within '
                         'n sigmas. This is done before doing the ratio')
+
+    state_sel = parser.add_mutually_exclusive_group()
+    state_sel.add_argument('--chic', action='store_const', dest='state',
+                           const='chic', help='TODO')
+    state_sel.add_argument('--chib', action='store_const', dest='state',
+                           const='chib', help='TODO')
+    parser.set_defaults(state='chic')
 
     clargs = parser.parse_args()
     main(clargs)

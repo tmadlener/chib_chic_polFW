@@ -1,5 +1,5 @@
 {
-  "input_data_file": "preselected_data_test.root",
+  "input_data_file": "preselected_data_chib2016.root",
   "input_data_tree": "data",
   "input_data_major_id": "run",
   "input_data_minor_id": "event",
@@ -38,8 +38,8 @@
   "chi_model": [
     "CBShape::chib1(chi_mass_rf1S, mu1[9.86,9.902],sigma1[0.001,0.01],a1[0.5,10],n1[1,5])",
     "CBShape::chib2(chi_mass_rf1S, mu2[9.902,9.94],sigma2[0.001,0.01],a2[0.5,10],n2[1,5])",
-    "expr::delta('chi_mass_rf1S - q0',chi_mass_rf1S,q0[9.68,9.0,15.])",
-    "CEXPR::background('(TMath::Sign( -1, delta) + 1 ) * 0.5 * pow( fabs(delta), alpha) * exp(beta * delta)',delta, alpha[1.,0.1,15], beta[-1.,-10.,-0.1])",
+    "expr::delta('chi_mass_rf1S - q0',chi_mass_rf1S,q0[9.5,9.7])",
+    "CEXPR::background('(TMath::Sign( -1, delta) + 1 ) * 0.5 * pow( TMath::Abs(delta), alpha) * exp(beta * delta)',delta, alpha[1.5,-1,3.5], beta[-2.5,-7.,0.])",
     "SUM::model(N1[0,2e6]*chib1, N2[0,2e6]*chib2, Nbg[0,2e6]*background)"
   ],
 
