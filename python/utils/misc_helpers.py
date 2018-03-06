@@ -136,8 +136,11 @@ def get_full_trigger(subpath):
     # trg_rgx
     unique_path_ids = (
         ('HLT_Dimuon20_Jpsi_Barrel_Seagulls', ((2, '20'), (4, 'Barrel'))),
-        ('HLT_Dimuon10_Jpsi_Barrel', ((2, '10'),)),
-        ('HLT_Dimuon8_Jpsi', ((2, '8'),)),
+        ('HLT_Dimuon10_Upsilon_Barrel_Seagulls', ((2, '10'), (3, 'Upsilon'))),
+        ('HLT_Dimuon12_Upsilon_eta1p5', ((2, '12'),)),
+        ('HLT_Dimuon10_Jpsi_Barrel', ((2, '10'), (3, 'Jpsi'))),
+        ('HLT_Dimuon8_Upsilon_Barrel', ((2, '8'), (3, 'Upsilon'))),
+        ('HLT_Dimuon8_Jpsi', ((2, '8'), (3, 'Jpsi'))),
         ('HLT_Dimuon16_Jpsi', ((2, '16'),)),
         ('HLT_Dimuon20_Jpsi', ((2, '20'),)),
         ('HLT_Dimuon25_Jpsi', ((2, '25'),)),
@@ -145,7 +148,7 @@ def get_full_trigger(subpath):
 
     logging.debug('Trying to find full path for subexpression: {}'
                   .format(subpath))
-    trg_rgx = r'(HLT_)?(Dimuon)?(\d{1,2})(_Jpsi)?(_Barrel)?(_Seagulls)?'
+    trg_rgx = r'(HLT_)?(Dimuon)?(\d{1,2})_?(Jpsi|Upsilon)?_?(Barrel)?_?(Seagulls)?'
     trg_m = re.search(trg_rgx, subpath)
     if trg_m:
         logging.debug('Got a regex match, Now checking if we can uniquely '

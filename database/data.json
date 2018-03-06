@@ -9,13 +9,16 @@
         {
             "HLT_Dimuon10_Jpsi_Barrel": 4.6,
             "HLT_Dimuon16_Jpsi": 24.7,
-            "HLT_Dimuon20_Jpsi": 35.8
+            "HLT_Dimuon20_Jpsi": 35.8,
+            "HLT_Dimuon8_Upsilon_Barrel": 35.8
         },
         "2017":
         {
             "HLT_Dimuon20_Jpsi_Barrel_Seagulls": 42.4,
             "HLT_Dimuon25_Jpsi": 42.4,
-            "HLT_Dimuon25_Jpsi_noCorrL1": 27.5
+            "HLT_Dimuon25_Jpsi_noCorrL1": 27.5,
+            "HLT_Dimuon10_Upsilon_Barrel_Seagulls": 42.4,
+            "HLT_Dimuon12_Upsilon_eta1p5": 42.4
         }
     },
 
