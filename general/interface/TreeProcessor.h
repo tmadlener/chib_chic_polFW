@@ -126,6 +126,7 @@ private:
   BranchHolder<Double_t> * double_branches = nullptr;
   BranchHolder<Int_t > * int_branches = nullptr;
   BranchHolder<Long64_t > * long64_branches = nullptr;
+  BranchHolder<ULong64_t > * ulong64_branches = nullptr;
   BranchHolder<Bool_t > * bool_branches = nullptr;
   BranchHolder<UInt_t > * uint_branches = nullptr;
   BranchHolder<Float_t > * float_branches = nullptr;
@@ -167,6 +168,11 @@ template<>
 inline  Long64_t const & TreeProcessor::get_branch<Long64_t>(const std::string & branchname)
 {
   return long64_branches->getBranchReference(branchname);
+}
+template<>
+inline  ULong64_t const & TreeProcessor::get_branch<ULong64_t>(const std::string & branchname)
+{
+  return ulong64_branches->getBranchReference(branchname);
 }
 template<>
 inline  Bool_t const & TreeProcessor::get_branch<Bool_t>(const std::string & branchname)

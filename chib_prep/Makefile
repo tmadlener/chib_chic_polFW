@@ -10,7 +10,7 @@ GENINCDIR := ../general/interface
 ROOTFLAGS := $(shell root-config --cflags)
 ROOTLIBS := $(shell root-config --libs)
 
-ROOFITLIBS :=  -lRooFit -lRooFitCore
+ROOFITLIBS :=  -lRooFit -lRooFitCore -lRooStats
 
 #CFLAGSINC := $(ROOTFLAGS) -I $(INCDIR) -ggdb
 CFLAGSINC := $(ROOTFLAGS) -I $(INCDIR) -I $(GENINCDIR)
@@ -22,13 +22,14 @@ defaulttarget:
 	@echo "Available targets:"
 	@echo "   preselection [cleanpreselection]"
 	@echo "   fitting [cleanfitting]"
+	@echo "   output [cleanoutput]"
 
 all: _dir_setup preselection fitting
 
 clean: _dir_cleanup
 
 #####################
-# CHIB PRES ELECTION
+# CHIB PRESELECTION
 
 preselection : $(BUILDDIR)/preselection.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/treeproc.o
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)
@@ -52,16 +53,31 @@ cleanfitting:
 #
 #####################
 
+#####################
+# CHIB OUTPUT
+
+output : $(BUILDDIR)/output.o $(BUILDDIR)/treemerger.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/utils.o
+	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)
+$(BUILDDIR)/output.o: $(SRCDIR)/chib_output.cc $(output_header)
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+cleanoutput:
+	rm -f $(BUILDDIR)/output.o $(BUILDDIR)/treemerger.o $(BUILDDIR)/utils.o $(BUILDDIR)/paralooper.o $(TARGET)/output
+#
+#####################
+
 
 
 
 _looper_header := ParallelTreeLooper.h TreeProcessor.h utils.h
 looper_header := $(patsubst %,$(GENINCDIR)/%,$(_looper_header))
 
+_output_header := ParallelTreeLooper.h TreeMerger.h utils.h
+output_header := $(patsubst %,$(GENINCDIR)/%,$(_output_header))
+
 _fit_header := FitAnalyser.h Fitter.h utils.h
 fit_header := $(patsubst %,$(GENINCDIR)/%,$(_fit_header)) $(INCDIR)/ChiOrganizer.h
 
-all_header := $(fit_header) $(looper_header)
+all_header := $(fit_header) $(looper_header) $(output_header)
 
 #
 # PARALLEL TREE LOOPER
@@ -73,6 +89,12 @@ $(BUILDDIR)/paralooper.o: $(GENSRCDIR)/ParallelTreeLooper.cc $(GENINCDIR)/Parall
 # TREE PROCESSOR
 #
 $(BUILDDIR)/treeproc.o: $(GENSRCDIR)/TreeProcessor.cc $(GENINCDIR)/TreeProcessor.h $(GENINCDIR)/ParallelTreeLooper.h $(GENINCDIR)/utils.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+
+#
+# TREE Merger
+#
+$(BUILDDIR)/treemerger.o: $(GENSRCDIR)/TreeMerger.cc $(GENINCDIR)/TreeMerger.h $(GENINCDIR)/ParallelTreeLooper.h $(GENINCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
 
 #

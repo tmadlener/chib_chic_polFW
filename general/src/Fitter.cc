@@ -21,8 +21,8 @@
 
 
 
-const std::string Fitter::dataset_name = "dataset";
-const std::string Fitter::snapshot_name = "results";
+const std::string Fitter::dataset_name = "fitter_dataset_jn";
+const std::string Fitter::snapshot_name = "fitter_results_jn";
 
 
 void Fitter::Fit(int numCPUs, bool enableMinos, bool extendedFit)
@@ -86,7 +86,7 @@ void Fitter::Fit(int numCPUs, bool enableMinos, bool extendedFit)
 
   //Save results:
   ws->import(*fit_results);
-  ws->saveSnapshot(snapshot_name.c_str(), RooArgSet(ws->allVars(), ws->allPdfs()));
+  ws->saveSnapshot(snapshot_name.c_str(), RooArgSet(ws->allVars()));
 
   df.Close("R"); // necessary if in an out file are the same
 
@@ -94,7 +94,7 @@ void Fitter::Fit(int numCPUs, bool enableMinos, bool extendedFit)
   ws->Write(0, TObject::kWriteDelete);
 
   //TODO: What are the ProcessIDs used for? 
-  f.Delete("ProcessID*;*"); // Seems that the ids are relicts
+  //f.Delete("ProcessID*;*"); // Seems that the ids are relicts
 
   //TODO:
   //write_logfile
@@ -159,7 +159,7 @@ RooDataSet Fitter::get_dataset(TFile* f, bool *ok)
       UInt_t check = 0;
       tree->SetBranchStatus(bn.c_str(), true, &check);
       if (!check) {
-        std::cout << "Branch '" << bn << "' not found in tree '" << m_in_treename << "'." << std::endl;
+        std::cout << "Branch '" << bn << "' not found in tree '" << m_in_treename << "' in file '" << m_in_filename << "'." << std::endl;
         return RooDataSet();
       }
     }

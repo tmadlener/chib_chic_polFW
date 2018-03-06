@@ -67,6 +67,7 @@ protected:
   ParallelTreeLooper() {};
   TTree* m_in_tree = nullptr;
   TTree* m_out_tree = nullptr;
+  TFile* get_outfile() { return m_out_file; }
 
   TTree* openOutTree(cs filename, cs treename);
   TTree* openChain(const std::vector<std::string> & file_names, cs tree_name);
