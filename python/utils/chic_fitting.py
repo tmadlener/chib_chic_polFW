@@ -28,12 +28,12 @@ class ChicMassModel(FitModel):
         self.chic0 = 'M_chic0'
         self.signal = 'M_signal'
         self.bkg_model = 'M_background'
-
+        self.legpos = (0.18, 0.5, 0.38, 0.7)
         self.components = (
-            (self.chic0, 7, 901),
-            (self.chic1, 7, 417),
-            (self.chic2, 7, 632),
-            (self.bkg_model, 7, 1),
+            (self.chic0, 7, 901, '#chi_{c0}'),
+            (self.chic1, 7, 417, '#chi_{c1}'),
+            (self.chic2, 7, 632, '#chi_{c2}'),
+            (self.bkg_model, 7, 1, 'BG'),
         )
 
 

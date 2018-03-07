@@ -7,8 +7,9 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
-from utils.roofit_utils import ws_import, get_var
+from utils.roofit_utils import ws_import, get_var, get_chi2_ndf
 from utils.misc_helpers import create_random_str
+from utils.plot_helpers import setup_latex, put_on_latex
 
 class FitModel(object):
     """
@@ -23,6 +24,7 @@ class FitModel(object):
         self.full_model = None
         self.components = None
         self.mname = None
+        self.legpos = None
         raise NotImplementedError('__init__ has to be defined by derived class')
 
     def define_model(self, wsp):
@@ -88,8 +90,10 @@ class FitModel(object):
         Keyword Args:
             logy (bool): Set log on y scale of distribution plot
         """
+        fitresname = None
         if snapname:
             wsp.loadSnapshot(snapname)
+            fitresname = snapname.replace('snap', 'fit_res')
 
         # Starting from ROOT v6.12 it is possible to set this on individual axis
         r.TGaxis.SetMaxDigits(3)
@@ -104,14 +108,28 @@ class FitModel(object):
 
         full_pdf = wsp.pdf(self.full_model)
 
+        leg = self._setup_legend()
+
         plot_data.plotOn(frame, rf.MarkerSize(0.8), rf.Name('data_hist'))
         full_pdf.plotOn(frame, rf.LineWidth(2),
                         # rf.ProjWData(plot_data),
                         rf.Name('full_pdf_curve'))
 
-        for name, lst, lcol in self.components:
+        leg.AddEntry(frame.getCurve('full_pdf_curve'), 'sum', 'l')
+
+        for name, lst, lcol, legentry in self.components:
             full_pdf.plotOn(frame, rf.Components(name), rf.LineStyle(lst),
-                            rf.LineColor(lcol), rf.LineWidth(2))
+                            rf.LineColor(lcol), rf.LineWidth(2), rf.Name(name))
+            leg.AddEntry(frame.getCurve(name), legentry, 'l')
+
+
+        info_text = []
+        if fitresname is not None:
+            fit_res = wsp.genobj(fitresname)
+            chi2, ndf = get_chi2_ndf(fit_res, frame, 'full_pdf_curve',
+                                     'data_hist')
+            info_text.append((0.15, 0.875,
+                              '#chi^{{2}}/ndf = {:.1f} / {}'.format(chi2, ndf)))
 
         pull_frame = mvar.frame(rf.Bins(80))
         hpull = frame.pullHist('data_hist', 'full_pdf_curve', True)
@@ -127,7 +145,7 @@ class FitModel(object):
         pull_frame.GetYaxis().SetTitleOffset(0.4)
         pull_frame.GetYaxis().SetRangeUser(-5.99, 5.99)
 
-
+        latex = setup_latex()
         can = r.TCanvas(create_random_str(16), '', 50, 50, 600, 600)
         can.cd()
 
@@ -139,6 +157,9 @@ class FitModel(object):
             pad.SetLogy()
             pdfname = pdfname.replace('mass_fit', 'mass_fit_log')
         frame.Draw()
+        leg.Draw()
+        put_on_latex(latex, info_text)
+
 
         can.cd()
         pull_pad = r.TPad('pull_pad', 'pull_pad', 0, 0, 1, 0.3)
@@ -198,3 +219,20 @@ class FitModel(object):
             logging.debug(debug_msg.format(par, val))
             get_var(wsp, par).setVal(val)
             get_var(wsp, par).setConstant(True)
+
+
+    def _setup_legend(self):
+        """
+        Setup the legend and return it
+
+        Returns:
+            ROOT.TLegend: legend with basic settings
+        """
+        leg = r.TLegend(*self.legpos)
+        leg.SetFillColor(0)
+        leg.SetFillStyle(0)
+        leg.SetTextFont(42)
+        leg.SetTextSize(0.035)
+        leg.SetBorderSize(0)
+
+        return leg

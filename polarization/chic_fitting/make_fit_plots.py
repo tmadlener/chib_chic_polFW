@@ -12,7 +12,6 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
-# from utils.chic_fitting import make_mass_fit_plot, print_fit_results
 from utils.chic_fitting import ChicMassModel
 from utils.jpsi_fitting import JpsiMassModel
 from utils.hist_utils import combine_cuts

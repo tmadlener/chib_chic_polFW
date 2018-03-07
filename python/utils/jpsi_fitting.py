@@ -21,10 +21,10 @@ class JpsiMassModel(FitModel):
         self.bkg_model = 'M_bkg_jpsi'
         self.full_model = 'M_fullModel_jpsi'
         self.mname = mname
-
+        self.legpos = (0.7, 0.8, 0.9, 0.9)
         self.components = (
-            (self.signal, 7, 632),
-            (self.bkg_model, 7, 1)
+            (self.signal, 7, 632, 'J/#psi'),
+            (self.bkg_model, 7, 1, 'BG')
         )
 
         # self._define_model(wsp)

@@ -249,3 +249,31 @@ def mkplot(pltables, **kwargs):
 
     plot_on_canvas(can, pltables, **kwargs)
     return can
+
+
+def setup_latex():
+    """
+    Setup a TLatex for putting text onto the plot
+
+    Returns:
+        ROOT.TLatex: TLatex object with basic settings
+    """
+    latex = r.TLatex()
+    latex.SetNDC(True)
+    latex.SetTextFont(42)
+    latex.SetTextSize(0.03)
+
+    return latex
+
+
+def put_on_latex(latex, text_info):
+    """
+    Put all the text onto the passed latex
+
+    Args:
+        latex (ROOT.TLatex): The TLatex that will be used for drawing
+        text_info (list of tuples): List containing the position and the
+            text to put onto the plot in the format (leftpos, toppos, text)
+    """
+    for left, top, text in text_info:
+        latex.DrawLatex(left, top, text)
