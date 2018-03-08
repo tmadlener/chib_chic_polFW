@@ -25,6 +25,7 @@ from utils.hist_utils import combine_cuts
 from utils.roofit_utils import get_var, ws_import
 from utils.chic_fitting import ChicMassModel
 from utils.jpsi_fitting import JpsiMassModel
+from utils.chib_fitting import ChibMassModel
 
 def basic_sel_root(state):
     """
@@ -39,7 +40,8 @@ def basic_sel_root(state):
         'jpsi': [
             'vtxProb > 0.01', 'TMath::Abs(JpsiRap) < 1.2',
             'JpsiMass > 2.8 && JpsiMass < 3.3'
-        ]
+        ],
+        'chib': ['costh_HX > -1'] # Dummy condition
     }
     return combine_cuts(cuts[state])
 
@@ -56,6 +58,8 @@ def basic_sel_df(dfr, state):
     elif state == 'jpsi':
         cut = (np.abs(dfr.JpsiRap) < 1.2) & (dfr.vtxProb > 0.01) & \
               (dfr.JpsiMass > 2.8) & (dfr.JpsiMass < 3.3)
+    elif state == 'chib':
+        cut = np.array([True] * dfr.shape[0])
 
     return cut
 
@@ -75,7 +79,10 @@ def get_ws_vars(state):
             'JpsiMass[2.8, 3.3]', 'costh_HX[-1, 1]', 'Jpsict[-0.1, 1]',
             'JpsictErr[0, 1]', 'JpsiRap[-1.2, 1.2]', 'vtxProb[0.01, 1]',
             'JpsiPt[0, 100]'
-        ]
+        ],
+        'chib' : [
+            'chi_mass_rf1S[9.6,10.15]', 'costh_HX[-1, 1]', 'dimuon_pt[0,100]'
+        ],
     }
 
     return wsvars[state]
@@ -132,22 +139,27 @@ def rw_bin_sel_pklfile(args):
                       'doing jpsi fits')
         sys.exit(1)
 
+    ptvar = 'dimuon_pt' if args.state == 'chib' else 'JpsiPt'
     # get prompt events (state dependency in basic selection)
     basic_sel = combine_cuts([basic_sel_root(args.state),
-                              'TMath::Abs(Jpsict / JpsictErr) < 2.5',
-                              get_bin_cut_root('JpsiPt', args.ptmin, args.ptmax)])
+                              get_bin_cut_root(ptvar, args.ptmin, args.ptmax)])
+    if args.state != 'chib' :
+        basic_sel = combine_cuts([basic_sel, 'TMath::Abs(Jpsict / JpsictErr) < 2.5'])
 
     # if chic: determine the costh binning and create the pkl file
-    if args.state == 'chic':
+    if args.state == 'chic' or args.state == 'chib':
         if not args.pklfile:
             pklfile = args.outfile.replace('.root', '_bin_sel_info.pkl')
         else:
             pklfile = args.pklfile
 
-        dfr = get_dataframe(args.datafile, 'chic_tuple')
+        treename = 'chic_tuple' if args.state == 'chic' else 'data'
+        dfr = get_dataframe(args.datafile, treename)
         basic_sel_bin = (basic_sel_df(dfr, args.state)) & \
-                        (get_bin_cut_df(dfr, 'JpsiPt', args.ptmin, args.ptmax)) &\
-                        (np.abs(dfr.Jpsict / dfr.JpsictErr) < 2.5)
+                        (get_bin_cut_df(dfr, ptvar, args.ptmin, args.ptmax))
+        if args.state == 'chic':
+            basic_sel_bin = basic_sel_bin & (np.abs(dfr.Jpsict / dfr.JpsictErr) < 2.5)
+
         costh_bins = get_costh_binning(dfr, args.nbins, selection=basic_sel_bin)
         costh_means = get_bin_means(dfr, lambda d: np.abs(d.costh_HX),
                                     costh_bins, basic_sel_bin)
@@ -181,14 +193,21 @@ def main(args):
     costh_bins, basic_sel = rw_bin_sel_pklfile(args)
 
     dataf = r.TFile.Open(args.datafile)
-    treename = 'chic_tuple' if args.state == 'chic' else 'jpsi_tuple'
-    datat = dataf.Get(treename)
+    treename = {
+        'chic' : 'chic_tuple',
+        'chib' : 'data',
+        'jpsi' : 'jpsi_tuple'
+        }
+
+    datat = dataf.Get(treename[args.state])
 
     # create the workspace
     ws = r.RooWorkspace('ws_mass_fit')
     import_data(ws, datat, args.state)
     if args.state == 'chic':
         mass_model = ChicMassModel('chicMass')
+    elif args.state == 'chib':
+        mass_model = ChibMassModel(args.configfile)
     else:
         mass_model = JpsiMassModel('JpsiMass')
     mass_model.define_model(ws)
@@ -213,13 +232,18 @@ if __name__ == '__main__':
     parser.add_argument('-pf', '--pklfile', help='Pickle file containing the '
                         'costh binning. Required  as input for J/psi. Overrides'
                         ' default name for chic.', type=str, default='')
+    parser.add_argument('--configfile', help='Config file in json format for chib model.',
+                        type=str, default='config.json')
 
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--chic', action='store_const', dest='state',
                            const='chic', help='Do mass fits for chic data')
     state_sel.add_argument('--jpsi', action='store_const', dest='state',
                            const='jpsi', help='Do mass fits for jpsi data')
+    state_sel.add_argument('--chib', action='store_const', dest='state',
+                           const='chib', help='Do mass fits for chib data')
     parser.set_defaults(state='chic')
+
 
     clargs = parser.parse_args()
 

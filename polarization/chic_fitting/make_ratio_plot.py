@@ -5,6 +5,7 @@ Make the ratio plots combining the fit results from different costh bins
 
 import numpy as np
 import re
+import json
 
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
@@ -129,10 +130,11 @@ def get_pt_range(sel_string):
     """
     # print sel_string
     # NOTE: currently only handles integer bin boundaries
-    pt_rgx = r'JpsiPt\s?>\s?((\d*\.?)\d*)\s?\&{2}\s?JpsiPt\s?<\s?((\d*\.?)\d*)'
+    pt_rgx = r'(JpsiPt|dimuon_pt)\s?>\s?((\d*\.?)\d*)\s?\&{2}\s?'\
+              '(JpsiPt|dimuon_pt)\s?<\s?((\d*\.?)\d*)'
     match = re.search(pt_rgx, sel_string)
     if match:
-        return float(match.group(1)), float(match.group(3))
+        return float(match.group(2)), float(match.group(5))
 
     logging.error('Could not get pt bins from {}'.format(sel_string))
     return -1, -1
@@ -253,6 +255,41 @@ def make_plot(data_graph, mc_graphs, pdfname, canvas_sett):
     can.SaveAs(pdfname)
 
 
+def do_chib_ratio(args):
+    """
+    Make the chic ratio plot
+    """
+    ffile = r.TFile.Open(args.fitfile)
+    ws = ffile.Get('ws_mass_fit')
+    outdir = get_outdir(args.outdir, args.fitfile)
+
+    bin_sel_info = get_bin_sel_info(args.pklfile, args.fitfile)
+    costh_bins = bin_sel_info['costh_bins']
+    costh_means = bin_sel_info['costh_means']
+
+    yields = None
+    with open(args.configfile, 'r') as f:
+        data = json.load(f)
+        yields = data["sweight_yields"]
+
+    chib1_yield = yields[0]
+    chib2_yield = yields[1]
+
+    graph = get_ratio_graph(ws, chib2_yield, ws, chib1_yield, costh_bins, costh_means)
+    if args.graphoutfile :
+        graph.SetName('ratio_chib2_chib1')
+        f = TFile.Open(args.graphoutfile,"recreate")
+        graph.Write(0, r.Tobject.kWriteDelete)
+        f.Close()
+
+    plot_sett = {
+        'range': [0, 0, 1, 0.75],
+        'xtitle': '|cos#theta^{HX}|', 'ytitle': '#chi_{b2} / #chi_{b1}'
+    }
+    ptmin, ptmax = get_pt_range(bin_sel_info['basic_sel'])
+
+    plot_name = '{}/chib2_chib1_pt{}_{}_nbins{}_costh_HX.pdf'.format(outdir, ptmin, ptmax, len(costh_bins))
+    make_plot(graph, {}, plot_name, plot_sett)
 
 def do_chic_ratio(args):
     """
@@ -372,7 +409,7 @@ def do_jpsi_ratios(args):
     plot_name = plot_name.replace('chic1', 'chic2')
     make_plot(chic2_graph, mc_graphs, plot_name, plot_sett)
 
-
+    
 def add_chic_parser(parsers, baseparser):
     """
     Add the chic ratio mode subparser to the subparsers
@@ -386,6 +423,24 @@ def add_chic_parser(parsers, baseparser):
                                'and all weights for the desired polarization '
                                'scenarios')
     chic_r_parser.set_defaults(func=do_chic_ratio)
+    
+def add_chib_parser(parsers, baseparser):
+    """
+    Add the chib ratio mode subparser to the subparsers
+    """
+    chib_r_parser = parsers.add_parser('chib', description='Produce '
+                                       'chib2 / chib1 ratio plots',
+                                       parents=[baseparser])
+    chib_r_parser.add_argument('fitfile', help='file containing the workspace '
+                               'with the chib fit results')
+    chib_r_parser.add_argument('--configfile', help='json file containing model information',
+                               default='config.json')
+    chib_r_parser.add_argument('--graphoutfile', help='file to store produced TGraph',
+                               default='')
+    #chib_r_parser.add_argument('mcfile', help='mc file containing flat tuple '
+    #                           'and all weights for the desired polarization '
+    #                           'scenarios')
+    chib_r_parser.set_defaults(func=do_chib_ratio)
 
 
 def add_jpsi_parser(parsers, baseparser):
@@ -431,8 +486,9 @@ if __name__ == '__main__':
                                 'information. Use this to override the default '
                                 'which derives the name from the fitfile',
                                 default='', type=str)
-
+    
     add_chic_parser(subparsers, base_subparser)
+    add_chib_parser(subparsers, base_subparser)
     add_jpsi_parser(subparsers, base_subparser)
 
     clargs = main_parser.parse_args()
