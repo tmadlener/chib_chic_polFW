@@ -1,11 +1,12 @@
 #include "chib_preselection.h"
 
+#include "utils.h"
+
 #include "calcAngles.h"
 #include "misc_utils.h"
 #include "ArgParser.h"
 
 #include "TFile.h"
-
 #include "TUUID.h"
 
 #include <string>
@@ -84,7 +85,7 @@ bool ChibPreselection::fill_and_cut_variables()
 
   // Trigger Cut
   bool trig_passed = false;
-  for (const auto &t : trigs) if (t > 1 /*>1: only matched*/) { trig_passed = true;  break; }
+  for (const auto &t : trigs) if (t > 1 /*>1: 2016 this means only matched*/) { trig_passed = true;  break; }
   if (!trig_passed) return false;
 
   // Single Muon Cut
@@ -126,7 +127,7 @@ bool ChibPreselection::fill_and_cut_variables()
     // because it is no longer locked at that point.
     local_entry_idx = ++entry_idx;
   }
-  // RooDataset cannot store a Long_64t:
+  // RooDataset cannot store a Long_64t, so split it up in two Int_t:
   entry_idx_high = (local_entry_idx >> 32);
   entry_idx_low = local_entry_idx;
   //-----------------------------------------------------
@@ -275,9 +276,14 @@ int main(int argc, char **argv) {
   auto outtree = parser.getOptionVal<std::string>("--outtree", "data");
   auto nEvents = parser.getOptionVal<Long64_t>("--events", -1);
   auto nThreads = parser.getOptionVal<Long64_t>("--threads", 8);
+  auto recreate = parser.getOptionVal<bool>("--recreate", false);
+
+  if (!recreate && file_exists(outfile)) {
+    std::cout << "File '" << outfile << "' exists already, to force recreation use the option '--recreate true'." << std::endl;
+    return -1;
+  }
 
   ChibPreselection preselection(infiles, outfile, intree, outtree);
-  // { "/afs/hephy.at/work/j/jnecker/data/full/chib_2016.root" }, "preselected_data_chib2016.root", "rootuple/chiTree", "data");
   preselection.process(nEvents, nThreads);
 
 }

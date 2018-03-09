@@ -24,6 +24,16 @@ std::string ChiOrganizer::FileName(const std::string & fitvarname, double min, d
   return m_rootdir + filename_base + make_id(fitvarname, min, max, bin_varnames_borders) + extension;
 }
 
+std::string ChiOrganizer::WorkspaceName(const std::map<std::string, std::pair<double, double>> bin_varnames_borders)
+{
+  return workspace_base + make_id(bin_varnames_borders);
+}
+
+std::string ChiOrganizer::FileName(const std::map<std::string, std::pair<double, double>> bin_varnames_borders, const std::string extension)
+{
+  return m_rootdir + filename_base + make_id(bin_varnames_borders) + extension;
+}
+
 std::string ChiOrganizer::make_id(const std::string & fitvarname, double min, double max, const std::map<std::string, std::pair<double, double>> bin_varnames_borders)
 {
   std::stringstream ss;
@@ -34,6 +44,21 @@ std::string ChiOrganizer::make_id(const std::string & fitvarname, double min, do
   std::replace(s.begin(), s.end(), '.', decimal_point_character);
 
   return s;
+}
+
+std::string ChiOrganizer::make_id(const std::map<std::string, std::pair<double, double>> bin_varnames_borders)
+{
+  std::string fitvar;
+  double min=0, max=0;
+  bool ok = false;
+
+  std::cout << "ChiOrganizer: Using default variables for id: dimuon_fitvar{name,min,max}" << std::endl;
+
+  auto fitvar = GetConfigParam<std::string>(std::vector < std::string> { "dimuon_fitrange", "name" }, "NODIMUONFITVARNAME");
+  double min = GetConfigParam<double>(std::vector < std::string> { "dimuon_fitrange", "min" }, 0);
+  double max = GetConfigParam<double>(std::vector < std::string>{ "dimuon_fitrange", "max" }, 0);
+
+  return make_id(fitvar, min, max, bin_varnames_borders);
 }
 
 std::string ChiOrganizer::prepare_directory(std::string dir)

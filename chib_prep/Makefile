@@ -31,12 +31,12 @@ clean: _dir_cleanup
 #####################
 # CHIB PRESELECTION
 
-preselection : $(BUILDDIR)/preselection.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/treeproc.o
+preselection : $(BUILDDIR)/preselection.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/treeproc.o $(BUILDDIR)/utils.o
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)
 $(BUILDDIR)/preselection.o: $(SRCDIR)/chib_preselection.cc $(INCDIR)/chib_preselection.h  $(GENINCDIR)/calcAngles.h  $(GENINCDIR)/misc_utils.h $(looper_header)
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
 cleanpreselection:
-	rm -f $(BUILDDIR)/preselection.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/treeproc.o $(TARGET)/preselection
+	rm -f $(BUILDDIR)/preselection.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/treeproc.o $(TARGET)/preselection (BUILDDIR)/utils.o
 #
 #####################
 

@@ -28,6 +28,9 @@ public:
   std::string WorkspaceName(const std::string &fitvarname, double min, double max, const std::map<std::string, std::pair<double, double> > bin_varnames_borders);
   std::string FileName(const std::string &fitvarname, double min, double max, const std::map<std::string, std::pair<double, double> > bin_varnames_borders, const std::string extension = ".root");
 
+  std::string WorkspaceName(const std::map<std::string, std::pair<double, double> > bin_varnames_borders);
+  std::string FileName(const std::map<std::string, std::pair<double, double> > bin_varnames_borders, const std::string extension = ".root");
+
   template<class T>
   T GetConfigParam(const std::string & valuename, bool &ok);
   template<class T>
@@ -40,6 +43,7 @@ public:
 
 private:
   std::string make_id(const std::string &fitvarname, double min, double max, const std::map<std::string, std::pair<double, double> > bin_varnames_borders);
+  std::string make_id(const std::map<std::string, std::pair<double, double> > bin_varnames_borders);
   const std::string var_separator = "-";
   const std::string range_separator = "_";
   const char decimal_point_character = 'p';

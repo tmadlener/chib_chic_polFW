@@ -1,4 +1,5 @@
 #include "TreeMerger.h"
+#include "ChiOrganizer.h"
 
 #include "ArgParser.h"
 
@@ -73,18 +74,29 @@ private:
   std::vector<Double_t> double_vars;
 };
 
-int main (int argc, char **argv) {
+int main(int argc, char **argv) {
 
   ArgParser parser(argc, argv);
-  auto fitresult_filename = parser.getOptionVal<std::string> ("--infile");
-  auto outfile = parser.getOptionVal<std::string>("--outfile");
+
+  auto binvarname = parser.getOptionVal < std::string>("--binvar");
+  auto bin_min = parser.getOptionVal < double>("--binmin");
+  auto bin_max = parser.getOptionVal < double>("--binmax");
+  auto model_folder = parser.getOptionVal < std::string>("--folder", "");
+  auto configfile = parser.getOptionVal < std::string>("--config", "");
+
+  auto fitresult_filename = parser.getOptionVal<std::string>("--infile", "");
+  auto outfile = parser.getOptionVal<std::string>("--outfile", "");
   auto intree = parser.getOptionVal < std::string>("--intree", "data");
   auto outtree = parser.getOptionVal<std::string>("--outtree", "data");
   auto nEvents = parser.getOptionVal<Long64_t>("--events", -1);
   auto nThreads = parser.getOptionVal<Long64_t>("--threads", 8);
+  
+  ChiOrganizer org(model_folder, configfile);
 
-  //std::string fitresult_filename = "fitresults-dimuon_mass_8p7_11p1-dimuon_pt_20_50.root";
-  //std::string outfile = "fitresults-dimuon_mass_8p7_11p1-dimuon_pt_20_50_data_with_sWeights.root";
+  std::map<std::string,std::pair<double,double> > binvars;
+  binvars[binvarname] = { bin_min,bin_max };
+  if (fitresult_filename.empty()) fitresult_filename = org.FileName(binvars);
+  if (outfile.empty()) outfile = org.FileName(binvars, "_sWeightsData.root");
 
   std::string inputfile, sweightfile, inputtree, sweighttree; // To be read from workspace file
   std::vector<std::string> yield_names;

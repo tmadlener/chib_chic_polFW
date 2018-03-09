@@ -61,43 +61,36 @@ int main(int argc, char **argv) {
   bool ok = false;
 
   // Input data file and workspace
-  std::string c_inputdata = corg.GetConfigParam<std::string>("input_data_file", ok);
+  auto c_inputdata = corg.GetConfigParam<std::string>("input_data_file", ok);
   if (!ok) return 1;
-  std::string c_inputtree = corg.GetConfigParam<std::string>("input_data_tree", ok);
-  if (!ok) return 1;
-
-  // Ids for matching the sWeights to the input events
-  const std::string c_major_id_branch = corg.GetConfigParam<std::string>("input_data_major_id", ok);
-  if (!ok) return 1;
-  const std::string c_minor_id_branch = corg.GetConfigParam<std::string>("input_data_minor_id", ok);
-  if (!ok) return 1;
-
+  auto c_inputtree = corg.GetConfigParam<std::string>("input_data_tree", "data");
+  
   // Dimuon model specifications
   auto c_dimuon_modelname = corg.GetConfigParam<std::string>("dimuon_modelname", ok);
   if (!ok) return 1;
-  auto c_dimuon_fitvar = corg.GetConfigParam<std::string>("dimuon_fitvar", ok);
+  auto c_dimuon_fitvar = corg.GetConfigParam<std::string>(strvec{ "dimuon_fitvar","name" }, ok);
   if (!ok) return 1;
-  double c_dimuon_fitrange_min = corg.GetConfigParam<double>(strvec{ "dimuon_fitrange", "min" }, ok);
+  double c_dimuon_fitrange_min = corg.GetConfigParam<double>(strvec{ "dimuon_fitvar", "min" }, ok);
   if (!ok) return 1;
-  double c_dimuon_fitrange_max = corg.GetConfigParam<double>(strvec{ "dimuon_fitrange", "max" }, ok);
+  double c_dimuon_fitrange_max = corg.GetConfigParam<double>(strvec{ "dimuon_fitvar", "max" }, ok);
   if (!ok) return 1;
   auto c_dimuon_model = corg.GetConfigParam<strvec>("dimuon_model", ok);
   if (!ok) return 1;
 
   // Dimuon cuts before chi fit
-  std::string c_dimuon_cut_formula_min = corg.GetConfigParam<std::string>(strvec{ "dimuon_cut_formula", "min" }, ok);
+  auto c_dimuon_cut_formula_min = corg.GetConfigParam<std::string>(strvec{ "dimuon_cut_formula", "min" }, ok);
   if (!ok) return 1;
-  std::string c_dimuon_cut_formula_max = corg.GetConfigParam<std::string>(strvec{ "dimuon_cut_formula", "max" }, ok);
+  auto c_dimuon_cut_formula_max = corg.GetConfigParam<std::string>(strvec{ "dimuon_cut_formula", "max" }, ok);
   if (!ok) return 1;
 
   // Chi model specifications
   auto c_chi_modelname = corg.GetConfigParam<std::string>("chi_modelname", ok);
   if (!ok) return 1;
-  std::string c_chi_fitvar = corg.GetConfigParam<std::string>("chi_fitvar", ok);
+  auto c_chi_fitvar = corg.GetConfigParam<std::string>(strvec{ "chi_fitvar","name" }, ok);
   if (!ok) return 1;
-  double c_chi_fitrange_min = corg.GetConfigParam<double>(strvec{ "chi_fitrange", "min" }, ok);
+  double c_chi_fitrange_min = corg.GetConfigParam<double>(strvec{ "chi_fitvar", "min" }, ok);
   if (!ok) return 1;
-  double c_chi_fitrange_max = corg.GetConfigParam<double>(strvec{ "chi_fitrange", "max" }, ok);
+  double c_chi_fitrange_max = corg.GetConfigParam<double>(strvec{ "chi_fitvar", "max" }, ok);
   if (!ok) return 1;
   auto c_chi_model = corg.GetConfigParam<strvec>("chi_model", ok);
   if (!ok) return 1;
