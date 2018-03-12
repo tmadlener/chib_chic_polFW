@@ -179,7 +179,7 @@ def save_hists_to_file(hists, filen, subdir):
     outfile.Close()
 
 
-def get_unique_subdir(year, trigger, mc=False, pt=''):
+def get_unique_subdir(year, trigger, mc=False, pt=0):
     """
     Create a subdir that uniquely identifies the conditions that were used to
     get the histograms
@@ -187,7 +187,7 @@ def get_unique_subdir(year, trigger, mc=False, pt=''):
     TODO: doc
     """
     data_mc = 'mc' if mc else 'data'
-    subdirs = [p for p in [data_mc, year, trigger, pt] if p]
+    subdirs = [p for p in [data_mc, year, trigger, str(pt)]]
     return '/'.join(subdirs)
 
 
