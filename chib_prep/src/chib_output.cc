@@ -90,20 +90,20 @@ int main(int argc, char **argv) {
   auto outtree = parser.getOptionVal<std::string>("--outtree", "data");
   auto nEvents = parser.getOptionVal<Long64_t>("--events", -1);
   auto nThreads = parser.getOptionVal<Long64_t>("--threads", 8);
-  
+
   ChiOrganizer org(model_folder, configfile);
 
-  std::map<std::string,std::pair<double,double> > binvars;
+  std::map<std::string, std::pair<double, double> > binvars;
   binvars[binvarname] = { bin_min,bin_max };
-  if (fitresult_filename.empty()) fitresult_filename = org.FileName(binvars);
   if (outfile.empty()) outfile = org.FileName(binvars, "_sWeightsData.root");
 
   std::string inputfile, sweightfile, inputtree, sweighttree; // To be read from workspace file
   std::vector<std::string> yield_names;
+  auto workspace_filename = org.FileName(binvars);
 
   // Read file and yield names from workspace file
   {
-    TFile file(fitresult_filename.c_str(), "read");
+    TFile file(workspace_filename.c_str(), "read");
     if (file.IsZombie()) return -1;
     TNamed *tmp = nullptr;
     std::vector<std::pair<std::string, std::string *> > to_read{
@@ -128,9 +128,8 @@ int main(int argc, char **argv) {
     for (auto y : *list) {
       yield_names.push_back(((TObjString*)y)->String().Data());
     }
-
   }
-
+  if (fitresult_filename.empty()) fitresult_filename = inputfile;
 
   // Check DataID to be sure that EntryIDs correspond
   {

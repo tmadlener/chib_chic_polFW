@@ -3,8 +3,17 @@
   "input_data_tree": "data",
 
   "cut_variables": [
-    []
-  ]
+    {
+      "name": "dz",
+      "min": 0,
+      "max": 1
+    },
+    {
+      "name": "testVar",
+      "min": -3,
+      "max": 9.4
+    }
+  ],
 
   "dimuon_model": [
     "CBShape::ups1s_1(dimuon_mass, mu1s[9.5,9.3,9.7],sigma1s[0.075,0.01,0.25],a_l[0.5,5],5)",
@@ -17,10 +26,11 @@
   ],
 
   "dimuon_fitvar": {
-    "name":  "dimuon_mass",
+    "name": "dimuon_mass",
     "min": 8.7,
     "max": 11.1
-  }
+  },
+
   "dimuon_modelname": "model",
 
   "dimuon_cut_formula": {

@@ -31,7 +31,7 @@ int main(int argc, char **argv) {
   //
 
   ArgParser parser(argc, argv);
-  
+
   // TODO: eventually out file argument for testing purposes
 
   // Mandatory
@@ -47,7 +47,7 @@ int main(int argc, char **argv) {
   auto p_configfile = parser.getOptionVal < std::string>("--config", "");// if empty it is looked for config.json in the model folder
   auto p_outfile = parser.getOptionVal < std::string>("--outfile", "");// mainly for testing purposes
 
-  auto c_force_file_recreation = parser.getOptionVal <bool> ("--forceFileRecreation", false);
+  auto c_force_file_recreation = parser.getOptionVal <bool>("--forceFileRecreation", false);
   auto c_force_refit_dimuon = parser.getOptionVal <bool>("--forceDimuonRefit", false);
   auto c_force_refit_chi = parser.getOptionVal <bool>("--forceChiRefit", false);
 
@@ -64,7 +64,11 @@ int main(int argc, char **argv) {
   auto c_inputdata = corg.GetConfigParam<std::string>("input_data_file", ok);
   if (!ok) return 1;
   auto c_inputtree = corg.GetConfigParam<std::string>("input_data_tree", "data");
-  
+
+  // Additional cuts
+  auto c_additional_cutvars = corg.GetVariableList("cut_variables");
+  for (auto &c : c_additional_cutvars) std::cout << c.first << ": " << c.second.first << ", " << c.second.second << std::endl;
+
   // Dimuon model specifications
   auto c_dimuon_modelname = corg.GetConfigParam<std::string>("dimuon_modelname", ok);
   if (!ok) return 1;
@@ -104,14 +108,14 @@ int main(int argc, char **argv) {
   // TODO: parameter for 1P->1S, or mu+/-3sigma
 
   // Get workspace and output file names
-  std::string out_file_base = corg.FileName(c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max, p_binvars_min_max,"");
+  std::string out_file_base = corg.FileName(c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max, p_binvars_min_max, "");
   if (!p_outfile.empty()) {
     std::regex e(R"(\.root\b)");
     out_file_base = std::regex_replace(p_outfile, e, "");
   }
 
   std::string h_outputfile = out_file_base + ".root";
-  std::string h_dimuonwsname = corg.WorkspaceName(c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max, p_binvars_min_max); 
+  std::string h_dimuonwsname = corg.WorkspaceName(c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max, p_binvars_min_max);
   // TODO: dimuonwsname 1P->1S or mass regions, chib or chic
   std::string h_chiwsname = h_dimuonwsname + "_chib1P1S";
   std::string h_dimuonplotname = out_file_base + "_dimuonfit.pdf";
@@ -156,6 +160,10 @@ int main(int argc, char **argv) {
   dimuon_fitter.SetOutfile(h_outputfile, c_force_file_recreation || data_FileID_changed);
   dimuon_fitter.SetWorkspaceName(h_dimuonwsname, c_force_refit_dimuon);
   dimuon_fitter.AddVariable(c_chi_fitvar);
+
+  // Additional cuts
+  for (auto &cut : c_additional_cutvars) dimuon_fitter.AddBinVariable(cut.first, cut.second.first, cut.second.second);
+
   // Needed for later matching of weights to events:
   dimuon_fitter.AddVariable("EntryID_low");
   dimuon_fitter.AddVariable("EntryID_high");

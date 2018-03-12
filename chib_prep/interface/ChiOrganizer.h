@@ -30,6 +30,7 @@ public:
 
   std::string WorkspaceName(const std::map<std::string, std::pair<double, double> > bin_varnames_borders);
   std::string FileName(const std::map<std::string, std::pair<double, double> > bin_varnames_borders, const std::string extension = ".root");
+  std::map < std::string, std::pair<double, double> > GetVariableList(const std::string & listname);
 
   template<class T>
   T GetConfigParam(const std::string & valuename, bool &ok);

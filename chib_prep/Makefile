@@ -56,12 +56,12 @@ cleanfitting:
 #####################
 # CHIB OUTPUT
 
-output : $(BUILDDIR)/output.o $(BUILDDIR)/treemerger.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/utils.o
+output : $(BUILDDIR)/output.o $(BUILDDIR)/treemerger.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/utils.o $(BUILDDIR)/chiorganizer.o
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)
 $(BUILDDIR)/output.o: $(SRCDIR)/chib_output.cc $(output_header)
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
 cleanoutput:
-	rm -f $(BUILDDIR)/output.o $(BUILDDIR)/treemerger.o $(BUILDDIR)/utils.o $(BUILDDIR)/paralooper.o $(TARGET)/output
+	rm -f $(BUILDDIR)/output.o $(BUILDDIR)/treemerger.o $(BUILDDIR)/utils.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/chiorganizer.o $(TARGET)/output
 #
 #####################
 

@@ -89,7 +89,8 @@ if __name__ == '__main__':
                            const='chib', help='Do mass fits for chib data')
     parser.set_defaults(state='chic')
 
-    parser.add_argument('--configfile', help='Config file in json format for chib model.', type=str)
+    parser.add_argument('--configfile', help='Config file in json format for chib model.',
+                        default="config.json", type=str)
 
 
     clargs = parser.parse_args()
