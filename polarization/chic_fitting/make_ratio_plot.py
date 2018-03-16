@@ -278,8 +278,8 @@ def do_chib_ratio(args):
     graph = get_ratio_graph(ws, chib2_yield, ws, chib1_yield, costh_bins, costh_means)
     if args.graphoutfile :
         graph.SetName('ratio_chib2_chib1')
-        f = TFile.Open(args.graphoutfile,"recreate")
-        graph.Write(0, r.Tobject.kWriteDelete)
+        f = r.TFile.Open(args.graphoutfile,"recreate")
+        graph.Write('', r.TObject.kWriteDelete)
         f.Close()
 
     plot_sett = {

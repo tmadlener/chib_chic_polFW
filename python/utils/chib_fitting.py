@@ -21,7 +21,7 @@ class ChibMassModel(FitModel):
 
         with open(config_file, 'r') as f:
             data = json.load(f)
-            self.mname = data["chi_fitvar"]
+            self.mname = data["chi_fitvar"]["name"]
             self.full_model = data["chi_modelname"]
             self.model_strings = data["chi_model"]
 

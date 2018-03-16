@@ -56,7 +56,7 @@ def get_key_from_var(var):
     return ''
 
 
-def get_proto_hist(var, name):
+def get_proto_hist(var, name, nbins=None):
     """
     Get prototype histogram for a given variable
 
@@ -73,6 +73,7 @@ def get_proto_hist(var, name):
     hist_var = get_key_from_var(var)
     if hist_var:
         histset = default_hist_set[hist_var]
+        if nbins: histset['n_bins'] = nbins
         logging.debug('Using histogram settings {}'.format(histset))
         hist =  r.TH1D(name, '',
                        histset['n_bins'], histset['min'], histset['max'])
@@ -119,7 +120,7 @@ def divide_hists(hnum, hdenom, cutsigma=None):
 
 
 def get_hists_for_frame(tree, frame, pvars, cutsigma=None, 
-                        states=['chic1', 'chic2']):
+                        states=['chic1', 'chic2'], nbins=None):
     """
     Get all histograms for a frame
 
@@ -132,7 +133,7 @@ def get_hists_for_frame(tree, frame, pvars, cutsigma=None,
             continue
         hists[var] = {}
         for state in states:
-            hists[var][state] = get_proto_hist(pvar, '_'.join([state, pvar]))
+            hists[var][state] = get_proto_hist(pvar, '_'.join([state, pvar]), nbins)
             draw_expr = get_draw_expr(var, frame)
             weight = weight_branches[state]
             draw_var_to_hist(tree, hists[var][state], draw_expr, '', weight)
@@ -145,7 +146,7 @@ def get_hists_for_frame(tree, frame, pvars, cutsigma=None,
 
 
 def get_hists_from_file(rfile, treename, frames, cutsigma=None,
-                        states=['chic1', 'chic2']):
+                        states=['chic1', 'chic2'], nbins=None):
     """
     Get all histograms from file
 
@@ -156,7 +157,7 @@ def get_hists_from_file(rfile, treename, frames, cutsigma=None,
     for frame in frames:
         hists[frame] = get_hists_for_frame(tree, frame,
                                            ['phi', 'costh', 'cosalpha'],
-                                           cutsigma, states)
+                                           cutsigma, states, nbins)
 
     return hists
 
@@ -202,7 +203,7 @@ def main(args):
         states = ['chib1', 'chib2']
 
     file_hists = get_hists_from_file(infile, args.treename, frames,
-                                     args.cutsigma, states)
+                                     args.cutsigma, states, args.nbins)
 
     trigger = get_full_trigger(args.triggerpath)
     subdir = get_unique_subdir(args.year, trigger, args.mc, args.ptbin)
@@ -236,6 +237,8 @@ if __name__ == '__main__':
                         help='Apply the passed cut on the distribution hists '
                         'to get rid of bins that are compatible to zero within '
                         'n sigmas. This is done before doing the ratio')
+    parser.add_argument('-n','--nbins', default=None, type=int,
+                        help='Set number of bins.')
 
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--chic', action='store_const', dest='state',
