@@ -244,7 +244,7 @@ int main(int argc, char **argv) {
 
 
   chi_fitter.SetModel(c_chi_model, c_chi_modelname, c_chi_fitvar, c_chi_fitrange_min, c_chi_fitrange_max);
-  chi_fitter.Fit(8, false, c_extended_chi_fit);
+  chi_fitter.Fit(8, true, c_extended_chi_fit);
 
   // Create output file with tree containing sWeights
 

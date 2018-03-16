@@ -41,6 +41,8 @@ public:
   template<class T>
   T GetConfigParam(const std::vector<std::string> &nested_names, const T & defaultvalue);
 
+  static const std::string sweight_extension;
+
 
 private:
   std::string make_id(const std::string &fitvarname, double min, double max, const std::map<std::string, std::pair<double, double> > bin_varnames_borders);

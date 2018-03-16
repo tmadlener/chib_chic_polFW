@@ -35,8 +35,8 @@ preselection : $(BUILDDIR)/preselection.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/t
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)
 $(BUILDDIR)/preselection.o: $(SRCDIR)/chib_preselection.cc $(INCDIR)/chib_preselection.h  $(GENINCDIR)/calcAngles.h  $(GENINCDIR)/misc_utils.h $(looper_header)
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
-cleanpreselection:
-	rm -f $(BUILDDIR)/preselection.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/treeproc.o $(TARGET)/preselection (BUILDDIR)/utils.o
+cleanpreselection: cleanutils  cleantreeproc cleanparalooper
+	rm -f $(BUILDDIR)/preselection.o $(TARGET)/preselection
 #
 #####################
 
@@ -48,8 +48,8 @@ fitting : $(BUILDDIR)/fitting.o $(BUILDDIR)/fitter.o $(BUILDDIR)/fitanalyser.o $
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB) $(ROOFITLIBS)
 $(BUILDDIR)/fitting.o: $(SRCDIR)/chib_fitting.cc $(fit_header)
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
-cleanfitting:
-	rm -f $(BUILDDIR)/fitting.o $(BUILDDIR)/fitter.o $(BUILDDIR)/fitanalyser.o $(TARGET)/fitting
+cleanfitting: cleanchiorganizer cleanutils cleanfitanalyser cleanfitter
+	rm -f $(BUILDDIR)/fitting.o $(TARGET)/fitting
 #
 #####################
 
@@ -60,11 +60,26 @@ output : $(BUILDDIR)/output.o $(BUILDDIR)/treemerger.o $(BUILDDIR)/paralooper.o 
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)
 $(BUILDDIR)/output.o: $(SRCDIR)/chib_output.cc $(output_header)
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
-cleanoutput:
-	rm -f $(BUILDDIR)/output.o $(BUILDDIR)/treemerger.o $(BUILDDIR)/utils.o $(BUILDDIR)/paralooper.o $(BUILDDIR)/chiorganizer.o $(TARGET)/output
+cleanoutput: cleanchiorganizer cleanutils cleantreemerger  cleanparalooper
+	rm -f $(BUILDDIR)/output.o $(TARGET)/output
 #
 #####################
 
+
+#####################
+# HELPER TOOLS
+
+helper : getworkspacefile
+
+getworkspacefile: $(BUILDDIR)/getworkspacefile.o  $(BUILDDIR)/chiorganizer.o $(BUILDDIR)/utils.o
+	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)
+$(BUILDDIR)/getworkspacefile.o: $(SRCDIR)/getworkspacefile.cc $(INCDIR)/ChiOrganizer.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+
+cleanhelper: cleanchiorganizer cleanutils
+	rm -f $(BUILDDIR)/getworkspacefile.o $(TARGET)/getworkspacefile
+#
+#####################
 
 
 
@@ -84,24 +99,32 @@ all_header := $(fit_header) $(looper_header) $(output_header)
 #
 $(BUILDDIR)/paralooper.o: $(GENSRCDIR)/ParallelTreeLooper.cc $(GENINCDIR)/ParallelTreeLooper.h $(GENINCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+cleanparalooper:
+	rm -f $(BUILDDIR)/paralooper.o
 
 #
 # TREE PROCESSOR
 #
 $(BUILDDIR)/treeproc.o: $(GENSRCDIR)/TreeProcessor.cc $(GENINCDIR)/TreeProcessor.h $(GENINCDIR)/ParallelTreeLooper.h $(GENINCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+cleantreeproc:
+	rm -f $(BUILDDIR)/treeproc.o
 
 #
 # TREE Merger
 #
 $(BUILDDIR)/treemerger.o: $(GENSRCDIR)/TreeMerger.cc $(GENINCDIR)/TreeMerger.h $(GENINCDIR)/ParallelTreeLooper.h $(GENINCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+cleantreemerger:
+	rm -f $(BUILDDIR)/treemerger.o
 
 #
 # FITTER
 #
 $(BUILDDIR)/fitter.o: $(GENSRCDIR)/Fitter.cc $(GENINCDIR)/Fitter.h $(GENINCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+cleanfitter:
+	rm -f $(BUILDDIR)/fitter.o
 
 
 #
@@ -109,18 +132,24 @@ $(BUILDDIR)/fitter.o: $(GENSRCDIR)/Fitter.cc $(GENINCDIR)/Fitter.h $(GENINCDIR)/
 #
 $(BUILDDIR)/fitanalyser.o: $(GENSRCDIR)/FitAnalyser.cc $(GENINCDIR)/FitAnalyser.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+cleanfitanalyser:
+	rm -f $(BUILDDIR)/fitanalyser.o
 
 #
 # UTILS
 #
 $(BUILDDIR)/utils.o: $(GENSRCDIR)/utils.cc $(GENINCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+cleanutils:
+	rm -f $(BUILDDIR)/utils.o
 
 #
 # CHIORGANIZER
 #
 $(BUILDDIR)/chiorganizer.o: $(SRCDIR)/ChiOrganizer.cc $(INCDIR)/ChiOrganizer.h $(GENINCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+cleanchiorganizer:
+	rm -f $(BUILDDIR)/chiorganizer.o
 
 #
 # DIRECTORY SETUP AND CLEANUP
@@ -129,3 +158,7 @@ _dir_setup:
 	mkdir -p $(TARGET) $(BUILDDIR)
 _dir_cleanup:
 	rm -rf $(TARGET) $(BUILDDIR)
+
+
+
+cleanall: cleanchiorganizer cleanutils cleanfitanalyser cleanfitter cleantreemerger cleantreeproc cleanparalooper

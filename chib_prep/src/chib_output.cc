@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
 
   std::map<std::string, std::pair<double, double> > binvars;
   binvars[binvarname] = { bin_min,bin_max };
-  if (outfile.empty()) outfile = org.FileName(binvars, "_sWeightsData.root");
+  if (outfile.empty()) outfile = org.FileName(binvars, ChiOrganizer::sweight_extension);
 
   std::string inputfile, sweightfile, inputtree, sweighttree; // To be read from workspace file
   std::vector<std::string> yield_names;

@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <map>
 
+const std::string ChiOrganizer::sweight_extension = "_sWeightsData.root";
+
 ChiOrganizer::ChiOrganizer(const std::string & rd) :
   m_rootdir(prepare_directory(rd)),
   config_file(check_file(m_rootdir + default_configfile))
