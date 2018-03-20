@@ -76,7 +76,7 @@ def get_ws_vars(state, massmodel=None):
             'chicPt[0, 990]', 'JpsictErr[0, 1]'
         ],
         'jpsi': [
-            'JpsiMass[2.8, 3.3]', 'costh_HX[-1, 1]', 'Jpsict[-0.1, 1]',
+            'JpsiMass[2.9, 3.25]', 'costh_HX[-1, 1]', 'Jpsict[-0.1, 1]',
             'JpsictErr[0, 1]', 'JpsiRap[-1.2, 1.2]', 'vtxProb[0.01, 1]',
             'JpsiPt[0, 100]'
         ],

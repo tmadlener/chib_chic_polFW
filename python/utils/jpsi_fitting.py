@@ -75,8 +75,11 @@ class JpsiMassModel(FitModel):
 
         wsp.factory('RooCBShape::{}({}, CBmass_jpsi, CBsigma_jpsi, CBalpha_jpsi,'
                     'CBn_jpsi[2.5, 1.8, 6])'.format('CB_shape1_jpsi', self.mname))
-        wsp.factory('RooCBShape::{}({}, CBmass_jpsi, CBsigma2_jpsi, CBalpha_jpsi,'
-                    ' CBn_jpsi)'.format('CB_shape2_jpsi', self.mname))
+        # wsp.factory('RooCBShape::{}({}, CBmass_jpsi, CBsigma2_jpsi, CBalpha_jpsi,'
+        #             ' CBn_jpsi)'.format('CB_shape2_jpsi', self.mname))
+        wsp.factory('RooGaussian::{}({}, CBmass_jpsi, CBsigma2_g_jpsi[0.01, 0.0, 0.025])'
+                    .format('CB_shape2_jpsi', self.mname))
+
 
         wsp.factory('SUM::{}(frac_CB1[0.5, 0, 1] * CB_shape1_jpsi, CB_shape2_jpsi)'
                     .format(self.signal))
@@ -86,11 +89,11 @@ class JpsiMassModel(FitModel):
 
         # fix some parameters (as was done previously, values also from there)
         par_fix_vals = [
-            ('CBsigma_p1_jpsi', 0),
+            # ('CBsigma_p1_jpsi', 0),
             ('CBmass_p1_jpsi', 0),
             ('CBmass_p2_jpsi', 0),
-            ('CBalpha_p1_jpsi', 0),
-            ('CBsigma_p2_jpsi', 0.0125),
+            # ('CBalpha_p1_jpsi', 0),
+            # ('CBsigma_p2_jpsi', 0.0125),
             ('CBn_jpsi', 2.5)
         ]
 
