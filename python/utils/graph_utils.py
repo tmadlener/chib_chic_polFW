@@ -138,3 +138,58 @@ def get_y(graph, point_idx):
     x, y = r.Double(0), r.Double(0)
     graph.GetPoint(point_idx, x, y)
     return y
+
+
+def divide_graphs(ngraph, dgraph):
+    """
+    Divide the two graphs and return the ratio graph (only in y-direction)
+
+    The x-values are taken from the numerator graph, the ones from the
+    denominator graph is ignored.
+    The graphs have to be of the same type
+
+    Args:
+        ngraph (ROOT.TGraph or inheriting): numerator graph
+        dgraph (ROOT.TGraph or inheriting): denominator graph
+
+    Returns:
+        ROOT.TGraph: ratio of the numerator to denominator graph (in
+            y-direction). If an error occurs, None is returned
+    """
+    n_points = ngraph.GetN()
+    if n_points != dgraph.GetN():
+        logging.error('Cannot divide graphs with different numbers of points! '
+                      'Number of points: {} / {}'
+                      .format(n_points, dgraph.GetN()))
+        return None
+    if ngraph.ClassName() != dgraph.ClassName():
+        logging.error('Cannot divide graphs of different types! '
+                      'Types: {} / {}'.format(ngraph.ClassName(),
+                                              dgraph.ClassName()))
+        return None
+
+    nx_vals = np.array(ngraph.GetX())
+    ny_vals = np.array(ngraph.GetY())
+    dy_vals = np.array(dgraph.GetY())
+
+    ry_vals = ny_vals / dy_vals
+
+    if ngraph.InheritsFrom('TGraphAsymmErrors'):
+        nx_lo_err, nx_hi_err, ny_lo_err, ny_hi_err = get_errors(ngraph)
+        _, _, dy_lo_err, dy_hi_err = get_errors(dgraph)
+
+        r_lo_err = ry_vals * \
+                   np.sqrt((ny_lo_err / ny_vals)**2 + (dy_lo_err / dy_vals)**2)
+        r_hi_err = ry_vals * \
+                   np.sqrt((ny_hi_err / ny_vals)**2 + (dy_hi_err / dy_vals)**2)
+        return r.TGraphAsymmErrors(n_points, nx_vals, ry_vals,
+                                   nx_lo_err, nx_hi_err, r_lo_err, r_hi_err)
+
+    if ngraph.InheritsFrom('TGraphErrors'):
+        nx_errs, ny_errs = get_errors(ngraph)
+        _, dy_errs = get_errors(dgraph)
+
+        r_errs = np.sqrt((ny_errs / ny_vals)**2 + (dy_errs / dy_vals)**2)
+        return r.TGraphErrors(n_points, nx_vals, ry_vals, nx_errs, r_errs)
+
+    return r.TGraph(n_points, nx_vals, ry_vals)
