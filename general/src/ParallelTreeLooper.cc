@@ -172,12 +172,14 @@ long long ParallelTreeLooper::loop_multithreaded(long long nEvents, long long nT
   if (update_every == 0) {
     update_every = events_per_worker - 1;
   }
-
+  
+  TUUID uuid;
   for (long long start = 0, end = events_per_worker, i = 0; i < nThreads; ++i, start = end, end += events_per_worker) {
     if (i == nThreads - 1) end = nEvents;
     counters.emplace_back(0);
     worker_filenames.emplace_back("");
-    threads.emplace_back(&ParallelTreeLooper::worker, this, start, end, (int)i, std::ref(counters.back()), std::ref(worker_filenames.back()), std::ref(cout_lock), std::ref(clone_lock), update_every);
+    threads.emplace_back(&ParallelTreeLooper::worker, this, start, end, (int)i, std::ref(counters.back()),
+      std::ref(worker_filenames.back()), std::ref(cout_lock), std::ref(clone_lock), update_every, uuid.AsString());
   }
 
   //join all threads
@@ -239,7 +241,7 @@ long long ParallelTreeLooper::loop_singlethreaded(long long nEvents)
 }
 
 void ParallelTreeLooper::worker(long long start_event, long long end_event, int worker_id, long long & count_out, std::string & worker_filename_out,
-  std::mutex &cout_lock, std::mutex &clone_lock, long long update_every)
+  std::mutex &cout_lock, std::mutex &clone_lock, long long update_every, const  std::string &uid)
 {
   {
     std::lock_guard<std::mutex> lock(cout_lock);
@@ -248,7 +250,7 @@ void ParallelTreeLooper::worker(long long start_event, long long end_event, int 
   const std::string worker_treename_out = m_out_tree->GetName();
   worker_filename_out = std::string(m_out_tree->GetCurrentFile()->GetName());
   worker_filename_out = worker_filename_out.substr(0, worker_filename_out.size() - 5);
-  worker_filename_out += "_wrk" + std::to_string(worker_id) + "_" + TUUID().AsString() + ".root";
+  worker_filename_out += "_wrk" + std::to_string(worker_id) + "_" + uid + ".root";
 
   // Read input filenames:
   auto in_tree_name = m_in_tree->GetName();

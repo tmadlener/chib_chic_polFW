@@ -58,11 +58,11 @@ cleantreemerger:
 ##################
 # FITTER EXAMPLE #
 ##################
-fitter : $(BUILDDIR)/fitterexample.o $(BUILDDIR)/fitter.o $(BUILDDIR)/utils.o $(BUILDDIR)/fitanalyser.o
+fitter : $(BUILDDIR)/fitterexample.o $(BUILDDIR)/fitter.o $(BUILDDIR)/utils.o $(BUILDDIR)/fitanalyser.o $(BUILDDIR)/ExpGaussExp.o $(BUILDDIR)/dict.o
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)  -lRooFit -lRooFitCore -lRooStats
 $(BUILDDIR)/fitterexample.o: $(TESTDIR)/fitter_example.cc $(INCDIR)/Fitter.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
-cleanfitter:
+cleanfitter: cleanexpgaussexp
 	rm -f $(BUILDDIR)/fitterexample.o $(BUILDDIR)/fitter.o $(TARGET)/fitter
 
 
@@ -103,3 +103,20 @@ $(BUILDDIR)/fitanalyser.o: $(SRCDIR)/FitAnalyser.cc $(INCDIR)/FitAnalyser.h
 #
 $(BUILDDIR)/utils.o: $(SRCDIR)/utils.cc $(INCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+
+#
+# EXPGAUSSEXP ROOFIT FUNCTION
+#
+dictbld=$(BUILDDIR)/dict
+dictpcm=dict_rdict.pcm
+$(BUILDDIR)/ExpGaussExp.o : $(SRCDIR)/ExpGaussExp.cxx $(INCDIR)/ExpGaussExp.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+$(dictbld).o: $(INCDIR)/ExpGaussExp.h  $(INCDIR)/linkdef.h
+	rm -f $(dictbld).cxx
+	rootcling $(dictbld).cxx -c $^
+	$(CC) $(dictbld).cxx -o $@ $(CFLAGSINC) $(LIB) -c -I.
+	cp $(BUILDDIR)/$(dictpcm) $(TARGET)
+cleanexpgaussexp:
+	rm -f $(BUILDDIR)/$(dictpcm) $(TARGET)/$(dictpcm) $(BUILDDIR)/ExpGaussExp.o $(dictbld).o
+
+	

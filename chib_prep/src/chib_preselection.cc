@@ -26,9 +26,9 @@ ChibPreselection::ChibPreselection(const std::vector<std::string>& infilenames, 
 
   var_collections = {
     {"chi_p4","dimuon_p4", "photon_p4", "muonP_p4","muonN_p4"},
-    { "rf1S_chi_p4", /*"rf1S_dimuon_p4", "rf1S_muonP_p4", "rf1S_muonN_p4" */},
-    { "rf2S_chi_p4", /*"rf2S_dimuon_p4", "rf2S_muonP_p4", "rf2S_muonN_p4"*/ },
-    { "rf3S_chi_p4", /*"rf3S_dimuon_p4", "rf3S_muonP_p4", "rf3S_muonN_p4"*/ }
+    { "rf1S_chi_p4", "rf1S_photon_p4"/*"rf1S_dimuon_p4", "rf1S_muonP_p4", "rf1S_muonN_p4" */},
+    { "rf2S_chi_p4", "rf2S_photon_p4"/*"rf2S_dimuon_p4", "rf2S_muonP_p4", "rf2S_muonN_p4"*/ },
+    { "rf3S_chi_p4", "rf3S_photon_p4"/*"rf3S_dimuon_p4", "rf3S_muonP_p4", "rf3S_muonN_p4"*/ }
   };
 
   // Add branches to read
@@ -36,7 +36,7 @@ ChibPreselection::ChibPreselection(const std::vector<std::string>& infilenames, 
   AddBranchesNeededOnlyAsInput(triggers);
 
   // Add Branches to copy
-  AddBranchesToCopy({ "dz", "vProb" , "q_value", "conversionflag", "probFit1S", "rf1S_rank", "probFit2S", "rf2S_rank", "probFit3S", "rf3S_rank", });
+  AddBranchesToCopy({ "dz", "vProb" , "q_value", "conversionflag", "probFit1S", "rf1S_rank", "probFit2S", "rf2S_rank", "probFit3S", "rf3S_rank", "pi0rejected", "pi0_abs_mass", "numPrimaryVertices"});
 
 
 }
@@ -49,6 +49,11 @@ bool ChibPreselection::fill_and_cut_variables()
   static thread_local auto & dimuon = get_branch<TLorentzVector*>("dimuon_p4");
   static thread_local auto & muPos = get_branch<TLorentzVector*>("muonP_p4");
   static thread_local auto & muNeg = get_branch<TLorentzVector*>("muonN_p4");
+
+  static thread_local auto & photon = get_branch<TLorentzVector*>("photon_p4");
+  static thread_local auto & rf1SPhoton = get_branch<TLorentzVector*>("rf1S_photon_p4");
+  static thread_local auto & rf2SPhoton = get_branch<TLorentzVector*>("rf2S_photon_p4");
+  static thread_local auto & rf3SPhoton = get_branch<TLorentzVector*>("rf2S_photon_p4");
 
   static thread_local auto & chi_rf1s = get_branch<TLorentzVector*>("rf1S_chi_p4");
   //static thread_local auto & dimuon_rf1s = get_branch<TLorentzVector*>("rf1S_dimuon_p4");
@@ -64,6 +69,9 @@ bool ChibPreselection::fill_and_cut_variables()
   //static thread_local auto & dimuon_rf3s = get_branch<TLorentzVector*>("rf3S_dimuon_p4");
   //static thread_local auto & muPos_rf3s = get_branch<TLorentzVector*>("rf3S_muonP_p4");
   //static thread_local auto & muNeg_rf3s = get_branch<TLorentzVector*>("rf3S_muonN_p4");
+
+
+  static thread_local auto & vProb = get_branch<double>("vProb");
 
   static thread_local bool get_trigger = true;
   static thread_local std::vector<std::reference_wrapper<const UInt_t> > trigs;
@@ -103,6 +111,9 @@ bool ChibPreselection::fill_and_cut_variables()
   // Cowboys/Seagulls
 
   // Dimuon Vertex Probability  (vProb)
+  if (vProb < 0.01) return false;
+
+  // Photon Eta, Rap
 
   // Dz
 
@@ -116,6 +127,8 @@ bool ChibPreselection::fill_and_cut_variables()
   auto dimuon_id = make_lorentz_flat(out_vars, chi, dimuon);
   make_mu_things(out_vars, muPos, muNeg, dimuon_id);
 
+  fill_photon_vars({ photon, rf1SPhoton, rf2SPhoton, rf3SPhoton });
+  
   // Only chi
   make_lorentz_flat(out_vars_rf1S, chi_rf1s);
   make_lorentz_flat(out_vars_rf2S, chi_rf2s);
@@ -160,6 +173,8 @@ void ChibPreselection::setup_new_branches()
   setup_collections("_rf1S", out_vars_rf1S, true);
   setup_collections("_rf2S", out_vars_rf2S, true);
   setup_collections("_rf3S", out_vars_rf3S, true);
+
+  setup_photon_vars();
 
 }
 
@@ -255,6 +270,27 @@ void ChibPreselection::setup_collections(const std::string & varsuffix, std::vec
     m_out_tree->Branch(("pt_muneg" + varsuffix).c_str(), &vars.at(++id));
     m_out_tree->Branch(("phi_muneg" + varsuffix).c_str(), &vars.at(++id));
     // id == 21
+  }
+}
+
+void ChibPreselection::fill_photon_vars(std::vector<TLorentzVector*> photon_vecs) // has to correspond to setup_photon_vars
+{
+  int id = -1;
+  for (auto vec : photon_vecs) {
+    photon_vars.at(++id) = vec->Rapidity();
+    photon_vars.at(++id) = vec->Eta();
+    photon_vars.at(++id) = vec->E();
+  }
+}
+
+void ChibPreselection::setup_photon_vars() // has to correspond to fill_photon_vars
+{
+  for (size_t i = 0; i < 32; ++i) photon_vars.push_back(0);
+  int id = -1;
+  for (auto &suf : std::vector<std::string>{ "","_rf1S","_rf2S","_rf3S" }) {
+    m_out_tree->Branch(("photon_rap" + suf).c_str(), &photon_vars.at(++id));
+    m_out_tree->Branch(("photon_eta" + suf).c_str(), &photon_vars.at(++id));
+    m_out_tree->Branch(("photon_energy" + suf).c_str(), &photon_vars.at(++id));
   }
 }
 

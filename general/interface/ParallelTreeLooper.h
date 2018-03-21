@@ -61,7 +61,7 @@ public:
   static void printVariables(cs file, cs tree); 
   
   void worker(long long start_event, long long end_event, int worker_id, long long &count_out, 
-    std::string &worker_filename_out, std::mutex &cout_lock, std::mutex &clone_lock, long long update_each);
+    std::string &worker_filename_out, std::mutex &cout_lock, std::mutex &clone_lock, long long update_each, const std::string &uuid);
 
 protected:
   ParallelTreeLooper() {};

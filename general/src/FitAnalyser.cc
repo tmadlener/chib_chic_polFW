@@ -157,7 +157,7 @@ double FitAnalyser::GetVariableValue(csr variable_name, bool &ok)
   return ok = true, var->getValV();
 }
 
-void FitAnalyser::PlotFitResult(csr output_file)
+void FitAnalyser::PlotFitResult(csr output_file, const std::vector<double> & lines, bool addResultBox)
 {
   if (!output_file.empty()) gROOT->SetBatch(kTRUE);
   auto canv = new TCanvas("fit_results", "Fit Results", 1200, 1000);
@@ -199,7 +199,7 @@ void FitAnalyser::PlotFitResult(csr output_file)
       if (!v) continue;
 
       std::stringstream ss;
-      ss << std::fixed << std::setprecision(2);
+      ss << std::fixed << std::setprecision(4);
       ss << v->GetName() << ": " << v->getVal() << ", [ " << v->getMin() << ", " << v->getMax() << "]";
 
       ibox->AddText(ss.str().c_str());
@@ -207,7 +207,6 @@ void FitAnalyser::PlotFitResult(csr output_file)
   }
   ibox->Print();
 
-  plot->addObject(ibox);
 
 
   // Pads for the two plots
@@ -253,6 +252,10 @@ void FitAnalyser::PlotFitResult(csr output_file)
 
   //plot dataset again, to be on top
   ds->plotOn(plot);
+
+  for (double x : lines) plot->addObject(new TLine(x, plot->GetMinimum(), x, plot->GetMaximum()));
+
+  if(addResultBox) plot->addObject(ibox);
 
   // Draw to canvas
   canv->cd();

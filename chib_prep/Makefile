@@ -44,11 +44,11 @@ cleanpreselection: cleanutils  cleantreeproc cleanparalooper
 #####################
 # CHIB FITTING
 
-fitting : $(BUILDDIR)/fitting.o $(BUILDDIR)/fitter.o $(BUILDDIR)/fitanalyser.o $(BUILDDIR)/utils.o $(BUILDDIR)/chiorganizer.o
+fitting : $(BUILDDIR)/fitting.o $(BUILDDIR)/fitter.o $(BUILDDIR)/fitanalyser.o $(BUILDDIR)/utils.o $(BUILDDIR)/chiorganizer.o $(BUILDDIR)/ExpGaussExp.o $(BUILDDIR)/dict.o
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB) $(ROOFITLIBS)
 $(BUILDDIR)/fitting.o: $(SRCDIR)/chib_fitting.cc $(fit_header)
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
-cleanfitting: cleanchiorganizer cleanutils cleanfitanalyser cleanfitter
+cleanfitting: cleanchiorganizer cleanutils cleanfitanalyser cleanfitter cleancustomfuncs
 	rm -f $(BUILDDIR)/fitting.o $(TARGET)/fitting
 #
 #####################
@@ -150,6 +150,22 @@ $(BUILDDIR)/chiorganizer.o: $(SRCDIR)/ChiOrganizer.cc $(INCDIR)/ChiOrganizer.h $
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
 cleanchiorganizer:
 	rm -f $(BUILDDIR)/chiorganizer.o
+
+#
+# CUSTOM ROOFIT FUNCTIONS
+#
+dictbld=$(BUILDDIR)/dict
+dictpcm=dict_rdict.pcm
+$(BUILDDIR)/ExpGaussExp.o : $(GENSRCDIR)/ExpGaussExp.cxx $(GENINCDIR)/ExpGaussExp.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+$(dictbld).o: $(GENINCDIR)/ExpGaussExp.h  $(GENINCDIR)/linkdef.h
+	rm -f $(dictbld).cxx
+	rootcling $(dictbld).cxx -c $^
+	$(CC) $(dictbld).cxx -o $@ $(CFLAGSINC) $(LIB) -c -I.
+	cp $(BUILDDIR)/$(dictpcm) $(TARGET)
+cleancustomfuncs:
+	rm -f $(BUILDDIR)/$(dictpcm) $(TARGET)/$(dictpcm) $(BUILDDIR)/ExpGaussExp.o $(dictbld).o
+
 
 #
 # DIRECTORY SETUP AND CLEANUP

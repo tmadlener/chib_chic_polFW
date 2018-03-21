@@ -211,7 +211,6 @@ int main(int argc, char **argv) {
     FitAnalyser dimuon_analyser(dimuon_fitter);
 
     std::string dimuon_plot_name(h_dimuonplotname);
-    dimuon_analyser.PlotFitResult(dimuon_plot_name);
     bool okmin = false;
     bool okmax = false;
 
@@ -223,6 +222,8 @@ int main(int argc, char **argv) {
         << "NOT continuing with the chi fit." << std::endl;
       return 1;
     }
+
+    dimuon_analyser.PlotFitResult(dimuon_plot_name, { dimuon_cut.first, dimuon_cut.second });
   }
 
   // Chi fit
