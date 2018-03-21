@@ -64,7 +64,7 @@ def basic_sel_df(dfr, state):
     return cut
 
 
-def get_ws_vars(state):
+def get_ws_vars(state, massmodel=None):
     """
     Get the workspace variables for the given state (jpsi or chic)
     """
@@ -84,18 +84,21 @@ def get_ws_vars(state):
             'chi_mass_rf1S[9.6,10.15]', 'costh_HX[-1, 1]', 'dimuon_pt[0,100]'
         ],
     }
+    if state=='chib' and massmodel:
+        return ['{}[{}, {}]'.format(massmodel.mname, massmodel.fitvarmin, massmodel.fitvarmax),
+                'costh_HX[-1, 1]', 'dimuon_pt[0,1000]']
 
     return wsvars[state]
 
 
-def import_data(wsp, datatree, state):
+def import_data(wsp, datatree, state, massmodel=None):
     """
     Import all data that is necessary to the workspace
     """
     # definition of variables to be created in the workspace
     # NOTE: some of them act as preselection (e.g. vtxProb and JpsiRap)
     logging.info('Importing dataset')
-    dvars = get_ws_vars(state)
+    dvars = get_ws_vars(state, massmodel)
 
     # deactivate all branches and just activate the used ones
     datatree.SetBranchStatus('*', 0)
@@ -203,13 +206,13 @@ def main(args):
 
     # create the workspace
     ws = r.RooWorkspace('ws_mass_fit')
-    import_data(ws, datat, args.state)
     if args.state == 'chic':
         mass_model = ChicMassModel('chicMass')
     elif args.state == 'chib':
         mass_model = ChibMassModel(args.configfile)
     else:
         mass_model = JpsiMassModel('JpsiMass')
+    import_data(ws, datat, args.state, mass_model)
     mass_model.define_model(ws)
     ws.Print()
 
