@@ -68,4 +68,48 @@ bool chicMCTupling(const ChicMCInputEvent& inEvent, ChicMCTupleEvent& event)
   return true; // simply accept all events
 }
 
+
+using GenMCChicInputEvent = ChicInputEvent<GenMCAddInfo, GenMCDefaultNames>;
+using GenMCChicOutputEvent = ChicTupleEvent<GenMCAddInfo>;
+
+/** for tupling a gen-only sample */
+bool chicGenMCTupling(const GenMCChicInputEvent& inEvent, GenMCChicOutputEvent& event)
+{
+  event.chicPt = inEvent.chic().Pt();
+  event.chicMass = inEvent.chic().M();
+  event.chicRap = inEvent.chic().Rapidity();
+
+  event.info().jpsiPt = inEvent.jpsi().Pt();
+  event.info().jpsiRap = inEvent.jpsi().Rapidity();
+
+  event.info().muP_pt = inEvent.muP().Pt();
+  event.info().muN_pt = inEvent.muN().Pt();
+  event.info().muP_eta = inEvent.muP().Eta();
+  event.info().muN_eta = inEvent.muN().Eta();
+
+  event.info().photonPt = inEvent.info().gen_photon->Pt();
+  event.info().photonEta = inEvent.info().gen_photon->Eta();
+  event.info().photonRap = inEvent.info().gen_photon->Rapidity();
+
+  event.wChic2 = event.chicMass > 3.53;
+  event.wChic1 = !event.wChic1;
+
+  const auto genAnglesHX = calcAnglesInFrame(inEvent.muN(), inEvent.muP(), RefFrame::HX);
+  event.costh_HX = genAnglesHX.costh;
+  event.phi_HX = genAnglesHX.phi;
+  event.cosalpha_HX = genAnglesHX.cosalpha;
+
+  const auto genAnglesCS = calcAnglesInFrame(inEvent.muN(), inEvent.muP(), RefFrame::CS);
+  event.costh_CS = genAnglesCS.costh;
+  event.phi_CS = genAnglesCS.phi;
+  event.cosalpha_CS = genAnglesCS.cosalpha;
+
+  const auto genAnglesPX = calcAnglesInFrame(inEvent.muN(), inEvent.muP(), RefFrame::PX);
+  event.costh_PX = genAnglesPX.costh;
+  event.phi_PX = genAnglesPX.phi;
+  event.cosalpha_PX = genAnglesPX.cosalpha;
+
+  return true;
+}
+
 #endif

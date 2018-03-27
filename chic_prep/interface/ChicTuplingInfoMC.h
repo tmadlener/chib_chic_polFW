@@ -86,4 +86,46 @@ struct MCAddInfoOut {
 };
 
 
+struct GenMCDefaultNames {
+  static constexpr auto jpsi = "gen_jpsi_p4";
+  static constexpr auto chic = "gen_chic_p4";
+  static constexpr auto lepN = "gen_muonM_p4"; // No this is not a type here
+  static constexpr auto lepP = "gen_muonP_p4";
+  static constexpr auto Jpsict = "No lifetime information for gen MC";
+};
+
+struct GenMCAddInfo {
+  void Init(TTree *t) {
+    t->SetBranchAddress("gen_photon_p4", &gen_photon);
+  }
+
+  void Create(TTree *t) {
+    t->Branch("muP_pt", &muP_pt);
+    t->Branch("muN_pt", &muN_pt);
+    t->Branch("muP_eta", &muP_eta);
+    t->Branch("muN_eta", &muN_eta);
+
+    t->Branch("jpsiPt", &jpsiPt);
+    t->Branch("jpsiRap", &jpsiRap);
+
+    t->Branch("photonPt", &photonPt);
+    t->Branch("photonRap", &photonRap);
+    t->Branch("photonEta", &photonEta);
+  }
+
+  TLorentzVector *gen_photon{nullptr};
+
+  double muP_pt;
+  double muN_pt;
+  double muP_eta;
+  double muN_eta;
+
+  double jpsiPt;
+  double jpsiRap;
+
+  double photonPt;
+  double photonRap;
+  double photonEta;
+};
+
 #endif

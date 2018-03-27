@@ -19,16 +19,25 @@ int main(int argc, char *argv[])
   ArgParser parser(argc, argv);
   const auto mcfile = parser.getOptionVal<std::string>("--datafile");
   const auto outfile = parser.getOptionVal<std::string>("--outfile");
+  const auto treename = parser.getOptionVal<std::string>("--treename", "rootuple/chicTree");
+  const auto isGenOnly = parser.getOptionVal<bool>("--isGenOnly", false);
+
 
   auto* infile = checkOpenFile(mcfile);
-  auto* intree = checkGetFromFile<TTree>(infile, "rootuple/chicTree");
+  auto* intree = checkGetFromFile<TTree>(infile, treename);
 
   auto* ofile = new TFile(outfile.c_str(), "recreate");
   auto* tupleTree = new TTree("chic_mc_tuple", "tupled chic mc data");
   tupleTree->SetDirectory(ofile);
 
-  TTreeLooper<ChicMCInputEvent, ChicMCTupleEvent> treeLooper(intree, tupleTree);
-  treeLooper.loop(chicMCTupling);
+  if (!isGenOnly) {
+    TTreeLooper<ChicMCInputEvent, ChicMCTupleEvent> treeLooper(intree, tupleTree);
+    treeLooper.loop(chicMCTupling);
+  } else {
+    TTreeLooper<GenMCChicInputEvent, GenMCChicOutputEvent> treeLooper(intree, tupleTree);
+    treeLooper.loop(chicGenMCTupling);
+  }
+
 
   ofile->Write();
   ofile->Close();
