@@ -8,6 +8,7 @@
 
 #include <string>
 #include <vector>
+#include <iostream>
 
 #if !(defined(__CLING__) or defined(__CINT__))
 int main(int argc, char *argv[])
@@ -18,19 +19,31 @@ int main(int argc, char *argv[])
   const auto intree = parser.getOptionVal<std::string>("--intree", "data");
   const auto outtree = parser.getOptionVal<std::string>("--outtree", "jpsi_tuple");
   const auto isMC = parser.getOptionVal<bool>("--mc", false);
+  const auto isPGun = parser.getOptionVal<bool>("--pgun", false);
   const auto nEvents = parser.getOptionVal<int>("--nevents", -1);
+
+  std::cout << parser << "\n";
+
+  if (!isMC && isPGun) {
+    std::cerr << "Cannot have --mc false and --pgun true\n";
+    return 64;
+  }
 
   auto *inTree = createTChain(inputFiles, intree);
   auto *outFile = new TFile(outfile.c_str(), "recreate");
   auto *outTree = new TTree(outtree.c_str(), "jpsi raw data as flat ntuple");
   outTree->SetDirectory(outFile);
 
-
-  TTreeLooper<JpsiBasicTuplingInEvent, JpsiBasicTuplingOutEvent> treeLooper(inTree, outTree);
-  if (isMC) {
-    treeLooper.loop(BasicJpsiMCTupling, nEvents);
+  if (!isPGun) {
+    TTreeLooper<JpsiBasicTuplingInEvent, JpsiBasicTuplingOutEvent> treeLooper(inTree, outTree);
+    if (isMC) {
+      treeLooper.loop(BasicJpsiMCTupling, nEvents);
+    } else {
+      treeLooper.loop(BasicJpsiTupling, nEvents);
+    }
   } else {
-    treeLooper.loop(BasicJpsiTupling, nEvents);
+    TTreeLooper<JpsiPGunBasicTuplingInEvent, JpsiPGunBasicTuplingOutEvent> treeLooper(inTree, outTree);
+    treeLooper.loop(BasicJpsiPGunMCTupling, nEvents);
   }
 
   outFile->Write("", TObject::kWriteDelete);

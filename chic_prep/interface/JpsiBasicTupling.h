@@ -12,7 +12,13 @@
 #include <array>
 #include <vector>
 
-
+struct DefaultJpsiPGunMCBranches {
+  static constexpr auto jpsi = "dimuon_p4";
+  static constexpr auto lepP = "muonP_p4";
+  static constexpr auto lepN = "muonN_p4";
+  static constexpr auto Jpsict = "ppdlPV";
+  static constexpr auto chic = "No chic branch in J/psi MC";
+};
 
 // default branch names for 2012 Jpsi
 struct DefaultJpsiBranches {
@@ -34,6 +40,51 @@ std::array<const char*, 9> triggerBranches = {
   "HLT_Dimuon10_Jpsi_v5",
   "HLT_Dimuon10_Jpsi_v6"
 };
+
+struct BasicJpsiPGunMCAddInfo {
+  double JpsiPt;
+  double JpsiRap;
+  double JpsiMass;
+  double JpsictErr;
+  double vtxProb;
+
+  double muN_pt;
+  double muN_eta;
+  double muP_pt;
+  double muP_eta;
+
+  int trigger;
+  int triggermatch;
+
+  int triggerdec; // this is what gets written to the output file
+
+  double wJpsi;
+
+  void Init(TTree *t)
+  {
+    t->SetBranchAddress("vProb", &vtxProb);
+    t->SetBranchAddress("ppdlErrPV", &JpsictErr);
+    t->SetBranchAddress("trigger", &trigger);
+    t->SetBranchAddress("ismatched", &triggermatch);
+  }
+
+  void Create(TTree *t)
+  {
+    t->Branch("JpsiPt", &JpsiPt);
+    t->Branch("JpsiRap", &JpsiRap);
+    t->Branch("JpsiMass", &JpsiMass);
+    t->Branch("JpsictErr", &JpsictErr);
+    t->Branch("vtxProb", &vtxProb);
+
+    t->Branch("muN_pt", &muN_pt);
+    t->Branch("muN_eta", &muN_eta);
+    t->Branch("muP_pt", &muP_pt);
+    t->Branch("muP_eta", &muP_eta);
+    t->Branch("trigger", &triggerdec);
+    t->Branch("wJpsi", &wJpsi);
+  }
+};
+
 
 struct BasicJpsiAddInfo {
   double JpsiPt;
@@ -108,7 +159,8 @@ int triggerDecision(const std::vector<int>& triggers)
   return 0;
 }
 
-void fillEvent(const JpsiBasicTuplingInEvent& inEvent, JpsiBasicTuplingOutEvent& event)
+template<typename InEventT, typename OutEventT>
+void fillEvent(const InEventT& inEvent, OutEventT& event)
 {
   event.info().vtxProb = inEvent.info().vtxProb;
   event.info().JpsictErr = inEvent.info().JpsictErr;
@@ -150,8 +202,6 @@ bool BasicJpsiTupling(const JpsiBasicTuplingInEvent& inEvent, JpsiBasicTuplingOu
 }
 
 
-
-
 bool BasicJpsiMCTupling(const JpsiBasicTuplingInEvent& inEvent, JpsiBasicTuplingOutEvent& event)
 {
   if (!inEvent.info().SoftMuonId()) return false;
@@ -164,5 +214,22 @@ bool BasicJpsiMCTupling(const JpsiBasicTuplingInEvent& inEvent, JpsiBasicTupling
 
   return true;
 }
+
+using JpsiPGunBasicTuplingInEvent = ChicInputEvent<BasicJpsiPGunMCAddInfo, DefaultJpsiPGunMCBranches>;
+using JpsiPGunBasicTuplingOutEvent = ChicTupleEvent<BasicJpsiPGunMCAddInfo>;
+
+bool BasicJpsiPGunMCTupling(const JpsiPGunBasicTuplingInEvent& inEvent, JpsiPGunBasicTuplingOutEvent& event)
+{
+  // trigger match (same is in macro for rho factor studies). No idea to which bitfields the triggers
+  // correspond
+  // For now rejecting all events that are not matched an triggered
+  if ((inEvent.info().trigger & 16) != 16 || (inEvent.info().triggermatch & 64) != 64) return false;
+
+  fillEvent(inEvent, event);
+  event.info().wJpsi = 1.0; // only signal in MCtruth
+
+  return true;
+}
+
 
 #endif
