@@ -25,7 +25,8 @@ from utils.hist_utils import (
     draw_var_to_hist, set_hist_opts, set_bins_to_zero
 )
 from utils.data_handling import check_branch_available
-from utils.misc_helpers import get_full_trigger
+from utils.PlotServer import PlotServer
+
 
 default_hist_set = {
     'costh': {'n_bins': 16, 'min': 0, 'max': 1},
@@ -37,7 +38,7 @@ proto_draw_expr = {
     'phi': 'phi_{}_fold',
     'cosalpha': 'TMath::Abs(cosalpha_{})'
 }
-weight_branches = {'chic1': 'wChic1', 'chic2': 'wChic2', 
+weight_branches = {'chic1': 'wChic1', 'chic2': 'wChic2',
                    'chib1': 'N1_sw', 'chib2': 'N2_sw'}
 
 
@@ -64,7 +65,7 @@ def get_proto_hist(var, name, nbins=None):
     """
     ## Basic default settings, which will be used
     ## NOTE: In the future it is planned to make it possible to override these
-    ## via a Jason file
+    ## via a JSON file
     logging.debug('Getting prototype histogram for var: {}'.format(var))
 
     # there were root versions where this lead to automatic binning -> default
@@ -73,7 +74,8 @@ def get_proto_hist(var, name, nbins=None):
     hist_var = get_key_from_var(var)
     if hist_var:
         histset = default_hist_set[hist_var]
-        if nbins: histset['n_bins'] = nbins
+        if nbins is None:
+            nbins = histset['n_bins']
         logging.debug('Using histogram settings {}'.format(histset))
         hist =  r.TH1D(name, '',
                        histset['n_bins'], histset['min'], histset['max'])
@@ -119,7 +121,7 @@ def divide_hists(hnum, hdenom, cutsigma=None):
     return ratio
 
 
-def get_hists_for_frame(tree, frame, pvars, cutsigma=None, 
+def get_hists_for_frame(tree, frame, pvars, cutsigma=None,
                         states=['chic1', 'chic2'], nbins=None):
     """
     Get all histograms for a frame
@@ -162,34 +164,18 @@ def get_hists_from_file(rfile, treename, frames, cutsigma=None,
     return hists
 
 
-def save_hists_to_file(hists, filen, subdir):
+def save_hists_to_file(hists, filen, year, trigger, top_dir, pt):
     """
-    Save histograms to file (using unique name)
+    Save the histograms to file (so that they can later be retrieved via the
+    PlotServer).
     """
     logging.info('Saving histograms to \'{}\''.format(filen))
-    outfile = r.TFile(filen, 'update')
-    outfile.mkdir(subdir)
-    outfile.cd(subdir)
-
+    pserver = PlotServer(filen, 'update')
     for frame in hists:
         for var in hists[frame]:
             for state in hists[frame][var]:
-                hists[frame][var][state].Write()
-
-    outfile.Write()
-    outfile.Close()
-
-
-def get_unique_subdir(year, trigger, mc=False, pt=0):
-    """
-    Create a subdir that uniquely identifies the conditions that were used to
-    get the histograms
-
-    TODO: doc
-    """
-    data_mc = 'mc' if mc else 'data'
-    subdirs = [p for p in [data_mc, year, trigger, str(pt)]]
-    return '/'.join(subdirs)
+                pserver.store_hist(hists[frame][var][state], top_dir, year,
+                                   trigger, pt, var, frame, state)
 
 
 def main(args):
@@ -205,10 +191,12 @@ def main(args):
     file_hists = get_hists_from_file(infile, args.treename, frames,
                                      args.cutsigma, states, args.nbins)
 
-    trigger = get_full_trigger(args.triggerpath)
-    subdir = get_unique_subdir(args.year, trigger, args.mc, args.ptbin)
+    top_dir = args.topdir
+    if not top_dir:
+        top_dir = 'mc' if args.mc else 'data'
 
-    save_hists_to_file(file_hists, args.outfile, subdir)
+    save_hists_to_file(file_hists, args.outfile,
+                       args.year, args.triggerpath, top_dir, args.ptbin)
 
 
 if __name__ == '__main__':
@@ -237,8 +225,12 @@ if __name__ == '__main__':
                         help='Apply the passed cut on the distribution hists '
                         'to get rid of bins that are compatible to zero within '
                         'n sigmas. This is done before doing the ratio')
-    parser.add_argument('-n','--nbins', default=None, type=int,
+    parser.add_argument('-n', '--nbins', default=None, type=int,
                         help='Set number of bins.')
+    parser.add_argument('-d', '--topdir', help='Top level directory name to be '
+                        'used in the directory structure created in the output '
+                        'file. If not empty, overrides \'mc\' or \'data\' which'
+                        ' are the default', default='', type=str)
 
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--chic', action='store_const', dest='state',

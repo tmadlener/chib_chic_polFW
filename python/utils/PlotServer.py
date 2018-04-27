@@ -25,7 +25,7 @@ def try_file_access(proto_err_msg):
             """Function that tries the access and returns obj or None"""
             obj_or_dir = func(*args)
             if not obj_or_dir:
-                logging.warning('plot server access: ' +
+                logging.warning('plot server read access: ' +
                                 proto_err_msg.format(*args))
                 return None
             return obj_or_dir
@@ -39,13 +39,14 @@ class PlotServer(object):
     Simple plot server that retrieves and returns TObjects from a TFile with an
     internal TDirectory structure.
     """
-    def __init__(self, filename):
+    def __init__(self, filename, opt=''):
         """
         Args:
             filename (str): path to the rootfile from which objects should be
                 obtained
+            opt (str): Option string to be passed to the ROOT.TFile.Open
         """
-        self.hfile = r.TFile.Open(filename)
+        self.hfile = r.TFile.Open(filename, opt)
 
 
     @try_file_access('Error in retrieving hist: year={2}, trigger={3}, pt={4}, '
@@ -73,9 +74,8 @@ class PlotServer(object):
                       'year={1}, trigger={2}, pt={3}, var={4}, frame={5}, '
                       'plot={6}, dmc={7}'.format(self.filename(), year, trigger,
                                                  pt, var, frame, plot, dmc))
-        full_trigger = get_full_trigger(trigger)
-        subdir = '/'.join([dmc, str(year), full_trigger, str(pt)])
-        histname = '_'.join([plot, var, frame])
+        subdir = self._get_subdir(dmc, year, trigger, pt)
+        histname = self._get_histname(plot, var, frame)
         return self._get_by_str('/'.join([subdir, histname]))
 
 
@@ -88,6 +88,46 @@ class PlotServer(object):
                       'trigger={}, pt={}, dmc={}'
                       .format(year, trigger, pt, dmc))
         return self._get_by_str('/'.join([dmc, year, trigger, pt]))
+
+
+    def store_hist(self, hist, dmc, year, trigger, pt, var, frame, plot):
+        """
+        Store a histogram to the internal file, such that the internal directory
+        structure is usable for retrieving the file.
+
+        NOTE: Does not check if an object is already present, simply overwrites
+        it.
+
+        Args:
+            hist (ROOT.TObject): Histogram to be stored
+            dmc (str): 'data' or 'mc' identifier
+            year (int or str):
+            trigger (str): minimum part of a trigger that uniquely identifies it
+            pt (int or str): pt bin
+            var (str): the variable (e.g. 'costh' or 'phi')
+            frame (str): reference frame (in capitals)
+            plot (str): which plot (e.g. 'chic1' or 'ratio')
+
+        Returns:
+            success (Boolean): Success of the write operation. Checks the return
+                value of ROOT.TObject.Write() and returns True if it is not 0.
+        """
+        subdir = self._get_subdir(dmc, year, trigger, pt)
+        histname = self._get_histname(plot, var, frame)
+        logging.debug('Storing {0} to {1}'.format(histname, subdir))
+
+        logging.debug('Checking if directory is already present')
+        sdir = self._get_by_str(subdir)
+        if sdir:
+            sdir.cd()
+        else:
+            logging.debug('Directory {0} not already present. Creating it'
+                          .format(subdir))
+            self.hfile.mkdir(subdir)
+            sdir = self.hfile.cd(subdir)
+
+        hist.SetName(histname)
+        return hist.Write() != 0
 
 
     def filename(self):
@@ -113,3 +153,18 @@ class PlotServer(object):
         logging.debug('Trying to get object {} from file {}'
                       .format(obj_str, self.filename()))
         return self.hfile.Get(obj_str)
+
+
+    def _get_subdir(self, dmc, year, trigger, pt):
+        """
+        Get the sub directory to store the plot into
+        """
+        full_trigger = get_full_trigger(trigger)
+        return '/'.join([dmc, str(year), full_trigger, str(pt)])
+
+
+    def _get_histname(self, plot, var, frame):
+        """
+        Get the histogram name
+        """
+        return '_'.join([plot, var, frame])
