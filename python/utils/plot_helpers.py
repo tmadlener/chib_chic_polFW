@@ -12,6 +12,7 @@ Attributes:
 
 import ROOT as r
 
+from itertools import product
 from collections import Iterable
 from utils.misc_helpers import create_random_str
 from utils.hist_utils import set_common_range, set_labels
@@ -57,6 +58,48 @@ def default_colors():
         _color_indices = [col[0] for col in _colors]
 
     return _color_indices
+
+
+def default_attributes(diff_markers=True, size=2, linewidth=2,
+                       open_markers=False, unique_colors=True):
+    """
+    Get a list of some sensible default attributes
+
+    Args:
+        diff_markers (bool, optional): Use different markers (True)
+        size (float, optional): Size of the markers (2)
+        linewidth (int, optional): Linewidth of TLines (2)
+        open_markers (bool, optional): Use open markers instead of filled ones
+            (False)
+        unique_colors (bool): Match each marker with an individual color instead
+            of using all available combinations of color and marker (True)
+
+    Returns:
+        list: List containing a list of dictionaries as taken by the 'attr'
+            argument of plot_on_canvas
+    """
+    dcols = default_colors()
+    if diff_markers:
+        if open_markers:
+            markers = [24, 26, 32, 25, 27]
+        else:
+            markers = [20, 22, 23, 21, 33]
+    else:
+        markers = [6]
+
+    # first combine different colors with different markers
+    if unique_colors: # each marker gets its own color
+        mark_col = zip(markers, dcols)
+    else: # make all possible combinations, iterating colors first
+        mark_col = product(markers, dcols)
+
+    attributes = []
+    for marker, color in mark_col:
+        attributes.append({
+            'color': color, 'marker': marker, 'size': size, 'width': linewidth
+        })
+
+    return attributes
 
 
 def set_color(pltable, col):
