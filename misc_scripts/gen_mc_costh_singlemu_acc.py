@@ -10,7 +10,7 @@ import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gStyle.SetPadRightMargin(0.15)
 r.gStyle.SetPadLeftMargin(0.12)
-r.gROOT.SetBatch()
+# r.gROOT.SetBatch()
 
 from gen_level_ratios import create_histogram, costh_phi
 from data_single_muon_acc import (
@@ -24,7 +24,7 @@ from utils.plot_helpers import mkplot, default_colors
 # which selections to plot?
 # NOTE: basic_sel does not select anything for gen mc
 plot_selections = [
-    # 'no_sel', 'no_sel_fiducial', 'no_sel_loose', 'no_sel_flat',
+    'no_sel', 'no_sel_fiducial', 'no_sel_loose', 'no_sel_flat',
     'jpsi_kin_sel', 'jpsi_kin_sel_loose', 'jpsi_kin_sel_fiducial', 'jpsi_kin_sel_flat',
     # 'basic_sel', 'basic_sel_fiducial', 'basic_sel_loose',
     # 'basic_jpsi_kin_sel', 'basic_jpsi_kin_sel_fiducial', 'basic_jpsi_kin_sel_loose'
@@ -110,7 +110,7 @@ def get_selections(jpsiPt):
     jpsi_sel = lambda df: jpsi_kin_sel(df, jpsiPt, True)
     loose = lambda df: singlemu_sel(df, loose_cuts())
     fiducial = lambda df: singlemu_sel(df, fiducial_cuts())
-    flat = lambda df: singlemu_sel(df, flat_pt(3.0))
+    flat = lambda df: singlemu_sel(df, flat_pt(3.5))
 
     selection_sets = {
         'no_sel': None,
@@ -135,29 +135,30 @@ def get_selections(jpsiPt):
     return selection_sets
 
 
-def get_attributes():
-    cols = default_colors()
-    attribute_sets = {
-        'no_sel': {'color': cols[0], 'marker': 24, 'size': 1.5},
-        'no_sel_fiducial': {'color': cols[0], 'marker': 25, 'size': 1.5},
-        'no_sel_loose': {'color': cols[0], 'marker': 26, 'size': 1.5},
-        'no_sel_flat': {'color': cols[0], 'marker': 32, 'size': 1.5},
+# def get_attributes():
+#     cols = default_colors()
+#     attribute_sets = {
+#         'no_sel': {'color': cols[0], 'marker': 24, 'size': 1.5},
+#         'no_sel_fiducial': {'color': cols[0], 'marker': 25, 'size': 1.5},
+#         'no_sel_loose': {'color': cols[0], 'marker': 26, 'size': 1.5},
+#         'no_sel_flat': {'color': cols[0], 'marker': 32, 'size': 1.5},
 
-        'jpsi_kin_sel': {'color': cols[1], 'marker': 24, 'size': 1.5},
-        'jpsi_kin_sel_fiducial': {'color': cols[1], 'marker': 25, 'size': 1.5},
-        'jpsi_kin_sel_loose': {'color': cols[1], 'marker': 26, 'size': 1.5},
-        'jpsi_kin_sel_flat': {'color': cols[1], 'marker': 32, 'size': 1.5},
+#         'jpsi_kin_sel': {'color': cols[1], 'marker': 24, 'size': 1.5},
+#         'jpsi_kin_sel_fiducial': {'color': cols[1], 'marker': 25, 'size': 1.5},
+#         'jpsi_kin_sel_loose': {'color': cols[1], 'marker': 26, 'size': 1.5},
+#         'jpsi_kin_sel_flat': {'color': cols[1], 'marker': 32, 'size': 1.5},
 
-        'basic_jpsi_kin_sel': {'color': cols[2], 'marker': 24, 'size': 1.5},
-        'basic_jpsi_kin_sel_fiducial': {'color': cols[2], 'marker': 25, 'size': 1.5},
-        'basic_jpsi_kin_sel_loose': {'color': cols[2], 'marker': 26, 'size': 1.5},
+#         'basic_jpsi_kin_sel': {'color': cols[2], 'marker': 24, 'size': 1.5},
+#         'basic_jpsi_kin_sel_fiducial': {'color': cols[2], 'marker': 25, 'size': 1.5},
+#         'basic_jpsi_kin_sel_loose': {'color': cols[2], 'marker': 26, 'size': 1.5},
 
-        'basic_sel': {'color': cols[3], 'marker': 24, 'size': 1.5},
-        'basic_sel_fiducial': {'color': cols[3], 'marker': 25, 'size': 1.5},
-        'basic_sel_loose': {'color': cols[3], 'marker': 26, 'size': 1.5},
-    }
+#         'basic_sel': {'color': cols[3], 'marker': 24, 'size': 1.5},
+#         'basic_sel_fiducial': {'color': cols[3], 'marker': 25, 'size': 1.5},
+#         'basic_sel_loose': {'color': cols[3], 'marker': 26, 'size': 1.5},
+#     }
 
-    return attribute_sets
+#     return attribute_sets
+
 
 
 def apply_selections(df, selections):
@@ -175,28 +176,31 @@ def apply_selections(df, selections):
     return df[sum_selection]
 
 
-def get_costh_phi_hist(df, frame, selections):
+def get_costh_phi_hist(df, frame, selections, gen=False):
     """
     Make a 2D costh phi hist from the passed data
     """
-    return create_histogram(costh_phi(apply_selections(df, selections), frame),
+    return create_histogram(costh_phi(apply_selections(df, selections), frame, gen),
                             (8, 0, 1, 10, 0, 90))
 
 
-def get_costh_hist(df, frame, selections):
+def get_costh_hist(df, frame, selections, gen=False):
     """
     Make a 1D costh hist from the passed data
     """
-    return create_histogram(costh_phi(apply_selections(df, selections), frame)[:,0],
-                            (8, 0, 1))
-                            # (len(costh_binning_data) - 1, costh_binning_data))
+    return create_histogram(costh_phi(apply_selections(df, selections), frame, gen)[:,0],
+                            # (8, 0, 1),
+                            (len(costh_binning_data) - 1, costh_binning_data),
+                            x_axis='|cos#theta^{{{}}}|'.format(frame))
 
-def get_phi_hist(df, frame, selections):
+
+def get_phi_hist(df, frame, selections, gen=False):
     """
     Make a 1D phi hist from the passed data
     """
-    return create_histogram(costh_phi(apply_selections(df, selections), frame)[:,1],
-                            (10, 0, 90))
+    return create_histogram(costh_phi(apply_selections(df, selections), frame, gen)[:,1],
+                            (10, 0, 90),
+                            x_axis='|#phi^{{{}}}|'.format(frame))
 
 
 def get_all_hists(df, frame, selections):
@@ -206,8 +210,15 @@ def get_all_hists(df, frame, selections):
     return {
         'costh_phi': get_costh_phi_hist(df, frame, selections),
         'costh': get_costh_hist(df, frame, selections),
-        'phi': get_phi_hist(df, frame, selections)
+        'phi': get_phi_hist(df, frame, selections),
+        'jpsipt': get_jpsipt_hist(df, selections)
     }
+
+
+
+def get_jpsipt_hist(df, selections):
+    return create_histogram(apply_selections(df, selections).jpsiPt,
+                            (30, 5, 35))
 
 
 def get_ratios(chi1_hists, chi2_hists):
@@ -225,7 +236,7 @@ def get_ratios(chi1_hists, chi2_hists):
 def save_histogram(hists, savename, **kwargs):
     """Save histogram(s) via mkplot"""
     mkplot(hists, **kwargs).SaveAs(savename)
-
+    # return mkplot(hists, **kwargs)
 
 def save_2D_histograms(hists, outdir, prefix, **kwargs):
     """
@@ -242,19 +253,64 @@ def save_1D_histograms(hists, outdir, prefix, **kwargs):
     """
     Make a comparison plot with all 1D histograms
     """
-    xlabels = {'costh': '|cos#theta|', 'phi': '#phi'}
+    xlabels = {'costh': '|cos#theta|', 'phi': '#phi', 'jpsipt': 'p_{T}^{J/#psi}'}
+
+    def select_hists(hists, h):
+        # sel_hists = [
+        #     hists['no_sel'][h], hists['jpsi_kin_sel'][h],
+        #     hists['no_sel_loose'][h], hists['jpsi_kin_sel_loose'][h],
+        #     hists['no_sel_flat'][h], hists['jpsi_kin_sel_flat'][h],
+        #     hists['no_sel_fiducial'][h], hists['jpsi_kin_sel_fiducial'][h]
+        # ]
+        sel_hists = [
+            hists['jpsi_kin_sel'][h],
+            hists['jpsi_kin_sel_loose'][h],
+            hists['jpsi_kin_sel_flat'][h],
+            hists['jpsi_kin_sel_fiducial'][h]
+        ]
+        return sel_hists
+
+
+    def get_attributes():
+        """attributes for plotting nicely in accordance with order of histograms as
+        returned by select_histsk"""
+        defc = default_colors()
+        # return [
+        #     {'color': defc[0], 'marker': 20, 'size': 1.5}, {'color': defc[0], 'marker': 24, 'size': 1.5},
+        #     {'color': defc[1], 'marker': 21, 'size': 1.5}, {'color': defc[1], 'marker': 25, 'size': 1.5},
+        #     {'color': defc[2], 'marker': 22, 'size': 1.5}, {'color': defc[2], 'marker': 26, 'size': 1.5},
+        #     {'color': defc[3], 'marker': 23, 'size': 1.5}, {'color': defc[3], 'marker': 32, 'size': 1.5}
+        # ]
+        return [
+            {'color': defc[0], 'marker': 20, 'size': 1.5},
+            {'color': defc[1], 'marker': 21, 'size': 1.5},
+            {'color': defc[2], 'marker': 22, 'size': 1.5},
+            {'color': defc[3], 'marker': 23, 'size': 1.5}
+        ]
+
+
+    def get_legentries():
+        """Get leg entries with same order as select_hists"""
+        return ['no cuts', 'loose', 'flat', 'fiducial']
+        # return ['no sel', 'jpsi kin sel',
+        #         '', 'loose', '', 'flat', '', 'fiducial']
+
+    leg_entries =  get_legentries()
+
+    leg_pos = (0.12, 0.1, 0.42, 0.3) if 'ratio' in prefix else (0.5, 0.4, 0.8, 0.6)
+    leg = r.TLegend(*leg_pos)
+    leg.SetNColumns(2)
+
     plot_attr = get_attributes()
     for hist in ['costh', 'phi']:
-        sel_hists, legentries, attrs = [], [], []
-        for selection in plot_selections:
-            sel_hists.append(hists[selection][hist])
-            legentries.append(selection)
-            attrs.append(plot_attr[selection])
-
-        leg = r.TLegend(0.12, 0.1, 0.5, 0.4)
-        save_histogram(sel_hists, '{}/{}_{}.pdf'.format(outdir, prefix, hist),
-                       leg=leg, legEntries=legentries, attr=attrs, legOpt='PLE',
-                       xLabel=xlabels[hist], **kwargs)
+    # for hist in ['jpsipt']:
+        leg.Clear()
+        plot_hists = select_hists(hists, hist) # very good naming
+        # return save_histogram(plot_hists, '{}/{}_{}_gen_mc.pdf'.format(outdir, prefix, hist),
+        save_histogram(plot_hists, '{}/{}_{}_gen_mc.pdf'.format(outdir, prefix, hist),
+                       leg=leg, legEntries=leg_entries, legOpt='PLE', attr=plot_attr,
+                       xLabel=xlabels[hist],
+                       **kwargs)
 
 
 def make_comp_plots(df, frame, outdir, jpsiPt):
@@ -277,17 +333,30 @@ def make_comp_plots(df, frame, outdir, jpsiPt):
         ratio_hists[selection] = get_ratios(chi1_hists[selection],
                                             chi2_hists[selection])
 
-    save_2D_histograms(chi1_hists, outdir, 'chic1', drawOpt='colz',
-                       xLabel='|cos#theta^{{{}}}|'.format(frame),
-                       yLabel='#phi^{{{}}}'.format(frame))
-    save_2D_histograms(chi2_hists, outdir, 'chic2', drawOpt='colz',
-                       xLabel='|cos#theta^{{{}}}|'.format(frame),
-                       yLabel='#phi^{{{}}}'.format(frame))
-    save_2D_histograms(ratio_hists, outdir, 'ratio', drawOpt='colz',
-                       xLabel='|cos#theta^{{{}}}|'.format(frame),
-                       yLabel='#phi^{{{}}}'.format(frame))
+    # save_2D_histograms(chi1_hists, outdir, 'chic1', drawOpt='colz',
+    #                    xLabel='|cos#theta^{{{}}}|'.format(frame),
+    #                    yLabel='#phi^{{{}}}'.format(frame))
+    # save_2D_histograms(chi2_hists, outdir, 'chic2', drawOpt='colz',
+    #                    xLabel='|cos#theta^{{{}}}|'.format(frame),
+    #                    yLabel='#phi^{{{}}}'.format(frame))
+    # save_2D_histograms(ratio_hists, outdir, 'ratio', drawOpt='colz',
+    #                    xLabel='|cos#theta^{{{}}}|'.format(frame),
+    #                    yLabel='#phi^{{{}}}'.format(frame))
 
-    save_1D_histograms(ratio_hists, outdir, 'ratio', drawOpt='E1', yRange=[0, None])
+    save_1D_histograms(ratio_hists, outdir, 'ratio', drawOpt='E1',
+                       yRange=[0, None], yLabel='#chi_{c2} / #chi_{c1}')
+    # save_1D_histograms(chi1_hists, outdir, 'chic1', drawOpt='E1',
+    #                    yRange=[0, None], yLabel='N^{#chi_{c1}}')
+    # save_1D_histograms(chi2_hists, outdir, 'chic2', drawOpt='E1',
+    #                    yRange=[0, None], yLabel='N^{#chi_{c2}}')
+
+    # can_chi1 = save_1D_histograms(chi1_hists, outdir, 'jpsipt', drawOpt='E1',
+    #                               yRange=[0, None])
+    # can_chi2 = save_1D_histograms(chi2_hists, outdir, 'jpsipt', drawOpt='E1',
+    #                               yRange=[0, None])
+
+
+
 
 
 if __name__ == '__main__':

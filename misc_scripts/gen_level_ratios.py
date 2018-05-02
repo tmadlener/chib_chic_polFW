@@ -22,11 +22,12 @@ from utils.plot_helpers import mkplot
 from utils.hist_utils import set_hist_opts
 
 
-def create_histogram(plotvar, hist_sett, weights=None):
+def create_histogram(plotvar, hist_sett, name='', weights=None, x_axis=''):
     """
     Create the n dimensional histogram using
     """
-    name = create_random_str()
+    if not name:
+        name = create_random_str()
     # use the number of dimensions from the plotvar to determine which sort of
     # histogram to use
     nD = plotvar.shape
@@ -38,6 +39,8 @@ def create_histogram(plotvar, hist_sett, weights=None):
     hist_type = 'TH{}D'.format(nD)
     hist = getattr(r, hist_type)(name, '', *hist_sett)
     set_hist_opts(hist)
+    if x_axis:
+        hist.SetXTitle(x_axis)
 
     fill_hist(hist, plotvar, weights=weights)
 
@@ -57,7 +60,18 @@ def make_plot(plotvar, histset, savename='', **kwargs):
 
 
 # get N x 2 array for folded costh & phi
-costh_phi = lambda df, f: np.array([df['costh_{}'.format(f)].abs(), df['phi_{}_fold'.format(f)]]).T
+# costh_phi = lambda df, f: np.array([df['costh_{}'.format(f)].abs(), df['phi_{}_fold'.format(f)]]).T
+
+
+def costh_phi(df, frame, gen=False):
+    """
+    Get Abs(costh) and folded phi from dataframe for a given reference frame
+    """
+    add_gen = 'gen_' if gen else ''
+    costh = '{}costh_{}'.format(add_gen, frame)
+    phi = '{}phi_{}_fold'.format(add_gen, frame)
+
+    return np.array([df[costh].abs(), df[phi]]).T
 
 
 def basic_sel(df, jpsiPt, photonPt=0):
