@@ -107,7 +107,7 @@ def singlemu_sel(df, cuts):
 def get_selections(jpsiPt):
     # some shorthands for less typing below
     base_sel = lambda df: basic_sel(df, True, True)
-    jpsi_sel = lambda df: jpsi_kin_sel(df, jpsiPt, True)
+    jpsi_sel = lambda df: jpsi_kin_sel(df, jpsiPt)
     loose = lambda df: singlemu_sel(df, loose_cuts())
     fiducial = lambda df: singlemu_sel(df, fiducial_cuts())
     flat = lambda df: singlemu_sel(df, flat_pt(3.5))

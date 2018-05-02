@@ -105,8 +105,8 @@ struct GenMCAddInfo {
     t->Branch("muP_eta", &muP_eta);
     t->Branch("muN_eta", &muN_eta);
 
-    t->Branch("jpsiPt", &jpsiPt);
-    t->Branch("jpsiRap", &jpsiRap);
+    t->Branch("JpsiPt", &jpsiPt);
+    t->Branch("JpsiRap", &jpsiRap);
 
     t->Branch("photonPt", &photonPt);
     t->Branch("photonRap", &photonRap);

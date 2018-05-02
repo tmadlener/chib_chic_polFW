@@ -31,14 +31,15 @@ def basic_sel(df, mc=False, gen=False):
     return selection
 
 
-def jpsi_kin_sel(df, jpsiPt, gen=False):
-    ptname = 'jpsiPt' if gen else 'JpsiPt'
-    rapname = 'jpsiRap' if gen else 'JpsiRap'
-    return np.ones(df.shape[0], dtype=bool)
-    # return get_bin_cut_df(df, ptname, *jpsiPt) \
-    #     & (df[rapname].abs() < 1.2)
-    # return (df[rapname].abs() < 1.2)
-
+def jpsi_kin_sel(df, jpsiPt, noPt=False, noRap=False):
+    ptname = 'JpsiPt'
+    rapname = 'JpsiRap'
+    selection = np.ones(df.shape[0], dtype=bool)
+    if not noPt:
+        selection &= get_bin_cut_df(df, ptname, *jpsiPt)
+    if not noRap:
+        selection &= df[rapname].abs() < 1.2
+    return selection
 
 def fiducial_cuts():
     """Get the coordinates representing the standard fiducial cuts"""
@@ -142,14 +143,14 @@ def make_overview_plots(data, outdir, mc=False, gen=False):
     make_pt_eta_plot(np.abs(data.loc[basic_sel(data, mc, gen), ['muN_pt', 'muN_eta']]),
                      cuts, plot_sett, '{}/muN_pt_eta_basic_sel.pdf'.format(outdir))
 
-    make_pt_eta_plot(np.abs(data.loc[jpsi_kin_sel(data, (8, 20), gen), ['muP_pt', 'muP_eta']]),
+    make_pt_eta_plot(np.abs(data.loc[jpsi_kin_sel(data, (8, 20)), ['muP_pt', 'muP_eta']]),
                      cuts, plot_sett, '{}/muP_pt_eta_jpsi_kin_sel.pdf'.format(outdir))
-    make_pt_eta_plot(np.abs(data.loc[jpsi_kin_sel(data, (8, 20), gen), ['muN_pt', 'muN_eta']]),
+    make_pt_eta_plot(np.abs(data.loc[jpsi_kin_sel(data, (8, 20)), ['muN_pt', 'muN_eta']]),
                      cuts, plot_sett, '{}/muN_pt_eta_jpsi_kin_sel.pdf'.format(outdir))
 
-    make_pt_eta_plot(np.abs(data.loc[basic_sel(data, mc, gen) & jpsi_kin_sel(data, (8, 20), gen), ['muP_pt', 'muP_eta']]),
+    make_pt_eta_plot(np.abs(data.loc[basic_sel(data, mc, gen) & jpsi_kin_sel(data, (8, 20)), ['muP_pt', 'muP_eta']]),
                      cuts, plot_sett, '{}/muP_pt_eta_basic_jpsi_kin_sel.pdf'.format(outdir))
-    make_pt_eta_plot(np.abs(data.loc[basic_sel(data, mc, gen) & jpsi_kin_sel(data, (8, 20), gen), ['muN_pt', 'muN_eta']]),
+    make_pt_eta_plot(np.abs(data.loc[basic_sel(data, mc, gen) & jpsi_kin_sel(data, (8, 20)), ['muN_pt', 'muN_eta']]),
                      cuts, plot_sett, '{}/muN_pt_eta_basic_jpsi_kin_sel.pdf'.format(outdir))
 
 
