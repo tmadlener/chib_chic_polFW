@@ -22,12 +22,17 @@ struct MCAddInfoIn {
     t->SetBranchAddress("gen_muonM_p4", &gen_muN);
     t->SetBranchAddress("trigger", &trigger);
     t->SetBranchAddress("probFit1S", &vtxProb);
+    t->SetBranchAddress("gen_photon_p4", &gen_photon);
+    t->SetBranchAddress("photon_p4", &photon); // using non-refitted for the moment
   }
 
   TLorentzVector* gen_jpsi{nullptr};
   TLorentzVector* gen_chic{nullptr};
   TLorentzVector* gen_muP{nullptr};
   TLorentzVector* gen_muN{nullptr};
+
+  TLorentzVector* gen_photon{nullptr};
+  TLorentzVector* photon{nullptr};
 
   int trigger;
   double vtxProb;
@@ -59,7 +64,17 @@ struct MCAddInfoOut {
 
     t->Branch("JpsiPt", &jpsiPt);
     t->Branch("JpsiRap", &jpsiRap);
+
+    t->Branch("photonPt", &photonPt);
+    t->Branch("photonRap", &photonRap);
+    t->Branch("photonEta", &photonEta);
+
+    t->Branch("gen_photonPt", &gen_photonPt);
+    t->Branch("gen_photonRap", &gen_photonRap);
+    t->Branch("gen_photonEta", &gen_photonEta);
+
   }
+
 
   double costh_HX;
   double phi_HX;
@@ -83,6 +98,14 @@ struct MCAddInfoOut {
 
   double jpsiPt;
   double jpsiRap;
+
+  double photonPt;
+  double photonRap;
+  double photonEta;
+
+  double gen_photonPt;
+  double gen_photonRap;
+  double gen_photonEta;
 };
 
 

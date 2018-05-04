@@ -65,6 +65,14 @@ bool chicMCTupling(const ChicMCInputEvent& inEvent, ChicMCTupleEvent& event)
   event.info().jpsiPt = inEvent.jpsi().Pt();
   event.info().jpsiRap = inEvent.jpsi().Rapidity();
 
+  event.info().gen_photonPt = inEvent.info().gen_photon->Pt();
+  event.info().gen_photonEta = inEvent.info().gen_photon->Eta();
+  event.info().gen_photonRap = inEvent.info().gen_photon->Rapidity();
+
+  event.info().photonPt = inEvent.info().photon->Pt();
+  event.info().photonEta = inEvent.info().photon->Eta();
+  event.info().photonRap = inEvent.info().photon->Rapidity();
+
   return true; // simply accept all events
 }
 
