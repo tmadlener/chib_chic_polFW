@@ -7,6 +7,14 @@ logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
 import pandas as pd
+import numpy as np
+
+import ROOT as r
+
+from root_numpy import fill_hist
+
+from utils.hist_utils import set_hist_opts
+from utils.misc_helpers import create_random_str
 
 def check_branch_available(tree, branch):
     """
@@ -102,3 +110,89 @@ def get_dataframe(infile, treename=None):
             logging.error('Requested to read DataFrame from {}, but could not '
                           'import root_pandas'.format(infile))
     sys.exit(1)
+
+
+def apply_selections(dataframe, selections):
+    """
+    Apply all selections and return the reduced dataframe.
+
+    Args:
+        dataframe (pandas.DataFrame): The data to which the selections should be
+            applied
+        selections (list): List of functions taking the DataFrame as single
+            argument and returning a list of booleans (with the same number) of
+            rows as the DataFrame, where the elements with True will be selected
+
+    Returns:
+         pandas.DataFrame: View into the dataframe with only the selected rows
+             still present
+    """
+    if selections is None:
+        return dataframe
+
+    sum_selection = np.ones(dataframe.shape[0], dtype=bool)
+    for sel in selections:
+        sum_selection &= sel(dataframe)
+
+    return dataframe[sum_selection]
+
+
+def create_histogram(var, hist_sett, **kwargs):
+    """
+    Create a ROOT histogram from the passed variable(s)
+
+    Args:
+        var (np.array): Array with maximum of 3 columns containing the variables
+            to plot.
+        hist_set (tuple): Histogram settings, that are directly unpacked into
+            the constructor of the ROOT histogram
+
+    Keyword Args:
+        name (str, optional): Name to be used for the histogram
+        weights (np.array, optional): weight array with the same number of
+             events as the var array. Each entry corresponds to the weight of
+             the event
+        {x,y,z}_axis (str): axis labels to be set for the histogram
+
+    Returns:
+         ROOT.TH{1,2,3}D: The histogram with the dimension corresponding to the
+             number of columns of var
+    """
+    name = kwargs.pop('name', '')
+    if not name:
+        name = create_random_str()
+    # use the number of dimensions from the var to determine which sort of
+    # histogram to use
+    ndim = var.shape
+    if len(ndim) == 1:
+        ndim = 1
+    else:
+        ndim = ndim[1]
+
+    if ndim > 3 or ndim < 0:
+        logging.error('Dimension of histogram is {}. Cannot create histogram'
+                      .format(ndim))
+        raise TypeError('Invalid number of dimensions in create_histograms')
+
+    hist_type = 'TH{}D'.format(ndim)
+    try:
+        hist = getattr(r, hist_type)(name, '', *hist_sett)
+    except TypeError as exc:
+        logging.error('Could not construct TH{}D with passed hist_sett: {}'
+                      .format(ndim, hist_sett))
+        raise exc
+
+    set_hist_opts(hist)
+
+    # set axis labels
+    xax, yax, zax = (kwargs.pop(a, '') for a in ['x_axis', 'y_axis', 'z_axis'])
+    if xax:
+        hist.SetXTitle(xax)
+    if yax:
+        hist.SetYTitle(xax)
+    if zax:
+        hist.SetZTitle(xax)
+
+    fill_hist(hist, var, weights=kwargs.pop('weights', None))
+
+    return hist

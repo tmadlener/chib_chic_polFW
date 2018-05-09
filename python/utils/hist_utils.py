@@ -157,6 +157,7 @@ def get_x_min(hists):
     """
     return min([h.GetBinLowEdge(1) for h in hists]) # 0 is underflow bin
 
+
 def set_range_hist(hist, x_range=None, y_range=None):
     """
     Set the range to the histogram.
