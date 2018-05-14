@@ -189,9 +189,9 @@ def create_histogram(var, hist_sett, **kwargs):
     if xax:
         hist.SetXTitle(xax)
     if yax:
-        hist.SetYTitle(xax)
+        hist.SetYTitle(yax)
     if zax:
-        hist.SetZTitle(xax)
+        hist.SetZTitle(zax)
 
     fill_hist(hist, var, weights=kwargs.pop('weights', None))
 
