@@ -33,6 +33,11 @@ struct BasicAddInfo {
   double gammaEta;
   double gammaDz;
 
+  double photonPt;
+  double photonEta;
+
+  int trigger;
+
   TLorentzVector* gamma{nullptr};
 
   void Create(TTree* t)
@@ -51,6 +56,11 @@ struct BasicAddInfo {
     t->Branch("convRadius", &convRadius);
     t->Branch("gammaEta", &gammaEta);
     t->Branch("gammaDz", &gammaDz);
+
+    t->Branch("photonPt", &photonPt);
+    t->Branch("photonEta", &photonEta);
+
+    t->Branch("trigger", &trigger);
   }
 
   void Init(TTree* t)
@@ -60,6 +70,7 @@ struct BasicAddInfo {
     t->SetBranchAddress("dz", &gammaDz);
     t->SetBranchAddress("conv_vertex", &convRadius);
     t->SetBranchAddress("rf1S_photon_p4", &gamma);
+    t->SetBranchAddress("trigger", &trigger);
   }
 };
 
@@ -103,6 +114,11 @@ bool chicBasicTupling(const ChicBasicTuplingInEvent& inEvent, ChicBasicTuplingOu
   event.info().gammaEta = inEvent.info().gamma->Eta();
   event.info().convRadius = inEvent.info().convRadius;
   event.info().gammaDz = inEvent.info().gammaDz;
+
+  event.info().photonPt = inEvent.info().gamma->Pt();
+  event.info().photonEta = inEvent.info().gamma->Eta();
+
+  event.info().trigger = inEvent.info().trigger;
 
   return true;
 }
