@@ -8,6 +8,7 @@ import re
 import numpy as np
 from random import choice
 from string import ascii_letters, digits
+from collections import Iterable
 
 import logging
 logging.basicConfig(level=logging.WARNING,
@@ -70,6 +71,24 @@ def replace_all(string, repl_pairs, reverse=False):
 
     return ret_str
 
+
+def make_iterable(possibly_iterable):
+    """
+    Make the passed element iterable if it is a single element or return it
+    unchanged if it already is.
+
+    Args:
+        possibly_iterable: Any object or built-in or anything that is
+            already iterable
+
+    Returns:
+        tuple or possibly_iterable: If input is not iterable this returns the
+            passed object wrapped inside a tuple, otherwise it simply returns
+            the passed in object unchanged.
+    """
+    if not isinstance(possibly_iterable, Iterable):
+        return (possibly_iterable,)
+    return possibly_iterable
 
 
 def stringify(selection, reverse=False):

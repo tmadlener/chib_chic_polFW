@@ -8,8 +8,7 @@ import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(levelname) - %(funcName)s: %(message)s')
 
-from collections import Iterable
-
+from utils.misc_helpers import make_iterable
 
 def draw_var_to_hist(tree, hist, var, cut='', weight=None):
     """
@@ -62,8 +61,7 @@ def set_hist_opts(hists):
     Args:
         hists (ROOT.TH1 or list): the histogram(s) to set the options to.
     """
-    if not isinstance(hists, Iterable):
-        hists = [hists]
+    hists = make_iterable(hists)
     for hist in hists:
         hist.SetStats(0) # disable stat box
         hist.Sumw2()
@@ -105,13 +103,13 @@ def get_y_max(hists):
     Get the maximum y-value of all histograms
 
     Args:
-        hists (list): list of ROOT.TH1 for which the maximum y-value should be
-            obtained
+        hists (list or ROOT.TH1): list of ROOT.TH1 for which the maximum y-value
+            should be obtained
 
     Returns:
         float: The maximum y-value of all passed histograms
     """
-    return max([h.GetBinContent(h.GetMaximumBin()) for h in hists])
+    return max(h.GetBinContent(h.GetMaximumBin()) for h in make_iterable(hists))
 
 
 def get_y_min(hists):
@@ -119,13 +117,13 @@ def get_y_min(hists):
     Get the minimum y-value of all histograms
 
     Args:
-        hists (list): list of ROOT.TH1 for which the minimum y-value should be
-            obtained
+        hists (list or ROOT.TH1): list of ROOT.TH1 for which the minimum y-value
+            should be obtained
 
     Returns:
         float: The minimum y-value of all passed histograms
     """
-    return min(h.GetBinContent(h.GetMinimumBin()) for h in hists)
+    return min(h.GetBinContent(h.GetMinimumBin()) for h in make_iterable(hists))
 
 
 def get_x_max(hists):
@@ -133,15 +131,15 @@ def get_x_max(hists):
     Get the maximum x-value of all histograms
 
     Args:
-        hists (list): list of ROOT.TH1 for which the maximum x-value should be
-            obtained
+        hists (list or ROOT.TH1): list of ROOT.TH1 for which the maximum x-value
+            should be obtained
 
     Returns:
         float: The maximum x-value of all passed histograms
     """
     max_bin = lambda h: h.GetNbinsX()
-    return max([h.GetBinLowEdge(max_bin(h)) + h.GetBinWidth(max_bin(h))
-                for h in hists])
+    return max(h.GetBinLowEdge(max_bin(h)) + h.GetBinWidth(max_bin(h))
+               for h in make_iterable(hists))
 
 
 def get_x_min(hists):
@@ -149,13 +147,14 @@ def get_x_min(hists):
     Get the minimum x-value of all histograms
 
     Args:
-        hists (list): list of ROOT.TH1 for which the minimum x-value should be
-            obtained
+        hists (list or ROOT.TH1): list of ROOT.TH1 for which the minimum x-value
+            should be obtained
 
     Returns:
         float: The minimum x-value of all passed histograms
     """
-    return min([h.GetBinLowEdge(1) for h in hists]) # 0 is underflow bin
+    # 0 is underflow bin (thus starting at 1)
+    return min(h.GetBinLowEdge(1) for h in make_iterable(hists))
 
 
 def set_range_hist(hist, x_range=None, y_range=None):

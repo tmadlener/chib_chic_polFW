@@ -13,8 +13,7 @@ Attributes:
 import ROOT as r
 
 from itertools import product
-from collections import Iterable
-from utils.misc_helpers import create_random_str
+from utils.misc_helpers import create_random_str, make_iterable
 from utils.hist_utils import set_common_range, set_labels
 
 _colors = []
@@ -259,10 +258,12 @@ def mkplot(pltables, **kwargs):
 
     Returns:
         ROOT.TCanvas: Canvas with all the plotables drawn onto it.
+
+    See also:
+        plot_on_canvas
     """
     # allow single plots to be handled the same as a list of plots
-    if not isinstance(pltables, Iterable):
-        pltables = [pltables]
+    pltables = make_iterable(pltables)
 
     can = kwargs.pop('can', None)
     if can is None:
