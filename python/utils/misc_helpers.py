@@ -9,6 +9,7 @@ import numpy as np
 from random import choice
 from string import ascii_letters, digits
 from collections import Iterable
+from decorator import decorator
 
 import logging
 logging.basicConfig(level=logging.WARNING,
@@ -358,3 +359,19 @@ def get_vals_from_rwbuffer(rw_buffer, n_points):
         vals[i] = rw_buffer[i]
 
     return np.array(vals)
+
+
+@decorator
+def log_key_error(func, *args):
+    """
+    Decorator for logging a KeyError, where such an exception is not critical to
+    the operation of the program
+    """
+    def try_catch_access(*args):
+        """The closure holding the try-catch block"""
+        try:
+            return func(*args)
+        except KeyError:
+            logging.warning('Caught KeyError')
+
+    return try_catch_access(*args)
