@@ -10,6 +10,7 @@ import pandas as pd
 import numpy as np
 
 import ROOT as r
+r.PyConfig.IgnoreCommandLineOptions = True
 
 from root_numpy import fill_hist
 
