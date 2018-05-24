@@ -12,14 +12,15 @@ r.gStyle.SetPadRightMargin(0.15)
 r.gStyle.SetPadLeftMargin(0.12)
 # r.gROOT.SetBatch()
 
-from gen_level_ratios import create_histogram, costh_phi
+from gen_level_ratios import costh_phi
 from data_single_muon_acc import (
     basic_sel, jpsi_kin_sel, fiducial_cuts, loose_cuts, flat_pt
 )
 
-from utils.data_handling import get_dataframe
+from utils.data_handling import get_dataframe, apply_selections, create_histogram
 from utils.misc_helpers import get_bin_cut_df, cond_mkdir
 from utils.plot_helpers import mkplot, default_colors
+from utils.selection_functions import get_cut_funcs
 
 # which selections to plot?
 # NOTE: basic_sel does not select anything for gen mc
@@ -40,63 +41,8 @@ costh_binning_data = np.array(
      1.0] # overflow bin
 )
 
-def get_cut_funcs(coords):
-    """
-    Get a cut function from the passed coordinates in the pt-eta plane
-    """
-    # remove the first coordinate, since they are mainly here for drawing
-    coords = coords[1:]
-    cut_funcs = []
 
-    max_eta = max([c[1] for c in coords])
-    # min_pt = min([c[0] for c in coords])
-
-    # contains function, checking if x is somewhere in between l and h
-    # without the need to order lower and upper bounds
-    cont = lambda x, l, h: ((x > l) & (x < h)) | ((x > h) & (x < l))
-
-    for c1, c2 in zip(coords[:-1], coords[1:]):
-        pt1, eta1 = c1
-        pt2, eta2 = c2
-        # sorting to not have to worry about the order in which the coordinates have been defined
-        # 3 cases
-        if pt1 == pt2:
-            # to capture the values of pt1, etc by "value" create a new scope in a function
-            # See, e.g.: https://stackoverflow.com/a/13355291
-            def pt_cut(pt, eta, pt1=pt1, pt2=pt2, eta1=eta1, eta2=eta2):
-                return (pt > pt1) & cont(eta, eta1, eta2)
-            cut_funcs.append(pt_cut)
-
-        elif eta1 == eta2:
-            def eta_cut(pt, eta, pt1=pt1, pt2=pt2, eta1=eta1, eta2=eta2):
-                return (eta > eta1) & cont(pt, pt1, pt2) & (eta < max_eta)
-            cut_funcs.append(eta_cut)
-
-        elif pt1 != pt2 and eta1 != eta2:
-            def lin_int(pt, eta, pt1=pt1, pt2=pt2, eta1=eta1, eta2=eta2):
-                int_eta = eta1 + (pt - pt1) * (eta2 - eta1) / (pt2 - pt1)
-                return (eta > int_eta) & cont(eta, eta1, eta2)
-            cut_funcs.append(lin_int)
-
-        else:
-            print('Something went wrong')
-
-    return cut_funcs
-
-
-def apply_singlemuon_cuts(pt, eta, cuts):
-    """
-    Single muon selection using the same coordinates as for drawing
-    """
-    cut_funcs = get_cut_funcs(cuts)
-    decision = np.zeros(pt.shape, dtype=bool) # simply assuming that pt and eta have the same shape
-    for cut in cut_funcs:
-        decision |= cut(pt, eta)
-
-    return decision
-
-
-def singlemu_sel(df, cuts):
+def single_muon_sel(df, cuts):
     """
     Single muon cuts applied to both Mons
     """
@@ -108,9 +54,9 @@ def get_selections(jpsiPt):
     # some shorthands for less typing below
     base_sel = lambda df: basic_sel(df, True, True)
     jpsi_sel = lambda df: jpsi_kin_sel(df, jpsiPt)
-    loose = lambda df: singlemu_sel(df, loose_cuts())
-    fiducial = lambda df: singlemu_sel(df, fiducial_cuts())
-    flat = lambda df: singlemu_sel(df, flat_pt(3.5))
+    loose = lambda df: single_muon_sel(df, loose_cuts())
+    fiducial = lambda df: single_muon_sel(df, fiducial_cuts())
+    flat = lambda df: single_muon_sel(df, flat_pt(3.5))
 
     selection_sets = {
         'no_sel': None,
@@ -158,22 +104,6 @@ def get_selections(jpsiPt):
 #     }
 
 #     return attribute_sets
-
-
-
-def apply_selections(df, selections):
-    """
-    Apply all selections and return the reduced dataframe.
-    All selection have to take the DataFrame as single selection
-    """
-    if selections is None:
-        return df
-
-    sum_selection = np.ones(df.shape[0], dtype=bool)
-    for sel in selections:
-        sum_selection &= sel(df)
-
-    return df[sum_selection]
 
 
 def get_costh_phi_hist(df, frame, selections, gen=False):

@@ -12,9 +12,8 @@ r.gStyle.SetPadRightMargin(0.15)
 r.gStyle.SetPadLeftMargin(0.12)
 # r.gROOT.SetBatch() # comment for ipython
 
-from gen_level_ratios import create_histogram
 
-from utils.data_handling import get_dataframe
+from utils.data_handling import get_dataframe, create_histogram
 from utils.plot_helpers import plot_on_canvas
 from utils.misc_helpers import get_bin_cut_df, cond_mkdir, create_random_str
 

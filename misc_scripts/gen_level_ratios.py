@@ -16,35 +16,10 @@ r.PyConfig.IgnoreCommandLineOptions = True
 
 from root_numpy import fill_hist
 
-from utils.data_handling import get_dataframe
+from utils.data_handling import get_dataframe, create_histogram
 from utils.misc_helpers import create_random_str, get_bin_cut_df
 from utils.plot_helpers import mkplot
 from utils.hist_utils import set_hist_opts
-
-
-def create_histogram(plotvar, hist_sett, name='', weights=None, x_axis=''):
-    """
-    Create the n dimensional histogram using
-    """
-    if not name:
-        name = create_random_str()
-    # use the number of dimensions from the plotvar to determine which sort of
-    # histogram to use
-    nD = plotvar.shape
-    if len(nD) == 1:
-        nD = 1
-    else:
-        nD = nD[1]
-
-    hist_type = 'TH{}D'.format(nD)
-    hist = getattr(r, hist_type)(name, '', *hist_sett)
-    set_hist_opts(hist)
-    if x_axis:
-        hist.SetXTitle(x_axis)
-
-    fill_hist(hist, plotvar, weights=weights)
-
-    return hist
 
 
 def make_plot(plotvar, histset, savename='', **kwargs):
