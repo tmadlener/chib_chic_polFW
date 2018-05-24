@@ -15,7 +15,7 @@ r.PyConfig.IgnoreCommandLineOptions = True
 from root_numpy import fill_hist
 
 from utils.hist_utils import set_hist_opts
-from utils.misc_helpers import create_random_str
+from utils.misc_helpers import create_random_str, make_iterable
 
 def check_branch_available(tree, branch):
     """
@@ -120,9 +120,10 @@ def apply_selections(dataframe, selections):
     Args:
         dataframe (pandas.DataFrame): The data to which the selections should be
             applied
-        selections (list): List of functions taking the DataFrame as single
-            argument and returning a list of booleans (with the same number) of
-            rows as the DataFrame, where the elements with True will be selected
+        selections (list or function): List of functions taking the DataFrame as
+            single argument and returning a list of booleans (with the same
+            number) of rows as the DataFrame, where the elements with True will
+            be selected
 
     Returns:
          pandas.DataFrame: View into the dataframe with only the selected rows
@@ -132,7 +133,7 @@ def apply_selections(dataframe, selections):
         return dataframe
 
     sum_selection = np.ones(dataframe.shape[0], dtype=bool)
-    for sel in selections:
+    for sel in make_iterable(selections):
         sum_selection &= sel(dataframe)
 
     return dataframe[sum_selection]
