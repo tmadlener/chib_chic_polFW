@@ -33,7 +33,9 @@ int main(int argc, char *argv[])
   // Declare the basic event content (valid for data and reco MC)
   if (!genOnly) {
     event.Add({{"trigger", "trigger"}}, // integer variables
-              {{"ctpv", "Jpsict"}, {"conv_vertex", "convRadius"}, {"dz", "gammaDz"}, {"probFit1S", "vtxProb"}}, // double vars
+              // double vars
+              {{"ctpv", "Jpsict"}, {"conv_vertex", "convRadius"}, {"dz", "gammaDz"}, {"probFit1S", "vtxProb"},
+               {"ctpv_error", "JpsictErr"}}, // double vars
               {{"dimuon_p4", "Jpsi"}, {"rf1S_chi_p4", "chic"}, {"photon_p4", "photon"}}, // TLorentzVector vars
               {std::make_tuple("muonP_p4", "muonN_p4", "")}); // single muon vars with costh and phi calc
   }
