@@ -66,13 +66,13 @@ export -f get_pt
 function pklview() {
     if [[ $# -eq 0 ]]; then
         echo "usage: pkl_view FILE [FILES]"
-        exit 64
+        return 64
     fi
     files=${@}
     for file in ${files[@]}; do
         if [[ ! -f ${file} ]]; then
             echo "${file} not found"
-            exit 1
+            return 1
         fi
         echo "${file}:"
         python -c "import pickle; import pprint; pprint.pprint(pickle.load(open('${file}')))"
