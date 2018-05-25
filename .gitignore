@@ -41,6 +41,7 @@
 # Pdfs and other image/binary files
 *.pdf
 *.root
+*.svg
 
 # Root generated files
 *.wscode*
@@ -48,6 +49,10 @@ RooCFAuto*
 
 # Backup files
 *~
+
+# log files and other files capturing stdout
+*.log
+*.out
 
 # json (header only library)
 general/interface/json.hpp
