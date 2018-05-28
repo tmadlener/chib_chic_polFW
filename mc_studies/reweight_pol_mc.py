@@ -69,11 +69,13 @@ def main(args):
         logging.info('weights already present for this polarization scenario')
         sys.exit(1)
 
+    gen_prefix = 'gen_' if args.genlevel else ''
+
     if lph is None:
-        weight = calc_weights(mc_frame['costh_' + frame], lth)
+        weight = calc_weights(mc_frame[gen_prefix + 'costh_' + frame], lth)
     else:
-        weight = calc_weights_2d(mc_frame['costh_' + frame],
-                                 mc_frame['phi_' + frame], lth, lph)
+        weight = calc_weights_2d(mc_frame[gen_prefix + 'costh_' + frame],
+                                 mc_frame[gen_prefix + 'phi_' + frame], lth, lph)
 
     logging.debug('Shape of data frame before adding weights: {}'.
                   format(mc_frame.shape))
@@ -104,6 +106,8 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--outfile', default='', type=str,
                         help='Name of output file, if it should not be the '
                         'input file')
+    parser.add_argument('-g', '--genlevel', default=False, action='store_true',
+                        help='Use genlevel costh and phi')
 
 
 

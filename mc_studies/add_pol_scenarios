@@ -6,6 +6,9 @@
 REWEIGHT_2D=0
 ## frame to reweight in
 FRAME=HX
+## use generation level
+GENLEVEL=0
+
 
 SCENARIOS=(1 0.5 -0.3 -0.6)
 
@@ -21,6 +24,10 @@ function add_scenario() {
 
     weight_adder=${CHIB_CHIC_POLFW_DIR}/mc_studies/reweight_pol_mc.py
 
+    if [[ ${GENLEVEL} -eq 1 ]]; then
+        GENFLAG="--genlevel"
+    fi
+
     if [[ ${REWEIGHT_2D} -eq 1 ]]; then
         if [[ -$# -lt 2 ]]; then
             echo "ERROR: add_scenario() needs 2 lambda parameters for 2d reweighting"
@@ -29,7 +36,7 @@ function add_scenario() {
         lth=${1}
         lph=${2}
 
-        ${weight_adder} --lambda-theta=${lth} --lambda-phi=${lph} --frame=${frame} ${file}
+        ${weight_adder} --lambda-theta=${lth} --lambda-phi=${lph} --frame=${frame} ${GENFLAG} ${file}
         exc_weighting=$?
     else
         if [[ $# -lt 1 ]]; then
@@ -38,7 +45,7 @@ function add_scenario() {
         fi
         lth=${1}
 
-        ${weight_adder} --lambda-theta=${lth} --frame=${frame} ${file}
+        ${weight_adder} --lambda-theta=${lth} --frame=${frame} ${GENFLAG} ${file}
         exc_weighting=$?
     fi
 
@@ -48,6 +55,10 @@ function add_scenario() {
 if [[ $# -lt 1 ]]; then
     echo "Usage: add_pol_scenarios MCFILE"
     exit 64
+fi
+
+if $(check_args_flag "-g" ${@}) || $(check_args_flag "--genlevel" ${@}); then
+    GENLEVEL=1
 fi
 
 for scen in ${SCENARIOS[@]}; do
