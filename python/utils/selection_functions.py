@@ -72,6 +72,7 @@ def get_gen_name(name, gen=False):
     else:
         return name
 
+
 def single_muon_sel(df, cuts, gen=False):
     """Apply a single muon selection (using the AND of both single muons)"""
     mu_name = get_gen_name('mu', gen)
@@ -131,6 +132,7 @@ def fiducial_cuts():
     )
     return coords
 
+
 def loose_cuts():
     """Loosest cut that does not have any acceptance holes in pt-eta"""
     coords = (
@@ -152,6 +154,13 @@ def loose_muon_sel(df, gen=False):
     return single_muon_sel(df, loose_cuts(), gen)
 
 
-def get_n_events(data, selections=None):
-    """Get the number of events in the dataframe surviving the passed selection"""
-    return apply_selections(data, selections).shape[0]
+def get_n_events(data, selections=None, weight=None):
+    """
+    Get the number of events in the dataframe surviving the passed selection
+
+    If weight is not None the corresponding column will be used as weights
+    """
+    sel_data = apply_selections(data, selections)
+    if weight is None:
+        return sel_data.shape[0]
+    return sel_data[weight].sum()
