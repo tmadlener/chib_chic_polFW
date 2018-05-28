@@ -113,7 +113,7 @@ def get_dataframe(infile, treename=None):
     sys.exit(1)
 
 
-def apply_selections(dataframe, selections):
+def apply_selections(dataframe, selections, negate=False):
     """
     Apply all selections and return the reduced dataframe.
 
@@ -124,6 +124,8 @@ def apply_selections(dataframe, selections):
             single argument and returning a list of booleans (with the same
             number) of rows as the DataFrame, where the elements with True will
             be selected
+        negate (Boolean): Instead of returning all events fulfilling the
+            selection return all events not fulfilling the selection
 
     Returns:
          pandas.DataFrame: View into the dataframe with only the selected rows
@@ -135,6 +137,9 @@ def apply_selections(dataframe, selections):
     sum_selection = np.ones(dataframe.shape[0], dtype=bool)
     for sel in make_iterable(selections):
         sum_selection &= sel(dataframe)
+
+    if negate:
+        sum_selection = np.invert(sum_selection)
 
     return dataframe[sum_selection]
 
