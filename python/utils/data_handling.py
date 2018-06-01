@@ -128,8 +128,8 @@ def apply_selections(dataframe, selections, negate=False):
             selection return all events not fulfilling the selection
 
     Returns:
-         pandas.DataFrame: View into the dataframe with only the selected rows
-             still present
+         pandas.DataFrame: New DataFrame with only the elements of the passed
+             DataFrame that pass the selection
     """
     if selections is None:
         return dataframe
@@ -141,6 +141,8 @@ def apply_selections(dataframe, selections, negate=False):
     if negate:
         sum_selection = np.invert(sum_selection)
 
+    # NOTE: since this indexing uses an array of bools this will always return a
+    # copy
     return dataframe[sum_selection]
 
 
