@@ -10,7 +10,7 @@ import json
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 
-from utils.misc_helpers import stringify
+from common_func import get_name
 
 def eff_param_string():
     """
@@ -54,13 +54,6 @@ def load_params(param_file):
         return eff_params
 
 
-def get_name(eta):
-    """
-    Get a name encoding the eta limits
-    """
-    return stringify('photon_eff_pt_eta_{:.1f}_{:.1f}'.format(*eta))
-
-
 def create_param(params):
     """
     Create the function from the passed params and give it an appropriate name
@@ -71,7 +64,7 @@ def create_param(params):
                       params["p0"], params["p1"], params["p2"], params["p3"],
                       params["alpha"], params["beta"])
 
-    func.SetName(get_name(params["eta"]))
+    func.SetName(get_name(params["eta"], 'photon_eff_pt'))
     return func
 
 
