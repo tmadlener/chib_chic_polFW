@@ -375,3 +375,26 @@ def log_key_error(func, *args):
             logging.warning('Caught KeyError')
 
     return try_catch_access(*args)
+
+
+def flatten(iterable):
+    """
+    Flatten any list or iterable into a 1D-list.
+    Taken from here: http://stackoverflow.com/a/2158532/3604607
+
+    Args:
+        iterable (iterable): Possibly nested list or iterable that should be
+            converted into a flat (1D) list
+
+    Returns:
+        generator: The generator that yields all the elements of the passed in
+            list as a flat iterable
+    """
+    for elem in iterable:
+        # only checking for the __iter__ attribute here should allow to enter
+        # sub lists but not tear apart strings since they don't have it
+        if hasattr(elem, "__iter__"):
+            for sub in flatten(elem):
+                yield sub
+        else:
+            yield elem
