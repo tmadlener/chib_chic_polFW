@@ -1,3 +1,5 @@
+#include "smearing.h"
+
 #include "Riostream.h"
 #include "TSystem.h"
 #include "TString.h"
@@ -11,7 +13,8 @@
 #include "TF1.h"
 #include "TFile.h"
 
-const int n_events =  3000000;
+// const int n_events =  3000000;
+const int n_events =  100000; // for testing
 
 /*
 // chic1 unpolarized
@@ -75,7 +78,12 @@ const bool   CSframeIsNatural = false;    // generate chic polarization in the C
 
 const double Mpsi = 3.097;
 const double Mchic[3] = { 3.415, 3.511, 3.556 };
-const double Mchi = Mchic[chic_state];
+const double MchiCentral = Mchic[chic_state];
+const double MchicWidth[3] = { 0.0105, 0.00088, 0.002 }; // PDG, 06.06.2018
+const double MchiWidth = MchicWidth[chic_state];
+
+// global values for Mchi to use the same value in the whole event
+double Mchi;
 
 
 const double Mprot = 0.9382720;
@@ -91,6 +99,13 @@ const TLorentzVector targ(0.,0.,-pbeam,Ebeam); // "targ" = second beam
 const TLorentzVector beam(0.,0.,pbeam,Ebeam);
 
 const double PIG = TMath::Pi();
+
+
+
+constexpr auto residualMapFileName = "res_maps.root"; // The file containing the smearing maps for photons and muons
+constexpr auto photonMapName = "photon_rel_res_map"; // The name of the photon smearing map in the file
+constexpr auto muonXYMapName = "muon_xy_rel_res_map"; // The name of the muonXY smearing map in the file
+constexpr auto muonZMapName = "muon_z_rel_res_map"; // The name of the muonZ smearing map in the file
 
 
 
@@ -122,13 +137,14 @@ void chicpolgen(){
 
   TTree* tr = new TTree("tr", "tr");
 
-
   double pT_chi;        tr->Branch( "pT_chi",         &pT_chi,         "pT_chi/D" );
   double pT;            tr->Branch( "pT",             &pT,             "pT/D" );
   double pL_chi;     //   tr->Branch( "pL_chi",         &pL_chi,         "pL_chi/D" );
   double pL;         //   tr->Branch( "pL",             &pL,             "pL/D" );
   double y_chi;         tr->Branch( "y_chi",          &y_chi,          "y_chi/D" );
   double y;             tr->Branch( "y",              &y,              "y/D" );
+
+  tr->Branch("M_chi", &Mchi);
 
   double pT_gamma;      tr->Branch( "pT_gamma",       &pT_gamma,       "pT_gamma/D" );
   double pL_gamma;      tr->Branch( "pL_gamma",       &pL_gamma,       "pL_gamma/D" );
@@ -160,10 +176,41 @@ void chicpolgen(){
   double phi_cs;        tr->Branch( "phi_cs",         &phi_cs,         "phi_cs/D" );
 
 
+
+  // smeared variables with "_sm" postfix
+  double pT_chi_sm;     tr->Branch("pT_chi_sm", &pT_chi_sm);
+  double y_chi_sm;     tr->Branch("y_chi_sm", &y_chi_sm);
+  double M_chi_sm;      tr->Branch("M_chi_sm", &M_chi_sm);
+  double qM_chi_sm;      tr->Branch("qM_chi_sm", &qM_chi_sm);
+
+  double pT_gamma_sm;     tr->Branch("pT_gamma_sm", &pT_gamma_sm);
+  double y_gamma_sm;     tr->Branch("y_gamma_sm", &y_gamma_sm);
+  double eta_gamma_sm;     tr->Branch("eta_gamma_sm", &eta_gamma_sm);
+
+  double pT_jpsi_sm;     tr->Branch("pT_jpsi_sm", &pT_jpsi_sm);
+  double y_jpsi_sm;     tr->Branch("y_jpsi_sm", &y_jpsi_sm);
+  double M_jpsi_sm;      tr->Branch("M_jpsi_sm", &M_jpsi_sm);
+
+  double pT_lepP_sm;     tr->Branch("pT_lepP_sm", &pT_lepP_sm);
+  double eta_lepP_sm;     tr->Branch("eta_lepP_sm", &eta_lepP_sm);
+
+  double pT_lepN_sm;     tr->Branch("pT_lepN_sm", &pT_lepN_sm);
+  double eta_lepN_sm;     tr->Branch("eta_lepN_sm", &eta_lepN_sm);
+
+
+  // smearing initialization
+  auto *smearingFile = TFile::Open(residualMapFileName);
+  auto *photonResMap = static_cast<TH2D*>(smearingFile->Get(photonMapName));
+  const auto photonSmearing = SmearingProvider(photonResMap);
+
+  auto *muonXYResMap = static_cast<TH2D*>(smearingFile->Get(muonXYMapName));
+  const auto muonXYSmearing = SmearingProvider(muonXYResMap);
+
+  auto *muonZResMap = static_cast<TH2D*>(smearingFile->Get(muonZMapName));
+  const auto muonZSmearing = SmearingProvider(muonZResMap);
+
+
   const int n_step = n_events/50;
-
-
-
   cout << '\n';
   cout << "------------------------------------------------------------" << '\n';
   cout << "Progress: ";
@@ -174,6 +221,9 @@ void chicpolgen(){
 
 
   // generation of chic in the CMS of the proton-proton event
+
+    // M:
+    Mchi = gRandom->Gaus(MchiCentral, MchiWidth);
 
     // pT:
 
@@ -595,6 +645,32 @@ void chicpolgen(){
     inAcc1 = pT_gamma > 1.0;  // some further cuts
 
 
+    // obtaining smeared four-momenta for the muons and photons and calculating the smeared variables for the chi and j/psi from there
+    const auto smearedLepP = smearParticle(lepP, muonXYSmearing, muonZSmearing);
+    const auto smearedLepN = smearParticle(lepN, muonXYSmearing, muonZSmearing);
+    const auto smearedGamma = smearParticle(gamma, photonSmearing);
+
+    auto smearedJpsi = smearedLepP + smearedLepN;
+    auto smearedChi = smearedJpsi + smearedGamma;
+
+    pT_chi_sm = smearedChi.Pt();
+    y_chi_sm = smearedChi.Rapidity();
+    M_chi_sm = smearedChi.M();
+
+    pT_jpsi_sm = smearedJpsi.Pt();
+    y_jpsi_sm = smearedJpsi.Rapidity();
+    M_jpsi_sm = smearedJpsi.M();
+
+    qM_chi_sm = M_chi_sm - M_jpsi_sm + Mpsi;
+
+    pT_gamma_sm = smearedGamma.Pt();
+    y_gamma_sm = smearedGamma.Rapidity();
+    eta_gamma_sm = smearedGamma.Eta();
+
+    pT_lepP_sm = smearedLepP.Pt();
+    eta_lepP_sm = smearedLepP.Eta();
+    pT_lepN_sm = smearedLepN.Pt();
+    eta_lepN_sm = smearedLepN.Eta();
 
   //  filling of the ntuple:
 

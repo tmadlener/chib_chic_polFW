@@ -16,8 +16,8 @@ from utils.data_handling import get_dataframe, store_dataframe, apply_selections
 from utils.EfficiencyProvider import MuonEfficiencies, PhotonEfficiencies
 
 # names of the branches
-MUON_NAMES = ['gen_muP', 'gen_muN']
-PHOTON_NAME = 'gen_photon'
+MUON_NAMES = ['lepP_sm', 'lepN_sm']
+PHOTON_NAME = 'gamma_sm'
 
 
 def get_effs(eff_file, oride_eff, eff_proto):
@@ -39,8 +39,8 @@ def calc_effs(data, effs, branch):
     Calc the efficiencies for a given branch (i.e. particle) and return the
     results
     """
-    pt_branch = branch + 'Pt'
-    eta_branch = branch + 'Eta'
+    pt_branch = 'pT_' + branch
+    eta_branch = 'eta_' + branch
 
     logging.info('Calculating efficiencies for {}'.format(branch))
     return map(effs.eval, data.loc[:, pt_branch], data.loc[:, eta_branch])
