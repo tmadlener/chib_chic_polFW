@@ -398,3 +398,21 @@ def flatten(iterable):
                 yield sub
         else:
             yield elem
+
+
+def chunks(iterable, chunk_size):
+    """
+    Split the iterable into chunks and return the list of chunks
+
+    Args:
+        iterable (iterable): Flat list of n elements that will be split into
+            n / chunk_size chunks
+        chunk_size (int): Number of elements per chunk
+
+    Returns:
+        generator: The generator that yields the list of chunks, where each
+            chunk contains chunk_size elements of the input and the last chunk
+            contains the remainder of elements
+    """
+    for ichunk in xrange(0, len(iterable), chunk_size):
+        yield iterable[ichunk:ichunk + chunk_size]

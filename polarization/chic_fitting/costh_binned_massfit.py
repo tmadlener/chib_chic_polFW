@@ -19,7 +19,7 @@ logging.basicConfig(level=logging.DEBUG,
 from utils.data_handling import get_dataframe
 from utils.misc_helpers import (
     get_costh_binning, get_bin_means, cond_mkdir_file, get_bin_cut_root,
-    get_bin_cut_df
+    get_bin_cut_df, chunks
 )
 from utils.hist_utils import combine_cuts
 from utils.roofit_utils import get_var, ws_import
@@ -35,11 +35,13 @@ def basic_sel_root(state):
     cuts = {
         'chic': [
             'chicPt < 990', 'vtxProb > 0.01', 'TMath::Abs(JpsiRap) < 1.2',
-            'chicMass > 3.325 && chicMass < 3.725'
+            'chicMass > 3.325 && chicMass < 3.725',
+            'muPPt > 3 && muNPt > 3'
         ],
         'jpsi': [
             'vtxProb > 0.01', 'TMath::Abs(JpsiRap) < 1.2',
-            'JpsiMass > 2.8 && JpsiMass < 3.3'
+            'JpsiMass > 2.8 && JpsiMass < 3.3',
+            'muPPt > 3 && muNPt > 3'
         ],
         'chib': ['costh_HX > -1'] # Dummy condition
     }
@@ -54,10 +56,13 @@ def basic_sel_df(dfr, state):
     if state == 'chic':
         cut = (dfr.chicPt < 990) & (dfr.vtxProb > 0.01) & \
               (np.abs(dfr.JpsiRap) < 1.2) & \
-              (dfr.chicMass > 3.325) & (dfr.chicMass < 3.725)
+              (dfr.chicMass > 3.325) & (dfr.chicMass < 3.725) & \
+              (dfr.muPPt > 3.0) & (dfr.muNPt > 3.0)
+
     elif state == 'jpsi':
         cut = (np.abs(dfr.JpsiRap) < 1.2) & (dfr.vtxProb > 0.01) & \
-              (dfr.JpsiMass > 2.8) & (dfr.JpsiMass < 3.3)
+              (dfr.JpsiMass > 2.8) & (dfr.JpsiMass < 3.3) & \
+              (dfr.muPPt > 3.0) & (dfr.muNPt > 3.0)
     elif state == 'chib':
         cut = np.array([True] * dfr.shape[0])
 
@@ -73,12 +78,12 @@ def get_ws_vars(state, massmodel=None):
         'chic': [
             'chicMass[3.325, 3.725]', 'costh_HX[-1, 1]', 'Jpsict[-0.1, 1]',
             'vtxProb[0.01, 1]', 'JpsiRap[-1.2, 1.2]', 'JpsiPt[0, 100]',
-            'chicPt[0, 990]', 'JpsictErr[0, 1]'
+            'chicPt[0, 990]', 'JpsictErr[0, 1]', 'muPPt[0, 70]', 'muNPt[0, 70]'
         ],
         'jpsi': [
             'JpsiMass[2.9, 3.25]', 'costh_HX[-1, 1]', 'Jpsict[-0.1, 1]',
             'JpsictErr[0, 1]', 'JpsiRap[-1.2, 1.2]', 'vtxProb[0.01, 1]',
-            'JpsiPt[0, 100]'
+            'JpsiPt[0, 100]', 'muPPt[0, 70]', 'muNPt[0, 70]'
         ],
         'chib' : [
             'chi_mass_rf1S[9.6,10.15]', 'costh_HX[-1, 1]', 'dimuon_pt[0,100]'
@@ -109,8 +114,14 @@ def import_data(wsp, datatree, state, massmodel=None):
         datatree.SetBranchStatus(branch_var, 1)
         varlist.append(get_var(wsp, branch_var))
 
-    # NOTE: probably breaks at some point with more variables
-    var_argset = r.RooArgSet(*varlist)
+    # The RooArgSet constructor is overloaded up to 9 arguments
+    # Split the varlist in chunks of maximum 9 values
+    varlists = chunks(varlist, 9)
+    var_argset = r.RooArgSet()
+    for varl in varlists:
+        sub_set = r.RooArgSet(*varl)
+        var_argset.add(sub_set)
+
     data = r.RooDataSet('full_data', 'full_data', datatree, var_argset)
     ws_import(wsp, data)
 
