@@ -98,11 +98,11 @@ const TLorentzVector beam(0.,0.,pbeam,Ebeam);
 const double PIG = TMath::Pi();
 
 
-
-constexpr auto residualMapFileName = "res_maps.root"; // The file containing the smearing maps for photons and muons
-constexpr auto photonMapName = "photon_rel_res_map"; // The name of the photon smearing map in the file
-constexpr auto muonXYMapName = "muon_xy_rel_res_map"; // The name of the muonXY smearing map in the file
-constexpr auto muonZMapName = "muon_z_rel_res_map"; // The name of the muonZ smearing map in the file
+// tmadlener, 08.06.2018: no longer necessary setup for smearing according to MC distributions
+// constexpr auto residualMapFileName = "res_maps.root"; // The file containing the smearing maps for photons and muons
+// constexpr auto photonMapName = "photon_rel_res_map"; // The name of the photon smearing map in the file
+// constexpr auto muonXYMapName = "muon_xy_rel_res_map"; // The name of the muonXY smearing map in the file
+// constexpr auto muonZMapName = "muon_z_rel_res_map"; // The name of the muonZ smearing map in the file
 
 // make sure to initialize these!
 TF1 *chicMass;
@@ -110,8 +110,8 @@ TF1 *jpsiMass;
 
 double getChiMass()
 {
-  return gRandom->Gaus(MchiCentral, MchiWidth);
-  // return chicMass->GetRandom();
+  return gRandom->Gaus(MchiCentral, MchiWidth); // natural width
+  // return chicMass->GetRandom(); // according to external distribution
 }
 
 double getJpsiMass()
@@ -140,15 +140,16 @@ void chicpolgen(){
   delete gRandom;
   gRandom = new TRandom3(0);
 
-  auto *modelFile = TFile::Open("./mass_distributions_data.root");
-  if (chic_state == 1) {
-    chicMass = static_cast<TF1*>(modelFile->Get("chic1_mass"));
-  }
-  if (chic_state == 2) {
-    chicMass = static_cast<TF1*>(modelFile->Get("chic2_mass"));
-  }
+  // tmadlener 08.06.2018: For generating according to smeared distributions
+  // auto *modelFile = TFile::Open("./mass_distributions_data.root");
+  // if (chic_state == 1) {
+  //   chicMass = static_cast<TF1*>(modelFile->Get("chic1_mass"));
+  // }
+  // if (chic_state == 2) {
+  //   chicMass = static_cast<TF1*>(modelFile->Get("chic2_mass"));
+  // }
 
-  jpsiMass = static_cast<TF1*>(modelFile->Get("jpsi_mass"));
+  // jpsiMass = static_cast<TF1*>(modelFile->Get("jpsi_mass"));
 
 
   TF1* pT_distr = new TF1("pT_distr",func_pT_gen,pT_min,pT_max,0);
@@ -231,18 +232,22 @@ void chicpolgen(){
   // double ca_mu_mu;     tr->Branch("ca_mu_mu", &ca_mu_mu);
   // double ca_sm_gamma_jpsi;     tr->Branch("ca_sm_gamma_jpsi", &ca_sm_gamma_jpsi);
   // double ca_sm_mu_mu;     tr->Branch("ca_sm_mu_mu", &ca_sm_mu_mu);
-  // smearing initialization
-  auto *smearingFile = TFile::Open(residualMapFileName);
-  auto *photonResMap = static_cast<TH2D*>(smearingFile->Get(photonMapName));
-  const auto photonSmearing = SmearingProvider(photonResMap);
-
-  auto *muonXYResMap = static_cast<TH2D*>(smearingFile->Get(muonXYMapName));
-  const auto muonXYSmearing = SmearingProvider(muonXYResMap);
-
-  auto *muonZResMap = static_cast<TH2D*>(smearingFile->Get(muonZMapName));
-  const auto muonZSmearing = SmearingProvider(muonZResMap);
 
 
+
+  // smearing initialization (for smearing according to MC)
+  // auto *smearingFile = TFile::Open(residualMapFileName);
+  // auto *photonResMap = static_cast<TH2D*>(smearingFile->Get(photonMapName));
+  // const auto photonSmearing = SmearingProvider(photonResMap);
+
+  // auto *muonXYResMap = static_cast<TH2D*>(smearingFile->Get(muonXYMapName));
+  // const auto muonXYSmearing = SmearingProvider(muonXYResMap);
+
+  // auto *muonZResMap = static_cast<TH2D*>(smearingFile->Get(muonZMapName));
+  // const auto muonZSmearing = SmearingProvider(muonZResMap);
+
+
+  // smearing function for photons (fit to MC + some tuning)
   TF1* photonCrystalBall = new TF1("photonCrystalBall", "ROOT::Math::crystalball_pdf(x[0], [2], [3], [1], [0])", -1.5, 1.5);
   photonCrystalBall->FixParameter(0, 0);
   photonCrystalBall->FixParameter(1, 1.7e-2);
@@ -696,44 +701,17 @@ void chicpolgen(){
 
     inAcc1 = pT_gamma > 1.0;  // some further cuts
 
-
-
-
-    // tmadlener, 07.06.2018: This does currently not work properly and we don't understand why.
-    // It is not a physics or math problem but some ROOT problem.
-    // Adding the smearedJpsi and the smearedGamma to obtain the smearedChi does not yield the generated chi even if the smeared
-    // four vectors are **exactly** the same as the generated ones.
-    // This looks like a very spurious ROOT bug or some floating point error thing.
-    // Debug this once there is more time
-
-
   //   // obtaining smeared four-momenta for the muons and photons and calculating the smeared variables for the chi and j/psi from there
-    const auto smearedLepP = smearParticle(lepP, muonXYSmearing, muonZSmearing);
-
-    const auto smearedLepN = smearParticle(lepN, muonXYSmearing, muonZSmearing);
-    // const auto smearedGamma = smearParticle(gamma, photonSmearing);
-    const auto smearedGamma = smearParticle(gamma, photonCrystalBall);
-
+    const auto smearedLepP = smearParticleGaus(lepP, 0, 0.03);
+    const auto smearedLepN = smearParticleGaus(lepN, 0, 0.03);
+    const auto smearedGamma = smearParticleTF1(gamma, photonCrystalBall);
 
     const auto smearedJpsi = smearedLepP + smearedLepN;
-    // std::cout << smearedJpsi.M() << " " << smearedLepP.M() << " " << smearedLepN.M() << " | ";
     const auto smearedChi = smearedJpsi + smearedGamma;
-    // std::cout << smearedJpsi.M() << " " << smearedLepP.M() << " " << smearedLepN.M() << "\n";
-    // auto smearedChi = smearedJpsi + gamma;
 
     const TLorentzVector halfSmearedChi = smearedJpsi + gamma;
 
     const TLorentzVector fullSmearedChi = smearedLepP + smearedLepN + smearedGamma;
-
-
-    // std::cout << "----------------------------------------------------------------------\n";
-    // chi.Print();
-    // halfSmearedChi.Print();
-    // std::cout << "********************************************************************\n";
-    // fullSmearedChi.Print();
-    // std::cout << "----------------------------------------------------------------------\n";
-
-
 
     pT_chi_sm = smearedChi.Pt();
     y_chi_sm = smearedChi.Rapidity();
@@ -744,9 +722,6 @@ void chicpolgen(){
     M_jpsi_sm = smearedJpsi.M();
 
     qM_chi_sm = M_chi_sm - M_jpsi_sm + MpsiPDG;
-
-    // qM_chi_sm = M_chi_sm - gRandom->Gaus(3.096, 0.02) + MpsiPDG;
-    // qM_chi_sm = M_chi_sm - gRandom->Gaus(3.096, 0.02) + MpsiPDG;
 
     pT_gamma_sm = smearedGamma.Pt();
     y_gamma_sm = smearedGamma.Rapidity();
@@ -767,7 +742,6 @@ void chicpolgen(){
 
     // ca_mu_mu = TMath::Cos(lepP.Angle(lepN.Vect()));
     // ca_sm_mu_mu = TMath::Cos(smearedLepP.Angle(smearedLepN.Vect()));
-
 
     const auto angles_HX = calcAnglesInFrame(smearedLepN, smearedLepP, RefFrame::HX);
     costh_HX_sm = angles_HX.costh;
