@@ -7,6 +7,8 @@
 #include "TH2D.h"
 #include "TFile.h"
 #include "TLorentzVector.h"
+#include "TRandom.h"
+#include "TF1.h"
 
 #include <vector>
 #include <iostream>
@@ -57,11 +59,39 @@ double SmearingProvider::getSmearing(double varVal) const
 }
 
 
-TLorentzVector smearParticle(const TLorentzVector& particle, const SmearingProvider& xyzSmearer)
+// TLorentzVector smearParticle(const TLorentzVector& particle, const SmearingProvider& xyzSmearer)
+TLorentzVector smearParticle(const TLorentzVector& particle, TF1* crystalBall)
 {
-  const double spx = particle.Px() + particle.Px() * xyzSmearer.getSmearing(particle.Px());
-  const double spy = particle.Py() + particle.Py() * xyzSmearer.getSmearing(particle.Py());
-  const double spz = particle.Pz() + particle.Pz() * xyzSmearer.getSmearing(particle.Pz());
+  // const double spx = particle.Px() + particle.Px() * xyzSmearer.getSmearing(particle.Px());
+  // const double spy = particle.Py() + particle.Py() * xyzSmearer.getSmearing(particle.Py());
+  // const double spz = particle.Pz() + particle.Pz() * xyzSmearer.getSmearing(particle.Pz());
+
+
+  const double deltaP = crystalBall->GetRandom() * particle.P();
+  const double smearFactor = (particle.P() + deltaP) / particle.P();
+
+  // const double spx = particle.Px() - particle.Px() * crystalBall->GetRandom();
+  // const double spy = particle.Py() - particle.Py() * crystalBall->GetRandom();
+  // const double spz = particle.Pz() - particle.Pz() * crystalBall->GetRandom();
+
+  // const double spx = gRandom->Gaus(particle.Px() - 0.2 * particle.Px(), 0.02);
+  // const double spy = gRandom->Gaus(particle.Py() - 0.2 * particle.Py(), 0.02);
+  // const double spz = gRandom->Gaus(particle.Pz() - 0.2 * particle.Pz(), 0.02);
+
+  // const double spx = gRandom->Gaus(particle.Px(), 0.05);
+  // const double spy = gRandom->Gaus(particle.Py(), 0.05);
+  // const double spz = gRandom->Gaus(particle.Pz(), 0.05);
+
+  // const double smearFactor = gRandom->Gaus(1, 0.01);
+  // const double deltaP = gRandom->Gaus(0, 0.01);
+  // const double smearFactor = (particle.P() + deltaP) / particle.P();
+
+  // // const double smearFactor = 1;
+
+  const double spx = particle.Px() * smearFactor;
+  const double spy = particle.Py() * smearFactor;
+  const double spz = particle.Pz() * smearFactor;
+
 
   TLorentzVector smeared;
   smeared.SetXYZM(spx, spy, spz, particle.M());
@@ -71,9 +101,27 @@ TLorentzVector smearParticle(const TLorentzVector& particle, const SmearingProvi
 
 TLorentzVector smearParticle(const TLorentzVector& particle, const SmearingProvider& xySmearer, const SmearingProvider& zSmearer)
 {
-  const double spx = particle.Px() + particle.Px() * xySmearer.getSmearing(particle.Px());
-  const double spy = particle.Py() + particle.Py() * xySmearer.getSmearing(particle.Py());
-  const double spz = particle.Pz() + particle.Pz() * zSmearer.getSmearing(particle.Pz());
+
+  // const double spx = particle.Px() + particle.Px() * xySmearer.getSmearing(particle.Px());
+  // const double spy = particle.Py() + particle.Py() * xySmearer.getSmearing(particle.Py());
+  // const double spz = particle.Pz() + particle.Pz() * zSmearer.getSmearing(particle.Pz());
+
+  // const double spx = gRandom->Gaus(particle.Px(), 0.015);
+  // const double spy = gRandom->Gaus(particle.Py(), 0.015);
+  // const double spz = gRandom->Gaus(particle.Pz(), 0.015);
+
+  // const double smearFactor = gRandom->Gaus(1, 0.02);
+
+
+  const double deltaP = gRandom->Gaus(0, 0.03);
+  const double smearFactor = (particle.P() + deltaP) / particle.P();
+
+  // const double smearFactor = 1;
+
+
+  const double spx = particle.Px() * smearFactor;
+  const double spy = particle.Py() * smearFactor;
+  const double spz = particle.Pz() * smearFactor;
 
 
   TLorentzVector smeared;

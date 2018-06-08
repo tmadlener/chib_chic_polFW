@@ -1,5 +1,7 @@
 #include "smearing.h"
 
+#include "../general/interface/calcAngles.h"
+
 #include "Riostream.h"
 #include "TSystem.h"
 #include "TString.h"
@@ -13,42 +15,37 @@
 #include "TF1.h"
 #include "TFile.h"
 
-// const int n_events =  3000000;
-const int n_events =  100000; // for testing
+const int n_events =  3000000;
+// const int n_events =  100000; // for testing
 
-/*
 // chic1 unpolarized
 const int    chic_state = 1;            //  0 = chi_c0,  1 = chi_c1,  2 = chi_c2
 const double R = 2./3.;                 // fraction of chic helicity 1: 0 < R  < 1
 const double R2 = 0.;                   // fraction of chic helicity 2: 0 < R2 < 1
-*/
 
-
+/*
 // chic1 with lambdatheta = +1 (maximum positive)
 const int    chic_state = 1;
 const double R = 0.;                    // fraction of chic helicity 1: 0 < R  < 1
 const double R2 = 0.;                   // fraction of chic helicity 2: 0 < R2 < 1
 
-
-/*
 // chic1 with lambdatheta = -1/3 (maximum negative)
 const int    chic_state = 1;
 const double R = 1.;                    // fraction of chic helicity 1: 0 < R  < 1
 const double R2 = 0.;                   // fraction of chic helicity 2: 0 < R2 < 1
 */
 
-/*
+
 //chic2 unpolarized
-const int    chic_state = 2;
-const double R = 2./5.;                 // fraction of chic helicity 1: 0 < R  < 1
-const double R2 = 2./5.;                   // fraction of chic helicity 2: 0 < R2 < 1
-*/
+// const int    chic_state = 2;
+// const double R = 2./5.;                 // fraction of chic helicity 1: 0 < R  < 1
+// const double R2 = 2./5.;                   // fraction of chic helicity 2: 0 < R2 < 1
 
 /*
 //chic2 with lambdatheta = -3/5 (maximum negative)
 const int    chic_state = 2;
-const double R = 0.;                    // fraction of chic helicity 1: 0 < R  < 1
-const double R2 = 0.;                   // fraction of chic helicity 2: 0 < R2 < 1
+const double R = 0;                 // fraction of chic helicity 1: 0 < R  < 1
+const double R2 = 0;                   // fraction of chic helicity 2: 0 < R2 < 1
 */
 
 /*
@@ -76,7 +73,7 @@ const double pT_max = pT_psi_max + 1.;
 const bool   CSframeIsNatural = false;    // generate chic polarization in the CS frame (true)
                                          // or in the HX frame (false)
 
-const double Mpsi = 3.097;
+const double MpsiPDG = 3.097;
 const double Mchic[3] = { 3.415, 3.511, 3.556 };
 const double MchiCentral = Mchic[chic_state];
 const double MchicWidth[3] = { 0.0105, 0.00088, 0.002 }; // PDG, 06.06.2018
@@ -84,7 +81,7 @@ const double MchiWidth = MchicWidth[chic_state];
 
 // global values for Mchi to use the same value in the whole event
 double Mchi;
-
+double Mpsi;
 
 const double Mprot = 0.9382720;
 const double Mneutr = 0.9395653;
@@ -107,6 +104,21 @@ constexpr auto photonMapName = "photon_rel_res_map"; // The name of the photon s
 constexpr auto muonXYMapName = "muon_xy_rel_res_map"; // The name of the muonXY smearing map in the file
 constexpr auto muonZMapName = "muon_z_rel_res_map"; // The name of the muonZ smearing map in the file
 
+// make sure to initialize these!
+TF1 *chicMass;
+TF1 *jpsiMass;
+
+double getChiMass()
+{
+  return gRandom->Gaus(MchiCentral, MchiWidth);
+  // return chicMass->GetRandom();
+}
+
+double getJpsiMass()
+{
+  return MpsiPDG;
+  // return jpsiMass->GetRandom();
+}
 
 
 double func_rap_gen(double* x, double* par)
@@ -123,11 +135,21 @@ double func_pT_gen(double* x, double* par)
 }
 
 
-
 void chicpolgen(){
 
   delete gRandom;
   gRandom = new TRandom3(0);
+
+  auto *modelFile = TFile::Open("./mass_distributions_data.root");
+  if (chic_state == 1) {
+    chicMass = static_cast<TF1*>(modelFile->Get("chic1_mass"));
+  }
+  if (chic_state == 2) {
+    chicMass = static_cast<TF1*>(modelFile->Get("chic2_mass"));
+  }
+
+  jpsiMass = static_cast<TF1*>(modelFile->Get("jpsi_mass"));
+
 
   TF1* pT_distr = new TF1("pT_distr",func_pT_gen,pT_min,pT_max,0);
   TF1* rap_distr = new TF1("rap_distr",func_rap_gen,y_min,y_max,0);
@@ -145,6 +167,7 @@ void chicpolgen(){
   double y;             tr->Branch( "y",              &y,              "y/D" );
 
   tr->Branch("M_chi", &Mchi);
+  tr->Branch("M_jpsi", &Mpsi);
 
   double pT_gamma;      tr->Branch( "pT_gamma",       &pT_gamma,       "pT_gamma/D" );
   double pL_gamma;      tr->Branch( "pL_gamma",       &pL_gamma,       "pL_gamma/D" );
@@ -176,6 +199,8 @@ void chicpolgen(){
   double phi_cs;        tr->Branch( "phi_cs",         &phi_cs,         "phi_cs/D" );
 
 
+  double M_gamma; tr->Branch("M_gamma", &M_gamma);
+  double qM_chi; tr->Branch("qM_chi", &qM_chi);
 
   // smeared variables with "_sm" postfix
   double pT_chi_sm;     tr->Branch("pT_chi_sm", &pT_chi_sm);
@@ -197,7 +222,15 @@ void chicpolgen(){
   double pT_lepN_sm;     tr->Branch("pT_lepN_sm", &pT_lepN_sm);
   double eta_lepN_sm;     tr->Branch("eta_lepN_sm", &eta_lepN_sm);
 
+  double Mchic;    tr->Branch("Q_value_gen", &Mchic);
 
+  double costh_HX_sm; tr->Branch("costh_HX_sm", &costh_HX_sm);
+  double phi_HX_sm; tr->Branch("phi_HX_sm", &phi_HX_sm);
+
+  // double ca_gamma_jpsi;     tr->Branch("ca_gamma_jpsi", &ca_gamma_jpsi);
+  // double ca_mu_mu;     tr->Branch("ca_mu_mu", &ca_mu_mu);
+  // double ca_sm_gamma_jpsi;     tr->Branch("ca_sm_gamma_jpsi", &ca_sm_gamma_jpsi);
+  // double ca_sm_mu_mu;     tr->Branch("ca_sm_mu_mu", &ca_sm_mu_mu);
   // smearing initialization
   auto *smearingFile = TFile::Open(residualMapFileName);
   auto *photonResMap = static_cast<TH2D*>(smearingFile->Get(photonMapName));
@@ -209,6 +242,14 @@ void chicpolgen(){
   auto *muonZResMap = static_cast<TH2D*>(smearingFile->Get(muonZMapName));
   const auto muonZSmearing = SmearingProvider(muonZResMap);
 
+
+  TF1* photonCrystalBall = new TF1("photonCrystalBall", "ROOT::Math::crystalball_pdf(x[0], [2], [3], [1], [0])", -1.5, 1.5);
+  photonCrystalBall->FixParameter(0, 0);
+  photonCrystalBall->FixParameter(1, 1.7e-2);
+  photonCrystalBall->FixParameter(2, 0.82); // alpha
+  photonCrystalBall->FixParameter(3, 1.9); // N
+
+  photonCrystalBall->Draw();
 
   const int n_step = n_events/50;
   cout << '\n';
@@ -223,7 +264,13 @@ void chicpolgen(){
   // generation of chic in the CMS of the proton-proton event
 
     // M:
-    Mchi = gRandom->Gaus(MchiCentral, MchiWidth);
+    // generate the chic mass and the jpsi mass such that they are correlated similar to what they are in data:
+    // 1) get the chic mass and the J/psi mass according to the fitted data distributions
+    // 2) in data the chic mass is actually the mass from the KVF but we assume that we can treat it as a Q-value
+    //    (M_mumugamma - M_mumu + M_jpsi), so we reverse it to get to the chic mass we actually want to generate
+    Mchic = getChiMass();
+    Mpsi = getJpsiMass();
+    Mchi = Mchic - MpsiPDG + Mpsi;
 
     // pT:
 
@@ -445,8 +492,6 @@ void chicpolgen(){
                        -p_gamma_chi * cosTH_psi,
                        0. );
 
-
-
  // calculate psi 4-momentum in the chi rest frame, wrt the xyz axes:
  // need to rotate from the "CS" or "HX" system of axes to the "xyz" system of axes
 
@@ -484,9 +529,16 @@ void chicpolgen(){
     rotation.RotateAxes(oldXaxis, oldYaxis, oldZaxis);
                      // transforms coordinates from the "old" frame to the "xyz" frame
 
+
     psi_chi.Transform(rotation);
                      // psi in the chi rest frame
                      // wrt to the xyz axes
+
+    gamma_chi.Transform(rotation);
+
+
+    // const auto test_chi = psi_chi + gamma_chi;
+    // std::cout << Mchi << " " << test_chi.M() << "\n";
 
 
  // boost psi from the chic rest frame into the proton-proton CM frame:
@@ -645,13 +697,43 @@ void chicpolgen(){
     inAcc1 = pT_gamma > 1.0;  // some further cuts
 
 
-    // obtaining smeared four-momenta for the muons and photons and calculating the smeared variables for the chi and j/psi from there
-    const auto smearedLepP = smearParticle(lepP, muonXYSmearing, muonZSmearing);
-    const auto smearedLepN = smearParticle(lepN, muonXYSmearing, muonZSmearing);
-    const auto smearedGamma = smearParticle(gamma, photonSmearing);
 
-    auto smearedJpsi = smearedLepP + smearedLepN;
-    auto smearedChi = smearedJpsi + smearedGamma;
+
+    // tmadlener, 07.06.2018: This does currently not work properly and we don't understand why.
+    // It is not a physics or math problem but some ROOT problem.
+    // Adding the smearedJpsi and the smearedGamma to obtain the smearedChi does not yield the generated chi even if the smeared
+    // four vectors are **exactly** the same as the generated ones.
+    // This looks like a very spurious ROOT bug or some floating point error thing.
+    // Debug this once there is more time
+
+
+  //   // obtaining smeared four-momenta for the muons and photons and calculating the smeared variables for the chi and j/psi from there
+    const auto smearedLepP = smearParticle(lepP, muonXYSmearing, muonZSmearing);
+
+    const auto smearedLepN = smearParticle(lepN, muonXYSmearing, muonZSmearing);
+    // const auto smearedGamma = smearParticle(gamma, photonSmearing);
+    const auto smearedGamma = smearParticle(gamma, photonCrystalBall);
+
+
+    const auto smearedJpsi = smearedLepP + smearedLepN;
+    // std::cout << smearedJpsi.M() << " " << smearedLepP.M() << " " << smearedLepN.M() << " | ";
+    const auto smearedChi = smearedJpsi + smearedGamma;
+    // std::cout << smearedJpsi.M() << " " << smearedLepP.M() << " " << smearedLepN.M() << "\n";
+    // auto smearedChi = smearedJpsi + gamma;
+
+    const TLorentzVector halfSmearedChi = smearedJpsi + gamma;
+
+    const TLorentzVector fullSmearedChi = smearedLepP + smearedLepN + smearedGamma;
+
+
+    // std::cout << "----------------------------------------------------------------------\n";
+    // chi.Print();
+    // halfSmearedChi.Print();
+    // std::cout << "********************************************************************\n";
+    // fullSmearedChi.Print();
+    // std::cout << "----------------------------------------------------------------------\n";
+
+
 
     pT_chi_sm = smearedChi.Pt();
     y_chi_sm = smearedChi.Rapidity();
@@ -661,7 +743,10 @@ void chicpolgen(){
     y_jpsi_sm = smearedJpsi.Rapidity();
     M_jpsi_sm = smearedJpsi.M();
 
-    qM_chi_sm = M_chi_sm - M_jpsi_sm + Mpsi;
+    qM_chi_sm = M_chi_sm - M_jpsi_sm + MpsiPDG;
+
+    // qM_chi_sm = M_chi_sm - gRandom->Gaus(3.096, 0.02) + MpsiPDG;
+    // qM_chi_sm = M_chi_sm - gRandom->Gaus(3.096, 0.02) + MpsiPDG;
 
     pT_gamma_sm = smearedGamma.Pt();
     y_gamma_sm = smearedGamma.Rapidity();
@@ -674,6 +759,21 @@ void chicpolgen(){
 
   //  filling of the ntuple:
 
+    qM_chi = chi.M() - psi.M() + MpsiPDG;
+    M_gamma = gamma.M();
+
+    // ca_gamma_jpsi = TMath::Cos(gamma.Angle(psi.Vect()));
+    // ca_sm_gamma_jpsi = TMath::Cos(smearedGamma.Angle(smearedJpsi.Vect()));
+
+    // ca_mu_mu = TMath::Cos(lepP.Angle(lepN.Vect()));
+    // ca_sm_mu_mu = TMath::Cos(smearedLepP.Angle(smearedLepN.Vect()));
+
+
+    const auto angles_HX = calcAnglesInFrame(smearedLepN, smearedLepP, RefFrame::HX);
+    costh_HX_sm = angles_HX.costh;
+    phi_HX_sm = angles_HX.phi;
+
+
     tr->Fill();
 
     if (i_event%n_step == 0) cout << "X";  cout.flush();
@@ -685,4 +785,3 @@ void chicpolgen(){
   hfile->Write();
 
 } // end of main
-
