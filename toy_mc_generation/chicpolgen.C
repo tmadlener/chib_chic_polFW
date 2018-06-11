@@ -15,88 +15,72 @@
 #include "TF1.h"
 #include "TFile.h"
 
-const int n_events =  3000000;
-// const int n_events =  100000; // for testing
+#include <iostream>
+#include <string>
 
-// chic1 unpolarized
-const int    chic_state = 1;            //  0 = chi_c0,  1 = chi_c1,  2 = chi_c2
-const double R = 2./3.;                 // fraction of chic helicity 1: 0 < R  < 1
-const double R2 = 0.;                   // fraction of chic helicity 2: 0 < R2 < 1
+/** * Configuration and settings for the generation
+ *
+ * Including some default values
+ */
+struct gen_config {
+  int n_events{30000};
 
-/*
-// chic1 with lambdatheta = +1 (maximum positive)
-const int    chic_state = 1;
-const double R = 0.;                    // fraction of chic helicity 1: 0 < R  < 1
-const double R2 = 0.;                   // fraction of chic helicity 2: 0 < R2 < 1
+  // some example parameter sets:
+  // * chic1 unpolarized: R = 2/3, R2 = 0
+  // * chic1 with lambdatheta = +1 (maximum positive): R = 0, R2 = 0
+  // * chic1 with lambdatheta = -1/3 (maximum negative): R = 1, R2 = 0
+  // * chic2 unpolarized: R = 2/5, R2 = 2/5
+  // * chic2 with lambdatheta = +1 (maximum positive): R = 0, R2 = 1
+  // * chic2 with lambdatheta = -3/5 (maximum negative): R = 0, R2 = 0
+  int chic_state{1};               //  0 = chi_c0,  1 = chi_c1,  2 = chi_c2
+  double R{2./3.};                 // fraction of chic helicity 1: 0 < R  < 1
+  double R2{0};                   // fraction of chic helicity 2: 0 < R2 < 1
 
-// chic1 with lambdatheta = -1/3 (maximum negative)
-const int    chic_state = 1;
-const double R = 1.;                    // fraction of chic helicity 1: 0 < R  < 1
-const double R2 = 0.;                   // fraction of chic helicity 2: 0 < R2 < 1
-*/
+  double pbeam{4000.}; // (this is actually irrelevant, as long as pbeam >> proton mass)
+  double y_min{0.0}; // min abs rapidity of the chi
+  double y_max{1.0}; // max abs rapidity of the chi
 
+  double pT_min{7.0}; // min pt of the chi
+  double pT_max{21.0}; // max pt of the chi
 
-//chic2 unpolarized
-// const int    chic_state = 2;
-// const double R = 2./5.;                 // fraction of chic helicity 1: 0 < R  < 1
-// const double R2 = 2./5.;                   // fraction of chic helicity 2: 0 < R2 < 1
+  bool CSframeIsNatural{false};   // generate chic polarization in the CS frame (true)
+                                  // or in the HX frame (false)
 
-/*
-//chic2 with lambdatheta = -3/5 (maximum negative)
-const int    chic_state = 2;
-const double R = 0;                 // fraction of chic helicity 1: 0 < R  < 1
-const double R2 = 0;                   // fraction of chic helicity 2: 0 < R2 < 1
-*/
+  std::string genfile{"chicpolgen.root"}; // name of the output file
+};
 
-/*
-//chic2 with lambdatheta = +1 (maximum positive)
-const int    chic_state = 2;
-const double R = 0.;                    // fraction of chic helicity 1: 0 < R  < 1
-const double R2 = 1.;                   // fraction of chic helicity 2: 0 < R2 < 1
-*/
+/**
+ * Struct holding the width and the central value for a given state
+ */
+struct Mass {
+  double central;
+  double width;
+};
 
+const struct MassSettings {
+  static constexpr Mass MpsiPDG{3.097, 9.29e-5}; // J/psi mass and width
+  static constexpr std::array<Mass, 3> MchiPDG{
+    Mass{3.415, 0.0105}, // chic0
+      Mass{3.511, 0.00088}, // chic1
+        Mass{3.556, 0.002}, // chic2
+          };
 
-// energy and acceptance (pT and y are transverse momentum and rapidity of the chi!):
+  static constexpr double Mprot{0.9382720};
+  static constexpr double Mlepton{0.10566}; // muon GeV
+} GenMassSettings;
 
-// units: GeV
-const char experiment[10] = "CMS";
-const double pbeam = 4000.; // (this is actually irrelevant, as long as pbeam >> proton mass)
-const double pT_psi_min =  10.;
-const double pT_psi_max =  20.;
-const double y_min = 0.0;
-const double y_max = 1.0;
+// need to define the array, so the linker can see it
+// declaration and initialization are handled by the definition of the class above
+constexpr std::array<Mass, 3> MassSettings::MchiPDG;
+constexpr Mass MassSettings::MpsiPDG;
+constexpr double MassSettings::Mprot;
 
-const double pT_min = pT_psi_min - 1.;
-const double pT_max = pT_psi_max + 1.;
-
-
-const bool   CSframeIsNatural = false;    // generate chic polarization in the CS frame (true)
-                                         // or in the HX frame (false)
-
-const double MpsiPDG = 3.097;
-const double Mchic[3] = { 3.415, 3.511, 3.556 };
-const double MchiCentral = Mchic[chic_state];
-const double MchicWidth[3] = { 0.0105, 0.00088, 0.002 }; // PDG, 06.06.2018
-const double MchiWidth = MchicWidth[chic_state];
-
-// global values for Mchi to use the same value in the whole event
+// global state variables necessary to hold the chi and psi mass in a given event
+// NOTE: when refactoring make these parameters that get passed around
 double Mchi;
 double Mpsi;
 
-const double Mprot = 0.9382720;
-const double Mneutr = 0.9395653;
-const double Mnucl = 0.5 * (Mprot + Mneutr);
-const double Mlepton = 0.10566;  // (muon)
-
-const double Ebeam = sqrt( pbeam*pbeam + Mprot*Mprot);
-const double sqrts = 2. * Ebeam;
-
-
-const TLorentzVector targ(0.,0.,-pbeam,Ebeam); // "targ" = second beam
-const TLorentzVector beam(0.,0.,pbeam,Ebeam);
-
 const double PIG = TMath::Pi();
-
 
 // tmadlener, 08.06.2018: no longer necessary setup for smearing according to MC distributions
 // constexpr auto residualMapFileName = "res_maps.root"; // The file containing the smearing maps for photons and muons
@@ -104,29 +88,18 @@ const double PIG = TMath::Pi();
 // constexpr auto muonXYMapName = "muon_xy_rel_res_map"; // The name of the muonXY smearing map in the file
 // constexpr auto muonZMapName = "muon_z_rel_res_map"; // The name of the muonZ smearing map in the file
 
-// make sure to initialize these!
-TF1 *chicMass;
-TF1 *jpsiMass;
-
-double getChiMass()
+template<typename Func>
+double getMass(Func distribution)
 {
-  return gRandom->Gaus(MchiCentral, MchiWidth); // natural width
-  // return chicMass->GetRandom(); // according to external distribution
+  return distribution();
 }
 
-double getJpsiMass()
-{
-  return MpsiPDG;
-  // return jpsiMass->GetRandom();
-}
-
-
-double func_rap_gen(double* x, double* par)
+double func_rap_gen(double* /*x*/, double* /*par*/)
 {
   return   1.;
 }
 
-double func_pT_gen(double* x, double* par)
+double func_pT_gen(double* x, double* /*par*/)
 {
   const double beta = 3.45;  //  CHECK HERE FUNCTION AND PARAMETER VALUES: USE THOSE OF GLOBAL FIT (considering that this is a pT distribution, not a pT/M distribution)
   const double gamma = 0.73;
@@ -135,10 +108,36 @@ double func_pT_gen(double* x, double* par)
 }
 
 
-void chicpolgen(){
+void chicpolgen(const gen_config& config = gen_config{}){
+
+  // translate configuration into const variables
+  const double Ebeam = std::sqrt(config.pbeam * config.pbeam + GenMassSettings.Mprot * GenMassSettings.Mprot);
+  const TLorentzVector targ(0., 0. , -config.pbeam, Ebeam); // "targ" = second beam
+  const TLorentzVector beam(0., 0. , config.pbeam, Ebeam);
+
+  const double chic_state = config.chic_state;
+  const double R = config.R;
+  const double R2 = config.R2;
+  const double n_events = config.n_events;
+
+  const double y_min = config.y_min; const double y_max = config.y_max;
+  const double pT_min = config.pT_min; const double pT_max = config.pT_max;
+
+  const double Mlepton = GenMassSettings.Mlepton;
+  const double MpsiPDG = GenMassSettings.MpsiPDG.central;
+
 
   delete gRandom;
   gRandom = new TRandom3(0);
+
+  // create the functions from which the chic and the jpsi masses are drawn
+  const auto chicMassDist = std::bind(&TRandom3::Gaus, std::ref(gRandom),
+                                      GenMassSettings.MchiPDG[config.chic_state].central,
+                                      GenMassSettings.MchiPDG[config.chic_state].width);
+
+  const auto jpsiMassDist = std::bind(&TRandom3::Gaus, std::ref(gRandom),
+                                      MpsiPDG,
+                                      GenMassSettings.MpsiPDG.width);
 
   // tmadlener 08.06.2018: For generating according to smeared distributions
   // auto *modelFile = TFile::Open("./mass_distributions_data.root");
@@ -156,16 +155,16 @@ void chicpolgen(){
   TF1* rap_distr = new TF1("rap_distr",func_rap_gen,y_min,y_max,0);
 
 
-  TFile* hfile = new TFile( "chicpolgen.root", "RECREATE", "chicpolgen");
+  TFile* hfile = new TFile( config.genfile.c_str(), "RECREATE", "chicpolgen");
 
   TTree* tr = new TTree("tr", "tr");
 
   double pT_chi;        tr->Branch( "pT_chi",         &pT_chi,         "pT_chi/D" );
-  double pT;            tr->Branch( "pT",             &pT,             "pT/D" );
+  double pT;            tr->Branch( "pT_jpsi",             &pT,             "pT/D" );
   double pL_chi;     //   tr->Branch( "pL_chi",         &pL_chi,         "pL_chi/D" );
-  double pL;         //   tr->Branch( "pL",             &pL,             "pL/D" );
+  // double pL;         //   tr->Branch( "pL",             &pL,             "pL/D" );
   double y_chi;         tr->Branch( "y_chi",          &y_chi,          "y_chi/D" );
-  double y;             tr->Branch( "y",              &y,              "y/D" );
+  double y;             tr->Branch( "y_jpsi",              &y,              "y/D" );
 
   tr->Branch("M_chi", &Mchi);
   tr->Branch("M_jpsi", &Mpsi);
@@ -180,8 +179,8 @@ void chicpolgen(){
   double pT_lepN;       tr->Branch( "pT_lepN",        &pT_lepN,        "pT_lepN/D"  );
   double eta_lepN;      tr->Branch( "eta_lepN",       &eta_lepN,       "eta_lepN/D" );
 
-  int inAcc0;            tr->Branch( "inAcc0",          &inAcc0,          "inAcc0/I"    );
-  int inAcc1;            tr->Branch( "inAcc1",          &inAcc1,          "inAcc1/I"    );
+  // int inAcc0;            tr->Branch( "inAcc0",          &inAcc0,          "inAcc0/I"    );
+  // int inAcc1;            tr->Branch( "inAcc1",          &inAcc1,          "inAcc1/I"    );
 
 // angle of psi direction in chic rest frame, wrt to chosen chic polarization axis
   double cosTH_psi;     tr->Branch( "cosTH_psi",      &cosTH_psi,      "cosTH_psi/D" );
@@ -200,8 +199,8 @@ void chicpolgen(){
   double phi_cs;        tr->Branch( "phi_cs",         &phi_cs,         "phi_cs/D" );
 
 
-  double M_gamma; tr->Branch("M_gamma", &M_gamma);
-  double qM_chi; tr->Branch("qM_chi", &qM_chi);
+  // double M_gamma; tr->Branch("M_gamma", &M_gamma);
+  // double qM_chi; tr->Branch("qM_chi", &qM_chi);
 
   // smeared variables with "_sm" postfix
   double pT_chi_sm;     tr->Branch("pT_chi_sm", &pT_chi_sm);
@@ -227,6 +226,9 @@ void chicpolgen(){
 
   double costh_HX_sm; tr->Branch("costh_HX_sm", &costh_HX_sm);
   double phi_HX_sm; tr->Branch("phi_HX_sm", &phi_HX_sm);
+
+  double costh_CS_sm; tr->Branch("costh_CS_sm", &costh_CS_sm);
+  double phi_CS_sm; tr->Branch("phi_CS_sm", &phi_CS_sm);
 
   // double ca_gamma_jpsi;     tr->Branch("ca_gamma_jpsi", &ca_gamma_jpsi);
   // double ca_mu_mu;     tr->Branch("ca_mu_mu", &ca_mu_mu);
@@ -257,9 +259,9 @@ void chicpolgen(){
   photonCrystalBall->Draw();
 
   const int n_step = n_events/50;
-  cout << '\n';
-  cout << "------------------------------------------------------------" << '\n';
-  cout << "Progress: ";
+  std::cout << '\n';
+  std::cout << "------------------------------------------------------------" << '\n';
+  std::cout << "Progress: ";
 
 
 /////////////////// CYCLE OF EVENTS ////////////////////////
@@ -273,8 +275,8 @@ void chicpolgen(){
     // 1) get the chic mass and the J/psi mass according to the fitted data distributions
     // 2) in data the chic mass is actually the mass from the KVF but we assume that we can treat it as a Q-value
     //    (M_mumugamma - M_mumu + M_jpsi), so we reverse it to get to the chic mass we actually want to generate
-    Mchic = getChiMass();
-    Mpsi = getJpsiMass();
+    Mchic = getMass(chicMassDist);
+    Mpsi = getMass(jpsiMassDist);
     Mchi = Mchic - MpsiPDG + Mpsi;
 
     // pT:
@@ -468,7 +470,7 @@ void chicpolgen(){
            angdistr *= 15. / ( 64.* PIG*PIG );
          }
 
-         if (angdistr > angdistr_max) { cout << "PASSED LIMIT" << endl; }
+         if (angdistr > angdistr_max) { std::cout << "PASSED LIMIT" << std::endl; }
 
          angdistr_rnd = angdistr_max * gRandom->Rndm();
 
@@ -524,7 +526,7 @@ void chicpolgen(){
    // to the system with x,y,z axes as in the laboratory
 
     TVector3 ChiPolAxis = beam_targ_bisec_chi;            // definition of the polarization axis: CS frame
-    if ( !CSframeIsNatural ) ChiPolAxis = chi_direction;  // or helicity frame
+    if ( !config.CSframeIsNatural ) ChiPolAxis = chi_direction;  // or helicity frame
 
     TVector3 oldZaxis = ChiPolAxis;
     TVector3 oldYaxis = Yaxis;
@@ -555,7 +557,7 @@ void chicpolgen(){
  // kinematics of the psi (measured in the p-p CM):
 
     pT = psi.Perp();
-    pL = psi.Pz();
+    // pL = psi.Pz();
     y  = psi.Rapidity();
 
 
@@ -695,11 +697,11 @@ void chicpolgen(){
 
   // accepted events:
 
-    inAcc0 = pT > pT_psi_min && pT < pT_psi_max && fabs(psi.Rapidity()) < 1.0 &&   // some basic acceptance cuts
-             pT_lepP > 4.0  &&  fabs(eta_lepP) < 1.4  &&
-             pT_lepN > 4.0  &&  fabs(eta_lepN) < 1.4 ;
+    // inAcc0 = pT > pT_psi_min && pT < pT_psi_max && fabs(psi.Rapidity()) < 1.0 &&   // some basic acceptance cuts
+    //          pT_lepP > 4.0  &&  fabs(eta_lepP) < 1.4  &&
+    //          pT_lepN > 4.0  &&  fabs(eta_lepN) < 1.4 ;
 
-    inAcc1 = pT_gamma > 1.0;  // some further cuts
+    // inAcc1 = pT_gamma > 1.0;  // some further cuts
 
   //   // obtaining smeared four-momenta for the muons and photons and calculating the smeared variables for the chi and j/psi from there
     const auto smearedLepP = smearParticleGaus(lepP, 0, 0.03);
@@ -734,8 +736,8 @@ void chicpolgen(){
 
   //  filling of the ntuple:
 
-    qM_chi = chi.M() - psi.M() + MpsiPDG;
-    M_gamma = gamma.M();
+    // qM_chi = chi.M() - psi.M() + MpsiPDG;
+    // M_gamma = gamma.M();
 
     // ca_gamma_jpsi = TMath::Cos(gamma.Angle(psi.Vect()));
     // ca_sm_gamma_jpsi = TMath::Cos(smearedGamma.Angle(smearedJpsi.Vect()));
@@ -750,11 +752,13 @@ void chicpolgen(){
 
     tr->Fill();
 
-    if (i_event%n_step == 0) cout << "X";  cout.flush();
+    if (i_event%n_step == 0) {
+      std::cout << "X";  std::cout.flush();
+    }
 
   } // end of external loop (generated events)
 
-  cout << '\n' << '\n';
+  std::cout << '\n' << '\n';
 
   hfile->Write();
 
