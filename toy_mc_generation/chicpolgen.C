@@ -310,7 +310,10 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
 
     double angdistr_rnd;
-    double angdistr;
+    // initialize this to the max double value, so that a printout appears if an invalid setting for
+    // chic_state has been chosen
+    // NOTE: this also makes the macro go into an infinite loop
+    double angdistr = std::numeric_limits<double>::max();
 
 
     double sinTH_psi  = 100.;

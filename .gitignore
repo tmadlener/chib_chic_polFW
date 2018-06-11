@@ -56,3 +56,6 @@ RooCFAuto*
 
 # json (header only library)
 general/interface/json.hpp
+
+# toy mc generation executable
+toy_mc_generation/run_chicpolgen
