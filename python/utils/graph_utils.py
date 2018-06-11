@@ -193,3 +193,34 @@ def divide_graphs(ngraph, dgraph):
         return r.TGraphErrors(n_points, nx_vals, ry_vals, nx_errs, r_errs)
 
     return r.TGraph(n_points, nx_vals, ry_vals)
+
+
+def get_binning(graph):
+    """
+    Get the binning along the x direction by calculating the bins from the
+    central values and the errors
+
+    Args:
+        graph (ROOT.TGraph[Asymm]Errors): graph for which the binning is
+            desired
+
+    Returns:
+        np.array or None: 2D array with the bins (low, high) as columns for the
+            different bins. None if not a TGraphErrors or a TGraphAsymmErrors
+    """
+    x_vals = np.array(graph.GetX())
+
+    if graph.InheritsFrom('TGraphAsymmErrors'):
+        x_lo_errs, x_hi_errs, _, _ = get_errors(graph)
+        bins_lo = x_vals - x_lo_errs
+        bins_hi = x_vals + x_hi_errs
+    elif graph.InheritsFrom('TGraphErrors'):
+        x_errs, _ = get_errors(graph)
+        bins_lo = x_vals - x_errs
+        bins_hi = x_vals + x_errs
+    else:
+        logging.warning('Trying to obtain binning from something else than a '
+                        'TGraphErrors or a TGraphAsymmErrors')
+        return None # without uncertainties there are no bins
+
+    return np.array(zip(bins_lo, bins_hi))

@@ -416,3 +416,60 @@ def chunks(iterable, chunk_size):
     """
     for ichunk in xrange(0, len(iterable), chunk_size):
         yield iterable[ichunk:ichunk + chunk_size]
+
+
+def find_common_binning(bin_borders):
+    """
+    Try to find a common binning in all the passed bin borders.
+
+    Will first find all possible bins and then check if there is an overlap in
+    them by comparing the lower boundaries with the upper boundaries of the
+    preceding bin. If no overlap is found the possible bins will be returned.
+
+    Args:
+        bin_borders (list of np.arrays): list of 2D np.arrays where each array
+            holds the bins (low, high) as columns for the different bins (rows).
+
+    Return:
+        np.array or None: 2D array with the bins (low, high) as columns for the
+            different bins (rows). None if no common binning can be found.
+    """
+    # First get all possible bins from all the passed bin_borders
+    # Then see if they overlap
+    get_bins = lambda bb: [(bb[i, 0], bb[i, 1]) for i in xrange(len(bb))]
+    poss_bins = [
+        b for b in set(get_bins(bin_borders[0])).union(
+            *(get_bins(bb) for bb in bin_borders))
+    ]
+    poss_bins.sort(key=lambda b: b[0]) # sort bins according to low bin boundary
+    poss_bins = np.array(poss_bins) # for easier slicing
+
+    # If any of the upper boundaries of the preceding bin are above the lower
+    # boundary of the current bin then they overlap
+    low_bounds = poss_bins[1:, 0]
+    high_bounds = poss_bins[:-1, 1]
+    if np.all(low_bounds <= high_bounds):
+        return poss_bins
+    else:
+        logging.warning('Cannot find a common binning without overlaps. All '
+                        'possible bins are: {}'.format(poss_bins))
+        return None
+
+
+def get_bin(binning, value):
+    """
+    Get the bin index of the given value in the binning
+    """
+    for ibin in xrange(len(binning) - 1):
+        if value > binning[ibin] and value <= binning[ibin + 1]:
+            return ibin
+
+    return -1
+
+
+def get_bin_edges(bins):
+    """
+    Get the bin edges from a list of bins (low, high)
+    """
+    uniq_bin_bord = sorted({b for b in flatten(bins)})
+    return np.array(uniq_bin_bord)
