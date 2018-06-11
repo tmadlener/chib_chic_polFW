@@ -6,11 +6,12 @@ ROOFITLIBS=-lRooFit -lRooFitCore
 CXXFLAGS=-std=c++14 -Wall -Wextra -Wpedantic -Wshadow -O3
 
 CXX=$(GCC_BASE_DIR)g++
+INCS=-I./interface/
 
 all: run_chicpolgen
 
-run_chicpolgen: run_chicpolgen.cc chicpolgen.C smearing.h
-	$(CXX) $(ROOTLIBS) $(ROOTCXXFLAGS) $(CXXFLAGS) -o $@ $< $(ROOFITLIBS)
+run_chicpolgen: run_chicpolgen.cc chicpolgen.C ./interface/smearing.h ./interface/efficiencies.h
+	$(CXX) $(INCS) $(ROOTLIBS) $(ROOTCXXFLAGS) $(CXXFLAGS) -o $@ $< $(ROOFITLIBS)
 
 clean:
 	rm run_chicpolgen

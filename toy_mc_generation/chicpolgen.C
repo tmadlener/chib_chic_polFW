@@ -1,4 +1,5 @@
 #include "smearing.h"
+#include "efficiencies.h"
 
 #include "../general/interface/calcAngles.h"
 
@@ -23,7 +24,7 @@
  * Including some default values
  */
 struct gen_config {
-  int n_events{30000};
+  int n_events{3000000};
 
   // some example parameter sets:
   // * chic1 unpolarized: R = 2/3, R2 = 0
@@ -38,15 +39,18 @@ struct gen_config {
 
   double pbeam{4000.}; // (this is actually irrelevant, as long as pbeam >> proton mass)
   double y_min{0.0}; // min abs rapidity of the chi
-  double y_max{1.0}; // max abs rapidity of the chi
+  double y_max{1.3}; // max abs rapidity of the chi
 
   double pT_min{7.0}; // min pt of the chi
-  double pT_max{21.0}; // max pt of the chi
+  double pT_max{23.0}; // max pt of the chi
 
   bool CSframeIsNatural{false};   // generate chic polarization in the CS frame (true)
                                   // or in the HX frame (false)
 
   std::string genfile{"chicpolgen.root"}; // name of the output file
+  // To not produce efficiency branches leave the efficiency file names empty
+  std::string muonEffs{""}; // file name from where the muon efficiencies should be loaded
+  std::string photonEffs{""}; // file name from where the photon efficiencies should be loaded
 };
 
 /**
@@ -125,6 +129,17 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
   const double Mlepton = GenMassSettings.Mlepton;
   const double MpsiPDG = GenMassSettings.MpsiPDG.central;
+
+  EffProv *muonEffs = nullptr;
+  EffProv *photonEffs = nullptr;
+
+  if (!config.muonEffs.empty()) {
+    muonEffs = new EfficiencyProvider<TGraphAsymmErrors>(config.muonEffs, "muon_eff_pt", RangeFromGraph{});
+  }
+  if (!config.photonEffs.empty()) {
+    // using a fixed range for the photon efficiencies since they are parametrized in the region from 400 MeV to 7 GeV
+    photonEffs = new EfficiencyProvider<TF1>(config.photonEffs, "photon_eff_pt", FixedRange<TF1>{0.4, 7});
+  }
 
 
   delete gRandom;
@@ -235,7 +250,20 @@ void chicpolgen(const gen_config& config = gen_config{}){
   // double ca_sm_gamma_jpsi;     tr->Branch("ca_sm_gamma_jpsi", &ca_sm_gamma_jpsi);
   // double ca_sm_mu_mu;     tr->Branch("ca_sm_mu_mu", &ca_sm_mu_mu);
 
+  double lepP_eff, lepN_eff, lepP_eff_sm, lepN_eff_sm;
+  double gamma_eff, gamma_eff_sm;
 
+  if (!config.muonEffs.empty()) {
+    tr->Branch("lepP_eff", &lepP_eff);
+    tr->Branch("lepN_eff", &lepN_eff);
+    tr->Branch("lepP_eff_sm", &lepP_eff_sm);
+    tr->Branch("lepN_eff_sm", &lepN_eff_sm);
+  }
+
+  if (!config.photonEffs.empty()) {
+    tr->Branch("gamma_eff", &gamma_eff);
+    tr->Branch("gamma_eff_sm", &gamma_eff_sm);
+  }
 
   // smearing initialization (for smearing according to MC)
   // auto *smearingFile = TFile::Open(residualMapFileName);
@@ -752,6 +780,21 @@ void chicpolgen(const gen_config& config = gen_config{}){
     costh_HX_sm = angles_HX.costh;
     phi_HX_sm = angles_HX.phi;
 
+    const auto angles_CS = calcAnglesInFrame(smearedLepN, smearedLepP, RefFrame::CS);
+    costh_CS_sm = angles_CS.costh;
+    phi_CS_sm = angles_CS.phi;
+
+    // add the desired efficiencies
+    if (muonEffs) {
+      lepP_eff = muonEffs->Eval(pT_lepP, eta_lepP);
+      lepN_eff = muonEffs->Eval(pT_lepN, eta_lepN);
+      lepP_eff_sm = muonEffs->Eval(pT_lepP_sm, eta_lepP_sm);
+      lepN_eff_sm = muonEffs->Eval(pT_lepN_sm, eta_lepN_sm);
+    }
+    if (photonEffs) {
+      gamma_eff = photonEffs->Eval(pT_gamma, y_gamma);
+      gamma_eff_sm = photonEffs->Eval(pT_gamma_sm, y_gamma_sm);
+    }
 
     tr->Fill();
 
@@ -763,6 +806,6 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
   std::cout << '\n' << '\n';
 
-  hfile->Write();
+  hfile->Write("", TObject::kWriteDelete);
 
 } // end of main
