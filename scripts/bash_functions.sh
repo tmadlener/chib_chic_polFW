@@ -79,3 +79,51 @@ function pklview() {
     done
 }
 export -f pklview
+
+## print the current date and the name of a time point
+function print_date() {
+    echo "-------------------- "${@}": " $(date) " --------------------"
+}
+
+## check if the last action (first argument) has been successful (exited with 0).
+## If so, remove the executable (second argument).
+## Else leave it in place and exit with the passed exit code.
+## If a third argument is passed, the function will cd to the directory specified by that
+function cleanup_or_exit() {
+    if [ ${1} -eq 0 ]; then
+        echo ${2} "exited with 0. Cleaning up executable"
+        rm ${2}
+    else
+        echo ${2} "exited with "${1}". Leaving executable in place"
+        print_date "end"
+        if [ ${#} -eq 3 ]; then
+            cd ${3}
+        fi
+        exit ${1} # for testing disable the exit
+    fi
+}
+
+## Run a command in a "pseudo sandbox" by copying the executable (second) argument to the passed directory (first argument)
+## and running it there. The rest of the arguments is passed on the the executable
+## NOTE: This uses cleanup_or_exit so this should only be used in scripts as otherwise you will be thrown out
+## of your shell if the command you want to sandbox fails
+function run_sandboxed() {
+    sandboxdir=${1}
+    orig_exe=${2}
+    shift 2
+    args=${@}
+
+    curr_dir=$(pwd)
+    mkdir -p ${sandboxdir}
+
+    # copy the executable into the sandbox directory and make it unique
+    exe=$(basename ${orig_exe})_$(rand_str 16)
+    cp ${orig_exe} ${sandboxdir}/${exe}
+    cd ${sandboxdir}
+
+    print_date "start of "${exe}
+    ./${exe} ${args}
+    cleanup_or_exit $? ${exe} ${curr_dir}
+    print_date "end"
+    cd ${curr_dir}
+}
