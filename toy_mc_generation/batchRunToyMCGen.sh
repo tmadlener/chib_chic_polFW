@@ -13,10 +13,11 @@ state=${2}
 hel1=${3}
 hel2=${4}
 nevents=${5}
+shift 5
 
 exe=${CHIB_CHIC_POLFW_DIR}/toy_mc_generation/run_chicpolgen
 
 outdir=$(dirname ${genfile})
 
 run_sandboxed ${outdir} ${exe} --genfile $(basename ${genfile}) --nevents ${nevents} \
-              --helicity1 ${hel1} --helicity2 ${hel2} --state ${state}
+              --helicity1 ${hel1} --helicity2 ${hel2} --state ${state} ${@}

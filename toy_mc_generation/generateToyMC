@@ -35,5 +35,6 @@ for setting in ${!SETTINGS[@]}; do
     outfile=${OUTBASEDIR}/${setting}/toy_data.root
 
     # throw it to the batch system
-    sbatch ./batchRunToyMCGen.sh ${outfile} ${state} ${helicity1} ${helicity2} ${NEVENTS}
+    sbatch ./batchRunToyMCGen.sh ${outfile} ${state} ${helicity1} ${helicity2} ${NEVENTS} \
+           --muonEffs ${MUON_EFFS} --photonEffs ${PHOTON_EFFS}
 done
