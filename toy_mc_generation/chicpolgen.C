@@ -105,8 +105,10 @@ double func_rap_gen(double* /*x*/, double* /*par*/)
 
 double func_pT_gen(double* x, double* /*par*/)
 {
-  const double beta = 3.45;  //  CHECK HERE FUNCTION AND PARAMETER VALUES: USE THOSE OF GLOBAL FIT (considering that this is a pT distribution, not a pT/M distribution)
-  const double gamma = 0.73;
+  // const double beta = 3.45;  //  CHECK HERE FUNCTION AND PARAMETER VALUES: USE THOSE OF GLOBAL FIT (considering that this is a pT distribution, not a pT/M distribution)
+  const double beta = 3.39924;  // same as in MC generation from Alberto
+  // const double gamma = 0.73;
+  const double gamma = 0.635858; // same as in MC generation from Alberto
   double pT = x[0];
   return pT * pow( 1. + 1./(beta - 2.) * pT/Mchi*pT/Mchi / gamma, -beta  );
 }
