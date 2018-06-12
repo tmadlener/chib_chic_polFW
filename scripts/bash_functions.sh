@@ -105,25 +105,44 @@ function cleanup_or_exit() {
 
 ## Run a command in a "pseudo sandbox" by copying the executable (second) argument to the passed directory (first argument)
 ## and running it there. The rest of the arguments is passed on the the executable
+## NOTE: The executable is only guaranteed to not leak out of the sandbox if it produces all of its output in the directory
+## it is run in
 ## NOTE: This uses cleanup_or_exit so this should only be used in scripts as otherwise you will be thrown out
 ## of your shell if the command you want to sandbox fails
 function run_sandboxed() {
-    sandboxdir=${1}
+    outdir=${1}
     orig_exe=${2}
     shift 2
     args=${@}
 
+    # create a sandbox directory in the output directory
+    sandboxid=$(rand_str 8)
+    sandboxdir=${outdir}/${sandboxid}
+
     curr_dir=$(pwd)
     mkdir -p ${sandboxdir}
 
-    # copy the executable into the sandbox directory and make it unique
-    exe=$(basename ${orig_exe})_$(rand_str 16)
+    # copy the executable into the sandbox directory and run there
+    exe=$(basename ${orig_exe})
     cp ${orig_exe} ${sandboxdir}/${exe}
     cd ${sandboxdir}
 
-    print_date "start of "${exe}
+    print_date "start of "${exe}" in "${sandboxdir}
     ./${exe} ${args}
     cleanup_or_exit $? ${exe} ${curr_dir}
+
+    # if we are still alive here, we have to move the output to the "real" output directory
+    echo "moving outputs to "${outdir}
+    for file in $(ls ${sandboxdir}); do
+        mv ${sandboxdir}/${file} ${outdir}/$(echo ${file} | sed 's/\(\..*\)$/_'"$sandboxid"'\1/')
+    done
+
+    # echo "removing temp sandboxdir"
+    cd ${outdir}
+    if ! [[ $(ls -A ${sandboxdir}) ]]; then
+        rmdir ${sandboxdir}
+    fi
+
     print_date "end"
     cd ${curr_dir}
 }
