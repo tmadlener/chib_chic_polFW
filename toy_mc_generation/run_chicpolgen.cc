@@ -15,7 +15,7 @@ int main(int argc, char *argv[])
   const auto state = parser.getOptionVal<int>("--state", 1);
   const auto nevents = parser.getOptionVal<int>("--nevents", 3000000);
   const auto ptmin = parser.getOptionVal<double>("--ptmin", 7.0);
-  const auto ptmax = parser.getOptionVal<double>("--ptmax", 21.0);
+  const auto ptmax = parser.getOptionVal<double>("--ptmax", 30.0);
   const auto ymin = parser.getOptionVal<double>("--ymin", 0);
   const auto ymax = parser.getOptionVal<double>("--ymax", 1.3);
   const auto CSframe = parser.getOptionVal<bool>("--CSframe", false);
