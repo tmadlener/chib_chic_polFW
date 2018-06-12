@@ -208,12 +208,12 @@ void chicpolgen(const gen_config& config = gen_config{}){
   double phi_chihe;     tr->Branch( "phi_chihe",      &phi_chihe,      "phi_chihe/D" );
 
 // psi decay angles in the helicity frame
-  double costh_he;      tr->Branch( "costh_he",       &costh_he,       "costh_he/D" );
-  double phi_he;        tr->Branch( "phi_he",         &phi_he,         "phi_he/D" );
+  double costh_he;      tr->Branch( "costh_HX",       &costh_he,       "costh_HX/D" );
+  double phi_he;        tr->Branch( "phi_HX",         &phi_he,         "phi_HX/D" );
 
 // psi decay angles in the CS frame
-  double costh_cs;      tr->Branch( "costh_cs",       &costh_cs,       "costh_cs/D" );
-  double phi_cs;        tr->Branch( "phi_cs",         &phi_cs,         "phi_cs/D" );
+  double costh_cs;      tr->Branch( "costh_CS",       &costh_cs,       "costh_CS/D" );
+  double phi_cs;        tr->Branch( "phi_CS",         &phi_cs,         "phi_CS/D" );
 
 
   // double M_gamma; tr->Branch("M_gamma", &M_gamma);
@@ -689,7 +689,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
     costh_cs = lepton_psi_rotated.CosTheta();
 
     phi_cs = lepton_psi_rotated.Phi() * 180. / PIG;
-    if ( phi_cs < 0. ) phi_cs = 360. + phi_cs;
+    // if ( phi_cs < 0. ) phi_cs = 360. + phi_cs;
 
 
  /////////////////////////////////////////////////////////////////////
@@ -709,7 +709,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
     costh_he = lepton_psi_rotated.CosTheta();
 
     phi_he = lepton_psi_rotated.Phi() * 180. / PIG;
-    if ( phi_he < 0. ) phi_he = 360. + phi_he;
+    // if ( phi_he < 0. ) phi_he = 360. + phi_he;
 
 
 
