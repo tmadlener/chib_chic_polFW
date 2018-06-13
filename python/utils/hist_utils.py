@@ -270,3 +270,27 @@ def get_quantiles(hist, quantiles):
     # (starts at 1 and ends at Nbins for the "nominal" bins, 0 is underflow,
     # Nbins + 1 is overflow)
     return [x_axis.GetBinUpEdge(b + 1) for b in q_bins]
+
+
+def divide(num, denom, **kwargs):
+    """
+    Divide to histograms and return the ratio
+
+    Args:
+        num (ROOT.TH1): numerator histogram
+        denom (ROOT.TH1): denominator histogram
+
+    Keyword Args:
+        name (str): If not empty this will be set as the name of the ratio TH1
+        [x|y]label (str): Labels for the x and y-axis.
+
+    Returns:
+        ratio (ROOT.TH1): Ratio histogram obtained from cloning num and then
+            dividing it by denom
+    """
+    ratio = num.Clone(kwargs.pop('name', ''))
+    ratio.Divide(denom)
+
+    set_labels(ratio, kwargs.pop('xlabel', ''), kwargs.pop('ylabel', ''))
+
+    return ratio

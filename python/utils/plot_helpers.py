@@ -321,3 +321,23 @@ def put_on_latex(latex, text_info):
     """
     for left, top, text in text_info:
         latex.DrawLatex(left, top, text)
+
+
+def setup_legend(*position):
+    """
+    Setup and return a ROOT.TLegend object
+
+    Args:
+        position: Coordinates of the TLegend. Forwarded to the constructor
+
+    Returns:
+        ROOT.TLegend
+    """
+    leg = r.TLegend(*position)
+    leg.SetFillColor(r.kWhite)
+    leg.SetTextFont(42)
+    leg.SetTextSize(0.04)
+    leg.SetEntrySeparation(0.01)
+    leg.SetBorderSize(0)
+
+    return leg

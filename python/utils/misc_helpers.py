@@ -473,3 +473,21 @@ def get_bin_edges(bins):
     """
     uniq_bin_bord = sorted({b for b in flatten(bins)})
     return np.array(uniq_bin_bord)
+
+
+def longest_match(string, poss_strings):
+    """
+    Find the longest match of a string in a set of possibly matching strings
+
+    Args:
+        string (str): String that should be matched
+        poss_strings (list): List of strings that should be matched against
+            string
+
+    Returns:
+        str: The element of poss_strings that has the longest match in string
+    """
+    match_strs = [ps for ps in poss_strings if ps in string]
+    match_strs.sort(key=lambda x: len(x))
+
+    return match_strs[-1]
