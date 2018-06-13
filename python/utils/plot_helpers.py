@@ -19,6 +19,53 @@ from utils.hist_utils import set_common_range, set_labels
 _colors = []
 _color_indices = []
 
+class TCanvasWrapper(object):
+    """
+    Class that wraps a TCanvas and exposes all its functionality externally
+    but also puts attached plots and other TObjects to the members so that they
+    stay alive as long as the TCanvas itself
+    """
+    def __init__(self, canvas):
+        """
+        Initialize from an already existing TCanvas
+        """
+        self.wrapped_canvas = canvas
+        self.pltables = []
+        self.attached_tobjects = []
+
+    def __getattr__(self, attr):
+        """
+        Forward all calls to the canvas
+        """
+        # intercept the adding function calls
+        if attr.startswith('add'):
+            self.__getattribute__(attr)
+
+        # remove all attached things when the canvas itself is cleared
+        if attr == 'Clear' or attr == 'Reset':
+            self.pltables = []
+            self.attached_tobjects = []
+
+        return self.wrapped_canvas.__getattribute__(attr)
+
+    def add_pltables(self, pltables):
+        """
+        Add plotable objects
+        """
+        for plt in make_iterable(pltables):
+            # do not store duplicates
+            if not plt in self.pltables:
+                self.pltables.append(plt)
+
+    def add_tobject(self, tobject):
+        """
+        Add any TObject
+        """
+        # do not store duplicates
+        if not tobject in self.attached_tobjects:
+            self.attached_tobjects.append(tobject)
+
+
 def default_colors():
     """Get a list of some nicer colors for plotting than ROOTs default.
 
@@ -257,7 +304,9 @@ def mkplot(pltables, **kwargs):
             plot on
 
     Returns:
-        ROOT.TCanvas: Canvas with all the plotables drawn onto it.
+        TCanvasWrapper: Transparent wrapper class around a TCanvas that forwards
+            all calls to the TCanvas but keeps the plotted objects alive as long
+            as the TCanvas is alive
 
     See also:
         plot_on_canvas
@@ -269,6 +318,9 @@ def mkplot(pltables, **kwargs):
     if can is None:
         can_name = create_random_str()
         can = r.TCanvas(can_name, '', 50, 50, 600, 600)
+
+    if not isinstance(can, TCanvasWrapper):
+        can = TCanvasWrapper(can)
 
     # Check if at least one pltable has been passed and return the canvas if not
     # NOTE: Can't return earlier with None, since a canvas is expected to be
@@ -291,7 +343,14 @@ def mkplot(pltables, **kwargs):
         for h in pltables:
             set_labels(h, x_label, y_label)
 
+    leg = kwargs.get('leg', None)
+
     plot_on_canvas(can, pltables, **kwargs)
+
+    can.add_pltables(pltables)
+    if leg is not None:
+        can.add_tobject(leg)
+
     return can
 
 
