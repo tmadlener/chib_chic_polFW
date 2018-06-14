@@ -127,4 +127,32 @@ std::string getCutString(const size_t bin, const std::vector<T>& binning, const 
 }
 
 
+/** create a vector with evenly spaced values between min and max (see MATLABs linspace). */
+template<typename T>
+std::vector<T> linspace(const T min, const T max, const size_t steps)
+{
+  std::vector<T> vals;
+  vals.reserve(steps);
+  const T step = (max - min) / (steps - 1);
+  for (size_t i = 0; i < steps; ++i) {
+    vals.push_back(min + i * step);
+  }
+  return vals;
+}
+
+/**
+ * Find the (a) root of the given function using the secant method
+ */
+template<typename Func>
+double findRoot(Func f, double x0, double x1, const double eps=1e-8, const size_t maxSteps=100)
+{
+  const double fx0 = f(x0);
+  const double fx1 = f(x1);
+  const double x2 = (x0 * fx1 - x1 * fx0) / (fx1 - fx0);
+
+  if (std::abs(f(x2)) < eps) return x2;
+
+  return findRoot(f, x1, x2, eps, maxSteps - 1);
+}
+
 #endif

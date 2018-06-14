@@ -12,6 +12,7 @@
 #include <string>
 #include <regex>
 #include <iostream>
+#include <numeric>
 
 struct Range {
   double min;
@@ -132,6 +133,76 @@ struct RangeFromGraph {
 
     return Range{min, max};
   }
+};
+
+/**
+ * For some of the fits the efficiency parametrization are TF1 that are built from more than 1 original function.
+ * In that case TF1->GetMaximumX() and TF1->GetMinimumX() do not return the correct range, but it can be determined
+ * by checking in which range the function is not 0
+ * NOTE: assuming that this will be a contiguous range
+ */
+Range findRangeFromValues(const TF1 *func, const Range widestRange, const size_t nPoints=10000)
+{
+  double min = widestRange.min;
+  double max = widestRange.max;
+
+  double lastFuncVal = func->Eval(widestRange.min);
+  for (const auto x : linspace<double>(widestRange.min, widestRange.max, nPoints)) {
+    const double funcVal = func->Eval(x);
+    if (funcVal != 0 && lastFuncVal == 0) {
+      min = x;
+    }
+    if (lastFuncVal !=0 && funcVal == 0) {
+      max = x;
+    }
+
+    lastFuncVal = funcVal;
+  }
+
+  return Range{min, max};
+}
+
+
+/**
+ * Determine the range from a parametrization, such that the resulting efficiency will always be larger than or equal to 0
+ * NOTE: this currently only checks for values smaller than 0 at the lower edge
+ */
+struct RangeFromFit {
+  /** default constructor uses the range of the TF1 to check for a positive range */
+  RangeFromFit() = default;
+  /** constructor for using a proposal Range and check whether the function is non 0 over that proposal range */
+  RangeFromFit(Range propRange) : m_findNonNullRange(true), m_proposalRange(propRange) {}
+
+  Range operator()(TF1 *fit) {
+    const auto funcRange = m_findNonNullRange ? findRangeFromValues(fit, m_proposalRange, 10000) : Range{fit->GetMinimumX(), fit->GetMaximumX()};
+
+    const double minX = funcRange.min;
+    const double maxX = funcRange.max;
+
+    double min = minX;
+
+    // evaluate the function at 1000 evenly spaced points between min and max and see if any of them are below 0
+    // if none are, assume the whole function is positive and simply return the range of the function
+    // if there are points below zero do a simple Newton method to find the root and use that as lower limit
+    constexpr size_t nPoints = 1000;
+    double lastNegative = std::numeric_limits<double>::min();
+    bool foundNegative = false;
+    for (const auto x : linspace<double>(minX, maxX, nPoints)) {
+      if (fit->Eval(x) < 0) {
+        lastNegative = x;
+        foundNegative = true;
+      }
+    }
+    if (foundNegative) {
+      const double stepSize = (minX - maxX) / nPoints;
+      min = findRoot([fit](double x) {return fit->Eval(x); }, lastNegative, lastNegative + stepSize);
+    }
+
+    return Range{min, maxX};
+  }
+private:
+  bool m_findNonNullRange{false};
+  Range m_proposalRange{0, 0};
 };
 
 #endif
