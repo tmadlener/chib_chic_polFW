@@ -158,9 +158,13 @@ def get_n_events(data, selections=None, weight=None):
     """
     Get the number of events in the dataframe surviving the passed selection
 
-    If weight is not None the corresponding column will be used as weights
+    If weight is not None the corresponding column will be used as weights,
+    unless weight is a function taking the dataframe as only input, than the sum
+    of the array returned by that function call will be returned
     """
     sel_data = apply_selections(data, selections)
     if weight is None:
         return sel_data.shape[0]
+    if hasattr(weight, '__call__'):
+        return weight(sel_data).sum()
     return sel_data[weight].sum()
