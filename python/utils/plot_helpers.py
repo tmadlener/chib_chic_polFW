@@ -212,6 +212,26 @@ def set_attributes(pltable, **kwargs):
         conditional_set(arg, func)
 
 
+def setup_legend(*position):
+    """
+    Setup and return a ROOT.TLegend object
+
+    Args:
+        position: Coordinates of the TLegend. Forwarded to the constructor
+
+    Returns:
+        ROOT.TLegend
+    """
+    leg = r.TLegend(*position)
+    leg.SetFillColor(r.kWhite)
+    leg.SetTextFont(42)
+    leg.SetTextSize(0.04)
+    leg.SetEntrySeparation(0.01)
+    leg.SetBorderSize(0)
+
+    return leg
+
+
 def plot_on_canvas(can, plots, **kwargs):
     """
     Generic plotting function, that puts all the plots on plots onto the same
@@ -343,9 +363,13 @@ def mkplot(pltables, **kwargs):
         for h in pltables:
             set_labels(h, x_label, y_label)
 
-    leg = kwargs.get('leg', None)
+    leg = kwargs.pop('leg', None)
+    if leg is None:
+        legPos = kwargs.pop('legPos', None)
+        if legPos is not None and len(legPos) == 4:
+            leg = setup_legend(*legPos)
 
-    plot_on_canvas(can, pltables, **kwargs)
+    plot_on_canvas(can, pltables, leg=leg, **kwargs)
 
     can.add_pltables(pltables)
     if leg is not None:
@@ -380,23 +404,3 @@ def put_on_latex(latex, text_info):
     """
     for left, top, text in text_info:
         latex.DrawLatex(left, top, text)
-
-
-def setup_legend(*position):
-    """
-    Setup and return a ROOT.TLegend object
-
-    Args:
-        position: Coordinates of the TLegend. Forwarded to the constructor
-
-    Returns:
-        ROOT.TLegend
-    """
-    leg = r.TLegend(*position)
-    leg.SetFillColor(r.kWhite)
-    leg.SetTextFont(42)
-    leg.SetTextSize(0.04)
-    leg.SetEntrySeparation(0.01)
-    leg.SetBorderSize(0)
-
-    return leg
