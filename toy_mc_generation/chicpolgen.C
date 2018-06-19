@@ -136,16 +136,21 @@ void chicpolgen(const gen_config& config = gen_config{}){
   EffProv *photonEffs = nullptr;
 
   if (!config.muonEffs.empty()) {
-    muonEffs = new EfficiencyProvider<TGraphAsymmErrors>(config.muonEffs, "muon_eff_pt", RangeFromGraph{});
+    std::cout << "Reading muon efficiencies\n";
+    // non-parametrized single muon efficiencies
+    // muonEffs = new EfficiencyProvider<TGraphAsymmErrors>(config.muonEffs, "muon_eff_pt", RangeFromGraph{});
+    // parametrized single muon efficiencies
+    muonEffs = new EfficiencyProvider<TF1>(config.muonEffs, "muon_eff_pt", RangeFromFit{});
   }
   if (!config.photonEffs.empty()) {
+    std::cout << "Reading photon efficiencies\n";
     // using a fixed range for the photon efficiencies since they are parametrized in the region from 400 MeV to 7 GeV
-    photonEffs = new EfficiencyProvider<TF1>(config.photonEffs, "photon_eff_pt", FixedRange<TF1>{0.4, 7});
+    // photonEffs = new EfficiencyProvider<TF1>(config.photonEffs, "photon_eff_pt", FixedRange<TF1>{0.4, 7});
+    photonEffs = new EfficiencyProvider<TF1>(config.photonEffs, "photon_eff_pt", RangeFromFit{});
   }
 
-
   delete gRandom;
-  gRandom = new TRandom3(0);
+  // gRandom = new TRandom3(0);
 
   // create the functions from which the chic and the jpsi masses are drawn
   const auto chicMassDist = std::bind(&TRandom3::Gaus, std::ref(gRandom),

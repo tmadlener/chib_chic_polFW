@@ -7,6 +7,7 @@
 #include "TIterator.h"
 #include "TKey.h"
 #include "TGraphAsymmErrors.h"
+#include "TF1.h"
 
 #include <vector>
 #include <string>
@@ -44,6 +45,9 @@ public:
 
   bool etaContain(double absEta) const { return m_eta.min <= absEta && m_eta.max > absEta; }
   bool ptContain(double pt) const { return m_pT.min <= pt && m_pT.max > pt; }
+
+  std::string const getName() const { return m_eff->GetName(); }
+
 private:
   EffType *m_eff;
 
@@ -85,12 +89,18 @@ EfficiencyProvider<EffType>::EfficiencyProvider(const std::string& effFile, cons
   auto nextKey = TIter(m_effFile->GetListOfKeys());
   TKey* key = nullptr;
   while((key = static_cast<TKey*>(nextKey()))) {
-    if (std::string(key->GetName()).find(identifier) != std::string::npos) {
-      auto *obj = static_cast<EffType*>(key->ReadObj());
-      const auto etaRange = getEtaRange(obj->GetName());
-      const auto ptRange = rangeFinder(obj);
+    std::string const keyName = key->GetName();
+    if (keyName.find(identifier) != std::string::npos) {
+      // check if not already present. NOTE: this is necessary because the keys do not have to be unique in TFiles
+      if (std::find_if(m_efficiencies.cbegin(), m_efficiencies.cend(),
+                       [&keyName] (Efficiency<EffType> const& eff)
+                       { return keyName == eff.getName(); }) == m_efficiencies.cend()) {
+        auto *obj = static_cast<EffType*>(key->ReadObj());
+        const auto etaRange = getEtaRange(obj->GetName());
+        const auto ptRange = rangeFinder(obj);
 
-      m_efficiencies.emplace_back(obj, etaRange.min, etaRange.max, ptRange.min, ptRange.max);
+        m_efficiencies.emplace_back(obj, etaRange.min, etaRange.max, ptRange.min, ptRange.max);
+      }
     }
   }
 }
@@ -174,10 +184,13 @@ struct RangeFromFit {
   RangeFromFit(Range propRange) : m_findNonNullRange(true), m_proposalRange(propRange) {}
 
   Range operator()(TF1 *fit) {
-    const auto funcRange = m_findNonNullRange ? findRangeFromValues(fit, m_proposalRange, 10000) : Range{fit->GetMinimumX(), fit->GetMaximumX()};
+    std::cout << "Finding range from fit: " << fit->GetName() << "\n";
+    const auto funcRange = m_findNonNullRange ? findRangeFromValues(fit, m_proposalRange, 10000) : Range{fit->GetXmin(), fit->GetXmax()};
 
     const double minX = funcRange.min;
     const double maxX = funcRange.max;
+
+    std::cout << "Searching for range in (" << minX << ", " << maxX << ")\n";
 
     double min = minX;
 
@@ -194,10 +207,12 @@ struct RangeFromFit {
       }
     }
     if (foundNegative) {
-      const double stepSize = (minX - maxX) / nPoints;
-      min = findRoot([fit](double x) {return fit->Eval(x); }, lastNegative, lastNegative + stepSize);
+      const double defPositive = (minX - maxX) / nPoints + lastNegative; // has to be positive by definition
+      std::cout << "Found negative values between " << lastNegative << " and " << defPositive << ". Now trying to find a more precise point\n";
+      min = findRoot([fit](double x) { return fit->Eval(x); }, lastNegative, defPositive);
     }
 
+    std::cout << "Final range: (" << min << "," << maxX << ")\n";
     return Range{min, maxX};
   }
 private:
