@@ -136,7 +136,7 @@ def fiducial_cuts():
 def loose_cuts():
     """Loosest cut that does not have any acceptance holes in pt-eta"""
     coords = (
-        (2, 1.6), (3.0, 1.2), (3.0, 0)
+        (2.0, 1.6), (3.5, 1.2), (3.5, 0)
     )
 
     return coords
