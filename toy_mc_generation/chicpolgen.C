@@ -181,25 +181,25 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
   TTree* tr = new TTree("tr", "tr");
 
-  double pT_chi;        tr->Branch( "pT_chi",         &pT_chi,         "pT_chi/D" );
-  double pT;            tr->Branch( "pT_jpsi",             &pT,             "pT/D" );
+  double pT_chi;        tr->Branch( "gen_chicPt",         &pT_chi);
+  double pT;            tr->Branch( "gen_JpsiPt",             &pT);
   double pL_chi;     //   tr->Branch( "pL_chi",         &pL_chi,         "pL_chi/D" );
   // double pL;         //   tr->Branch( "pL",             &pL,             "pL/D" );
-  double y_chi;         tr->Branch( "y_chi",          &y_chi,          "y_chi/D" );
-  double y;             tr->Branch( "y_jpsi",              &y,              "y/D" );
+  double y_chi;         tr->Branch( "gen_chicRap",          &y_chi);
+  double y;             tr->Branch( "gen_JpsiRap",              &y);
 
-  tr->Branch("M_chi", &Mchi);
-  tr->Branch("M_jpsi", &Mpsi);
+  tr->Branch("gen_chicMass", &Mchi);
+  tr->Branch("gen_JpsiMass", &Mpsi);
 
-  double pT_gamma;      tr->Branch( "pT_gamma",       &pT_gamma,       "pT_gamma/D" );
-  double pL_gamma;      tr->Branch( "pL_gamma",       &pL_gamma,       "pL_gamma/D" );
-  double y_gamma;       tr->Branch( "y_gamma",        &y_gamma,        "y_gamma/D"  );
+  double pT_gamma;      tr->Branch( "gen_photonPt",       &pT_gamma);
+  double pL_gamma;      tr->Branch( "gen_photonPl",       &pL_gamma);
+  double y_gamma;       tr->Branch( "gen_photonEta",        &y_gamma);
 
-  double pT_lepP;       tr->Branch( "pT_lepP",        &pT_lepP,        "pT_lepP/D"  );
-  double eta_lepP;      tr->Branch( "eta_lepP",       &eta_lepP,       "eta_lepP/D" );
+  double pT_lepP;       tr->Branch( "gen_muPPt",        &pT_lepP);
+  double eta_lepP;      tr->Branch( "gen_muPEta",       &eta_lepP);
 
-  double pT_lepN;       tr->Branch( "pT_lepN",        &pT_lepN,        "pT_lepN/D"  );
-  double eta_lepN;      tr->Branch( "eta_lepN",       &eta_lepN,       "eta_lepN/D" );
+  double pT_lepN;       tr->Branch( "gen_muNPt",        &pT_lepN);
+  double eta_lepN;      tr->Branch( "gen_muNEta",       &eta_lepN);
 
   // int inAcc0;            tr->Branch( "inAcc0",          &inAcc0,          "inAcc0/I"    );
   // int inAcc1;            tr->Branch( "inAcc1",          &inAcc1,          "inAcc1/I"    );
@@ -213,44 +213,44 @@ void chicpolgen(const gen_config& config = gen_config{}){
   double phi_chihe;     tr->Branch( "phi_chihe",      &phi_chihe,      "phi_chihe/D" );
 
 // psi decay angles in the helicity frame
-  double costh_he;      tr->Branch( "costh_HX",       &costh_he,       "costh_HX/D" );
-  double phi_he;        tr->Branch( "phi_HX",         &phi_he,         "phi_HX/D" );
+  double costh_he;      tr->Branch( "gen_costh_HX",       &costh_he);
+  double phi_he;        tr->Branch( "gen_phi_HX",         &phi_he);
 
 // psi decay angles in the CS frame
-  double costh_cs;      tr->Branch( "costh_CS",       &costh_cs,       "costh_CS/D" );
-  double phi_cs;        tr->Branch( "phi_CS",         &phi_cs,         "phi_CS/D" );
+  double costh_cs;      tr->Branch( "gen_costh_CS",       &costh_cs);
+  double phi_cs;        tr->Branch( "gen_phi_CS",         &phi_cs);
 
 
   // double M_gamma; tr->Branch("M_gamma", &M_gamma);
   // double qM_chi; tr->Branch("qM_chi", &qM_chi);
 
   // smeared variables with "_sm" postfix
-  double pT_chi_sm;     tr->Branch("pT_chi_sm", &pT_chi_sm);
-  double y_chi_sm;     tr->Branch("y_chi_sm", &y_chi_sm);
-  double M_chi_sm;      tr->Branch("M_chi_sm", &M_chi_sm);
-  double qM_chi_sm;      tr->Branch("qM_chi_sm", &qM_chi_sm);
+  double pT_chi_sm;     tr->Branch("chicPt", &pT_chi_sm);
+  double y_chi_sm;     tr->Branch("chicRap", &y_chi_sm);
+  double M_chi_sm;      tr->Branch("mumugammaMass", &M_chi_sm);
+  double qM_chi_sm;      tr->Branch("chicMass", &qM_chi_sm);
 
-  double pT_gamma_sm;     tr->Branch("pT_gamma_sm", &pT_gamma_sm);
-  double y_gamma_sm;     tr->Branch("y_gamma_sm", &y_gamma_sm);
+  double pT_gamma_sm;     tr->Branch("photonPt", &pT_gamma_sm);
+  double y_gamma_sm;     tr->Branch("photonEta", &y_gamma_sm);
   double eta_gamma_sm;     tr->Branch("eta_gamma_sm", &eta_gamma_sm);
 
-  double pT_jpsi_sm;     tr->Branch("pT_jpsi_sm", &pT_jpsi_sm);
-  double y_jpsi_sm;     tr->Branch("y_jpsi_sm", &y_jpsi_sm);
-  double M_jpsi_sm;      tr->Branch("M_jpsi_sm", &M_jpsi_sm);
+  double pT_jpsi_sm;     tr->Branch("JpsiPt", &pT_jpsi_sm);
+  double y_jpsi_sm;     tr->Branch("JpsiRap", &y_jpsi_sm);
+  double M_jpsi_sm;      tr->Branch("JpsiMass", &M_jpsi_sm);
 
-  double pT_lepP_sm;     tr->Branch("pT_lepP_sm", &pT_lepP_sm);
-  double eta_lepP_sm;     tr->Branch("eta_lepP_sm", &eta_lepP_sm);
+  double pT_lepP_sm;     tr->Branch("muPPt", &pT_lepP_sm);
+  double eta_lepP_sm;     tr->Branch("muPEta", &eta_lepP_sm);
 
-  double pT_lepN_sm;     tr->Branch("pT_lepN_sm", &pT_lepN_sm);
-  double eta_lepN_sm;     tr->Branch("eta_lepN_sm", &eta_lepN_sm);
+  double pT_lepN_sm;     tr->Branch("muNPt", &pT_lepN_sm);
+  double eta_lepN_sm;     tr->Branch("muNEta", &eta_lepN_sm);
 
   double Mchic;    tr->Branch("Q_value_gen", &Mchic);
 
-  double costh_HX_sm; tr->Branch("costh_HX_sm", &costh_HX_sm);
-  double phi_HX_sm; tr->Branch("phi_HX_sm", &phi_HX_sm);
+  double costh_HX_sm; tr->Branch("costh_HX", &costh_HX_sm);
+  double phi_HX_sm; tr->Branch("phi_HX", &phi_HX_sm);
 
-  double costh_CS_sm; tr->Branch("costh_CS_sm", &costh_CS_sm);
-  double phi_CS_sm; tr->Branch("phi_CS_sm", &phi_CS_sm);
+  double costh_CS_sm; tr->Branch("costh_CS", &costh_CS_sm);
+  double phi_CS_sm; tr->Branch("phi_CS", &phi_CS_sm);
 
   // double ca_gamma_jpsi;     tr->Branch("ca_gamma_jpsi", &ca_gamma_jpsi);
   // double ca_mu_mu;     tr->Branch("ca_mu_mu", &ca_mu_mu);
@@ -765,14 +765,13 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
     pT_gamma_sm = smearedGamma.Pt();
     y_gamma_sm = smearedGamma.Rapidity();
-    eta_gamma_sm = smearedGamma.Eta();
 
     pT_lepP_sm = smearedLepP.Pt();
     eta_lepP_sm = smearedLepP.Eta();
     pT_lepN_sm = smearedLepN.Pt();
     eta_lepN_sm = smearedLepN.Eta();
 
-  //  filling of the ntuple:
+    //  filling of the ntuple:
 
     // qM_chi = chi.M() - psi.M() + MpsiPDG;
     // M_gamma = gamma.M();
