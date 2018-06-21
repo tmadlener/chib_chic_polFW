@@ -150,7 +150,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
   }
 
   delete gRandom;
-  // gRandom = new TRandom3(0);
+  gRandom = new TRandom3(0);
 
   // create the functions from which the chic and the jpsi masses are drawn
   const auto chicMassDist = std::bind(&TRandom3::Gaus, std::ref(gRandom),
