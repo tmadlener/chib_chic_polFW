@@ -12,10 +12,7 @@ import numpy as np
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 
-from root_numpy import fill_hist
-
-from utils.hist_utils import set_hist_opts
-from utils.misc_helpers import create_random_str, make_iterable
+from utils.misc_helpers import make_iterable
 
 def check_branch_available(tree, branch):
     """
@@ -146,64 +143,3 @@ def apply_selections(dataframe, selections, negate=False):
     # NOTE: since this indexing uses an array of bools this will always return a
     # copy
     return dataframe[sum_selection]
-
-
-def create_histogram(var, hist_sett, **kwargs):
-    """
-    Create a ROOT histogram from the passed variable(s)
-
-    Args:
-        var (np.array): Array with maximum of 3 columns containing the variables
-            to plot.
-        hist_set (tuple): Histogram settings, that are directly unpacked into
-            the constructor of the ROOT histogram
-
-    Keyword Args:
-        name (str, optional): Name to be used for the histogram
-        weights (np.array, optional): weight array with the same number of
-             events as the var array. Each entry corresponds to the weight of
-             the event
-        {x,y,z}_axis (str): axis labels to be set for the histogram
-
-    Returns:
-         ROOT.TH{1,2,3}D: The histogram with the dimension corresponding to the
-             number of columns of var
-    """
-    name = kwargs.pop('name', '')
-    if not name:
-        name = create_random_str()
-    # use the number of dimensions from the var to determine which sort of
-    # histogram to use
-    ndim = var.shape
-    if len(ndim) == 1:
-        ndim = 1
-    else:
-        ndim = ndim[1]
-
-    if ndim > 3 or ndim < 0:
-        logging.error('Dimension of histogram is {}. Cannot create histogram'
-                      .format(ndim))
-        raise TypeError('Invalid number of dimensions in create_histograms')
-
-    hist_type = 'TH{}D'.format(ndim)
-    try:
-        hist = getattr(r, hist_type)(name, '', *hist_sett)
-    except TypeError as exc:
-        logging.error('Could not construct TH{}D with passed hist_sett: {}'
-                      .format(ndim, hist_sett))
-        raise exc
-
-    set_hist_opts(hist)
-
-    # set axis labels
-    xax, yax, zax = (kwargs.pop(a, '') for a in ['x_axis', 'y_axis', 'z_axis'])
-    if xax:
-        hist.SetXTitle(xax)
-    if yax:
-        hist.SetYTitle(yax)
-    if zax:
-        hist.SetZTitle(zax)
-
-    fill_hist(hist, var, weights=kwargs.pop('weights', None))
-
-    return hist
