@@ -61,7 +61,7 @@ double SmearingProvider::getSmearing(double varVal) const
 
 TLorentzVector smearParticle(const TLorentzVector& particle, const double deltaP)
 {
-  const double smearFactor = (particle.P() + deltaP) / particle.P();
+  const double smearFactor = std::abs(particle.P() + deltaP) / particle.P();
 
   const double spx = particle.Px() * smearFactor;
   const double spy = particle.Py() * smearFactor;
