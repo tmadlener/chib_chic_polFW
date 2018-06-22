@@ -101,6 +101,13 @@ def vtx_prob_sel(df, prob=0.01):
     return df.vtxProb > prob
 
 
+def deta_sel(df, deta_max=0.015):
+    """
+    Select only events for which the generated and reconstruced photon eta match
+    """
+    return (df.photonEta - df.gen_photonEta).abs() < deta_max
+
+
 def chic_mass_sel(df, min_mass=3.325, max_mass=3.725):
     """Select only those events with a chic mass between min_mass and max_mass"""
     return get_bin_cut_df(df, 'chicMass', min_mass, max_mass)
