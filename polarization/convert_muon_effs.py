@@ -39,6 +39,8 @@ def get_eta_bin(eff_name):
     Get the eta bin borders from the efficiency name
     """
     bin_idx = get_bin_idx(eff_name, 'AETA')
+    if bin_idx is None: # if AETA is not in the name, try again with etaBin
+        bin_idx = get_bin_idx(eff_name, 'etaBin')
     return ETA_RANGE[bin_idx], ETA_RANGE[bin_idx + 1]
 
 
@@ -103,6 +105,7 @@ def main(args):
         if hist_eff is not None:
             hist_eff.Write()
 
+    outfile.Write('', r.TObject.kWriteDelete)
     outfile.Close()
 
 
