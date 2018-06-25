@@ -3,38 +3,56 @@
 # Script for generating Toy MC samples
 
 # number of events to generate
-NEVENTS=5000000
+NEVENTS=1000000
 
 # efficiency files
-MUON_EFFS=$(pwd)/../polarization/single_muon_effs.root
-PHOTON_EFFS=$(pwd)/../polarization/photon_effs_param.root
+MUON_EFFS=$(pwd)/EffFiles/single_muon_effs_noTracking_L3ptg2_final_fit.root
+PHOTON_EFFS=$(pwd)/EffFiles/photon_effs_param.root
 
 # output base directory
-OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen/
+OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen/gen_pt_range/
 
 # all the settings to run (must contain state:helicity1:helicity2)
 # the keys will be turned into the output directories and the value
 # will be split along the ':' and then used as state, helicity1 and helicity2 input arguments
+# Additionally it is possible to set a min and max pt by appending |ptmin:ptmax to the settings
 declare -A SETTINGS
 # chic1 settings
 SETTINGS["chic1_unpolarized"]="1:2./3.:0"
-SETTINGS["chic1_max_negative"]="1:1:0"
-SETTINGS["chic1_max_positive"]="1:0:0"
+# SETTINGS["chic1_max_negative"]="1:1:0"
+# SETTINGS["chic1_max_positive"]="1:0:0"
 
 # chic2 settings
 SETTINGS["chic2_unpolarized"]="2:2./5.:2./5."
-SETTINGS["chic2_max_negative"]="2:0:0"
-SETTINGS["chic2_max_positive"]="2:0:1"
+# SETTINGS["chic2_max_negative"]="2:0:0"
+# SETTINGS["chic2_max_positive"]="2:0:1"
+
+# Add some pt ranges to the settings
+for MINPT in 0 5 8 10 12; do
+    for MAXPT in 15 20 30 50 70; do
+        SETTINGS["chic1_unpolarized_pt_"${MINPT}"_"${MAXPT}]=${SETTINGS["chic1_unpolarized"]}"|"${MINPT}":"${MAXPT}
+        SETTINGS["chic2_unpolarized_pt_"${MINPT}"_"${MAXPT}]=${SETTINGS["chic2_unpolarized"]}"|"${MINPT}":"${MAXPT}
+    done
+done
 
 for setting in ${!SETTINGS[@]}; do
     args=${SETTINGS["${setting}"]}
-    state=$(echo $args | awk -F':' '{print $1}')
-    helicity1=$(echo "scale=16; "$(echo $args | awk -F':' '{print $2}') | bc)
-    helicity2=$(echo "scale=16; "$(echo $args | awk -F':' '{print $3}') | bc)
+    pol_args=$(echo ${args} | awk -F'|' '{print $1}')
+
+    state=$(echo ${pol_args} | awk -F':' '{print $1}')
+    helicity1=$(echo "scale=16; "$(echo ${pol_args} | awk -F':' '{print $2}') | bc)
+    helicity2=$(echo "scale=16; "$(echo ${pol_args} | awk -F':' '{print $3}') | bc)
+
+    kin_args=$(echo ${args} | awk -F'|' '{print $2}')
+    if [ -n "${kin_args}" ]; then
+        ptmin=$(echo ${kin_args} | awk -F':' '{print $1}')
+        ptmax=$(echo ${kin_args} | awk -F':' '{print $2}')
+        pt_args="--ptmin "${ptmin}" --ptmax "${ptmax}
+    fi
 
     outfile=${OUTBASEDIR}/${setting}/toy_data.root
 
     # throw it to the batch system
     sbatch ./batchRunToyMCGen.sh ${outfile} ${state} ${helicity1} ${helicity2} ${NEVENTS} \
-           --muonEffs ${MUON_EFFS} --photonEffs ${PHOTON_EFFS}
+           --muonEffs ${MUON_EFFS} --photonEffs ${PHOTON_EFFS} ${pt_args}
 done
