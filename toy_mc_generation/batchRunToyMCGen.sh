@@ -19,5 +19,11 @@ exe=${CHIB_CHIC_POLFW_DIR}/toy_mc_generation/run_chicpolgen
 
 outdir=$(dirname ${genfile})
 
-run_sandboxed ${outdir} ${exe} --genfile $(basename ${genfile}) --nevents ${nevents} \
-              --helicity1 ${hel1} --helicity2 ${hel2} --state ${state} ${@}
+sbid=$(run_sandboxed ${outdir} ${exe} --genfile $(basename ${genfile}) --nevents ${nevents} \
+                     --helicity1 ${hel1} --helicity2 ${hel2} --state ${state} ${@})
+
+# create the histogram right after the  1 1 1
+mkhists=${CHIB_CHIC_POLFW_DIR}/toy_mc_generation/create_hists.py
+real_genfile=$(echo ${genfile} | sed 's:\.root:_'"$sbid"'\.root:')
+dist_file=$(echo ${real_genfile} | sed 's:\.root:_dists\.root:')
+${mkhists} ${real_genfile} ${dist_file}
