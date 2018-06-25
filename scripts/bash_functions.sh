@@ -127,12 +127,16 @@ function run_sandboxed() {
     cp ${orig_exe} ${sandboxdir}/${exe}
     cd ${sandboxdir}
 
-    print_date "start of "${exe}" in "${sandboxdir}
-    ./${exe} ${args}
-    cleanup_or_exit $? ${exe} ${curr_dir}
+    logfile=${sandboxdir}/sandbox_run.log
+
+    print_date "start of "${exe}" in "${sandboxdir} >> ${logfile}
+    ./${exe} ${args} >> ${logfile}
+    cleanup_or_exit $? ${exe} ${curr_dir} >> ${logfile}
+
+    print_date "end" >> ${logfile}
 
     # if we are still alive here, we have to move the output to the "real" output directory
-    echo "moving outputs to "${outdir}
+    echo "moving outputs to "${outdir} >> ${logfile}
     for file in $(ls ${sandboxdir}); do
         mv ${sandboxdir}/${file} ${outdir}/$(echo ${file} | sed 's/\(\..*\)$/_'"$sandboxid"'\1/')
     done
@@ -143,6 +147,8 @@ function run_sandboxed() {
         rmdir ${sandboxdir}
     fi
 
-    print_date "end"
     cd ${curr_dir}
+
+    # return the sandbox id in order to be able to identify which files have been created inside this sandbox
+    echo "${sandboxid}"
 }
