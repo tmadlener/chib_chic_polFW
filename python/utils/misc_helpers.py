@@ -83,12 +83,12 @@ def make_iterable(possibly_iterable):
             already iterable
 
     Returns:
-        tuple or possibly_iterable: If input is not iterable this returns the
-            passed object wrapped inside a tuple, otherwise it simply returns
+        list or possibly_iterable: If input is not iterable this returns the
+            passed object wrapped inside a list, otherwise it simply returns
             the passed in object unchanged.
     """
     if not isinstance(possibly_iterable, Iterable):
-        return (possibly_iterable,)
+        return [possibly_iterable]
     return possibly_iterable
 
 
