@@ -10,7 +10,7 @@ INCS=-I./interface/
 
 all: run_chicpolgen
 
-run_chicpolgen: run_chicpolgen.cc chicpolgen.C ./interface/smearing.h ./interface/efficiencies.h
+run_chicpolgen: run_chicpolgen.cc chicpolgen.C ./interface/smearing.h ./interface/efficiencies.h ./interface/range.h ./interface/select.h
 	$(CXX) $(INCS) $(ROOTLIBS) $(ROOTCXXFLAGS) $(CXXFLAGS) -o $@ $< $(ROOFITLIBS)
 
 clean:

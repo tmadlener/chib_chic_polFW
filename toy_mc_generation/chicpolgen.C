@@ -1,5 +1,6 @@
 #include "smearing.h"
 #include "efficiencies.h"
+#include "select.h"
 
 #include "../general/interface/calcAngles.h"
 
@@ -18,6 +19,7 @@
 
 #include <iostream>
 #include <string>
+#include <memory>
 
 /** * Configuration and settings for the generation
  *
@@ -28,8 +30,7 @@ struct gen_config {
 
   // some example parameter sets:
   // * chic1 unpolarized: R = 2/3, R2 = 0
-  // * chic1 with lambdatheta = +1 (maximum positive): R = 0, R2 = 0
-  // * chic1 with lambdatheta = -1/3 (maximum negative): R = 1, R2 = 0
+  // * chic1 with lambdatheta = +1 (maximum positive): R = 0, R2 = 0 // * chic1 with lambdatheta = -1/3 (maximum negative): R = 1, R2 = 0
   // * chic2 unpolarized: R = 2/5, R2 = 2/5
   // * chic2 with lambdatheta = +1 (maximum positive): R = 0, R2 = 1
   // * chic2 with lambdatheta = -3/5 (maximum negative): R = 0, R2 = 0
@@ -51,6 +52,31 @@ struct gen_config {
   // To not produce efficiency branches leave the efficiency file names empty
   std::string muonEffs{""}; // file name from where the muon efficiencies should be loaded
   std::string photonEffs{""}; // file name from where the photon efficiencies should be loaded
+
+  void print(bool verbose) const {
+    std::cout << "--------------------------------------------------\n";
+    std::cout << "gen_config settings used for generation:\n"
+              << "n_events = " << n_events << '\n'
+              << "chic_state = " << chic_state << '\n'
+              << "R (fraction of helicity 1) = " << R << '\n'
+              << "R2 (fraction of helicity 2) = " << R2 << '\n'
+              << "min pT = " << pT_min << " GeV\n"
+              << "max pT = " << pT_max << " GeV\n";
+    if (!muonEffs.empty()) {
+      std::cout << "muon efficiency file: " << muonEffs << '\n';
+    }
+    if (!photonEffs.empty()) {
+      std::cout << "photon efficiency file: " << photonEffs << '\n';
+    }
+    if (verbose) {
+      std::cout << "generate in the CS frame: " << std::boolalpha << CSframeIsNatural << '\n'
+                << "min abs rapidity = " << y_min << '\n'
+                << "max abs rapidity = " << y_max << '\n'
+                << "beam energy = " << pbeam << " GeV\n";
+    }
+    std::cout << "output file: " << genfile << '\n';
+    std::cout << "--------------------------------------------------" << std::endl;
+  }
 };
 
 /**
@@ -116,6 +142,7 @@ double func_pT_gen(double* x, double* /*par*/)
 
 void chicpolgen(const gen_config& config = gen_config{}){
 
+  config.print(true);
   // translate configuration into const variables
   const double Ebeam = std::sqrt(config.pbeam * config.pbeam + GenMassSettings.Mprot * GenMassSettings.Mprot);
   const TLorentzVector targ(0., 0. , -config.pbeam, Ebeam); // "targ" = second beam
@@ -148,6 +175,12 @@ void chicpolgen(const gen_config& config = gen_config{}){
     // photonEffs = new EfficiencyProvider<TF1>(config.photonEffs, "photon_eff_pt", FixedRange<TF1>{0.4, 7});
     photonEffs = new EfficiencyProvider<TF1>(config.photonEffs, "photon_eff_pt", RangeFromFit{});
   }
+
+  // Selectors to act on the smeared variables
+  // TODO: Make this configurable in some way
+  const auto jpsiSelector = std::make_unique<PtRangeAbsRapiditySelector>(Range{7, 21}, 1.25);
+  const auto muonSelector = std::make_unique<MinPtMaxEtaSelector>(2.0, 1.7);
+  const auto photonSelector = std::make_unique<MinPtMaxEtaSelector>(0.35, 1.6);
 
   delete gRandom;
   gRandom = new TRandom3(0);
@@ -298,10 +331,14 @@ void chicpolgen(const gen_config& config = gen_config{}){
   std::cout << "------------------------------------------------------------" << '\n';
   std::cout << "Progress: ";
 
+  size_t accepted = 0;
 
 /////////////////// CYCLE OF EVENTS ////////////////////////
   for(int i_event = 1; i_event <= n_events; i_event++){
 
+    if (i_event%n_step == 0) {
+      std::cout << "X";  std::cout.flush();
+    }
 
   // generation of chic in the CMS of the proton-proton event
 
@@ -749,9 +786,16 @@ void chicpolgen(const gen_config& config = gen_config{}){
     const auto smearedJpsi = smearedLepP + smearedLepN;
     const auto smearedChi = smearedJpsi + smearedGamma;
 
-    const TLorentzVector halfSmearedChi = smearedJpsi + gamma;
+    // apply the selectors (as soon as possible in this case)
+    if (!(jpsiSelector->accept(smearedJpsi) &&
+         muonSelector->accept(smearedLepP) && muonSelector->accept(smearedLepN) &&
+         photonSelector->accept(smearedGamma))) {
+      continue;
+    }
 
-    const TLorentzVector fullSmearedChi = smearedLepP + smearedLepN + smearedGamma;
+    // const TLorentzVector halfSmearedChi = smearedJpsi + gamma;
+
+    // const TLorentzVector fullSmearedChi = smearedLepP + smearedLepN + smearedGamma;
 
     pT_chi_sm = smearedChi.Pt();
     y_chi_sm = smearedChi.Rapidity();
@@ -803,14 +847,13 @@ void chicpolgen(const gen_config& config = gen_config{}){
     }
 
     tr->Fill();
-
-    if (i_event%n_step == 0) {
-      std::cout << "X";  std::cout.flush();
-    }
+    accepted++;
 
   } // end of external loop (generated events)
 
   std::cout << '\n' << '\n';
+
+  std::cout << "accepted " << accepted <<" of " << n_events << " generated events" << std::endl;
 
   hfile->Write("", TObject::kWriteDelete);
 
