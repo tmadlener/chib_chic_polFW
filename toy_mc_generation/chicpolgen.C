@@ -21,6 +21,8 @@
 #include <string>
 #include <memory>
 
+#define GENRAPIDITY 1 // set to zero to generate the chic eta instead of the chic rapidity
+
 /** * Configuration and settings for the generation
  *
  * Including some default values
@@ -216,7 +218,9 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
   double pT_chi;        tr->Branch( "gen_chicPt",         &pT_chi);
   double pT;            tr->Branch( "gen_JpsiPt",             &pT);
+#if GENRAPIDITY == 1
   double pL_chi;     //   tr->Branch( "pL_chi",         &pL_chi,         "pL_chi/D" );
+#endif
   // double pL;         //   tr->Branch( "pL",             &pL,             "pL/D" );
   double y_chi;         tr->Branch( "gen_chicRap",          &y_chi);
   double y;             tr->Branch( "gen_JpsiRap",              &y);
@@ -351,12 +355,18 @@ void chicpolgen(const gen_config& config = gen_config{}){
     Mpsi = getMass(jpsiMassDist);
     Mchi = Mchic - MpsiPDG + Mpsi;
 
+    // Have to differentiate between generating the rapidity according to the rapidity distribution or
+    // generating eta according to the rapidity distribution
+    TLorentzVector chi;
+    // Phi:
+    const double Phi_chi   = 2. * PIG * gRandom->Rndm(); // needed for any of the two cases
+
     // pT:
 
     pT_chi = pT_distr->GetRandom();
 
+#if GENRAPIDITY == 1
     // pL:
-
     double rap_sign = gRandom->Uniform(-1., 1.); rap_sign /= fabs(rap_sign);
     y_chi = rap_distr->GetRandom() * rap_sign;
 
@@ -365,15 +375,14 @@ void chicpolgen(const gen_config& config = gen_config{}){
     double pL2 = - 0.5 *mT * exp(-y_chi);
     pL_chi = pL1 + pL2;
 
-  // Phi:
-
-    double Phi_chi   = 2. * PIG * gRandom->Rndm();
-
-  // 4-vector:
-
-    TLorentzVector chi;
     chi.SetXYZM( pT_chi * cos(Phi_chi) , pT_chi * sin(Phi_chi), pL_chi, Mchi );
+#else
+    const bool eta_sign = gRandom->Uniform(-1., 1) > 0;
+    const double genEta = rap_distr->GetRandom() * (1 - 2 * eta_sign);
 
+    chi.SetPtEtaPhiM(pT_chi, genEta, Phi_chi, Mchi);
+    y_chi = chi.Rapidity();
+#endif
 
   // generation of full angular distribution
 
