@@ -10,11 +10,13 @@ Attributes:
     default_colors method should be used
 """
 
+import numpy as np
+
 import ROOT as r
 
 from itertools import product
 from utils.misc_helpers import create_random_str, make_iterable
-from utils.hist_utils import set_common_range, set_labels
+from utils.hist_utils import set_common_range, set_labels, divide
 
 _colors = []
 _color_indices = []
@@ -404,3 +406,75 @@ def put_on_latex(latex, text_info):
     """
     for left, top, text in text_info:
         latex.DrawLatex(left, top, text)
+
+
+def baseline_plot(baseline, compplots, **kwargs):
+    """
+    Make a plot and compare the compplots with the baseline plots
+    """
+    comp_attr = kwargs.pop('attr', None)
+    if comp_attr is None:
+        comp_attr = default_attributes(open_markers=False, size=1.0)
+
+    # the baseline will always be black. Try to match the size of the markers to
+    # the one that were requested by the user
+    base_attr = {'color': 1, 'marker': 20, 'size': 1.5}
+    sizes = np.unique([a['size'] for a in comp_attr if 'size' in a])
+    if len(sizes) == 1:
+        base_attr['size'] = sizes[0]
+
+    attr = [base_attr] + comp_attr
+
+    # use the xLabel only for the lower plot
+    xLabel = kwargs.pop('xLabel', None)
+
+    # add the baseline name to the legend entries (if any)
+    legEntries = kwargs.pop('legEntries', None)
+    base_name = kwargs.pop('basename', 'baseline')
+    if legEntries is not None:
+        legEntries = [base_name] + legEntries
+
+    # setup canvas
+    can = kwargs.pop('can', None)
+    if can is None:
+        can_name = create_random_str()
+        can = r.TCanvas(can_name, '', 50, 50, 600, 600)
+    can.cd()
+
+    ppad = r.TPad('_'.join([can.GetName(), 'plotpad']), 'plotpad', 0, 0.3, 1, 1)
+    r.SetOwnership(ppad, False)
+    ppad.Draw()
+
+    # plot the comparison plot
+    ppad = mkplot([baseline] + make_iterable(compplots),
+                  attr=attr, can=ppad,
+                  legEntries=legEntries,
+                  **kwargs)
+
+    can.cd()
+    rpad = r.TPad('_'.join([can.GetName(), 'ratiopad']), 'rpad', 0, 0, 1, 0.3)
+    r.SetOwnership(rpad, False)
+    rpad.Draw()
+
+    # remove some kwargs
+    for kwarg in ['yLabel', 'legPos', 'leg', 'legEntries', 'yRange']:
+        kwargs.pop(kwarg, None)
+
+    # determine the ratios and plot them
+    rpad = mkplot([divide(p, baseline) for p in make_iterable(compplots)],
+                  attr=comp_attr, can=rpad, xLabel=xLabel,
+                  yLabel=' / '.join([kwargs.pop('compname', 'distribution(s)'),
+                                     base_name]),
+                  yRange=kwargs.pop('yRangeRatio', [None, None]), **kwargs)
+
+    # attach all plots to the returned canvas
+    if not isinstance(can, TCanvasWrapper):
+        can = TCanvasWrapper(can)
+
+    # can.add_pltables(ppad.pltables + rpad.pltables)
+    # for obj in ppad.attached_tobjects:
+    #     can.add_tobject(obj)
+    can.add_tobject(ppad)
+    can.add_tobject(rpad)
+
+    return can
