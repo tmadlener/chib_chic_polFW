@@ -11,111 +11,72 @@ r.PyConfig.IgnoreCommandLineOptions = True
 
 
 from utils.data_handling import (
-    get_dataframe, apply_selections, create_histogram
+    get_dataframe, apply_selections
 )
 from utils.selection_functions import (
-    loose_cuts, loose_muon_sel, fiducial_cuts, fiducial_muon_sel, flat_pt,
-    photon_sel, pt_eta_sel, vtx_prob_sel, trigger_sel, chic_state_sel,
-    jpsi_kin_sel
+    loose_muon_sel, fiducial_muon_sel, flat_pt, photon_sel, vtx_prob_sel,
+    trigger_sel, chic_state_sel, jpsi_kin_sel, deta_sel
 )
 from utils.plot_helpers import (
     mkplot, default_colors, setup_legend, setup_latex, put_on_latex
 )
-from utils.hist_utils import divide
-from utils.misc_helpers import get_bin_cut_df
+from utils.hist_utils import divide, create_histogram
 from utils.setup_plot_style import set_TDR_style
 
-def single_mu_sel_toy(dfr, cuts, smeared=True):
-    """Apply the single muon selection to the toy mc"""
-    mu_base = '{}_lep{}'
-    mup_pt, mun_pt = mu_base.format('pT', 'P'), mu_base.format('pT', 'N')
-    mup_eta, mun_eta = mu_base.format('eta', 'P'), mu_base.format('eta', 'N')
-
-    if smeared:
-        mup_pt += '_sm'
-        mun_pt += '_sm'
-        mup_eta += '_sm'
-        mun_eta += '_sm'
-
-    return pt_eta_sel(dfr.loc[:, mup_pt], dfr.loc[:, mup_eta].abs(), cuts) & \
-        pt_eta_sel(dfr.loc[:, mun_pt], dfr.loc[:, mun_eta].abs(), cuts)
-
-
-def photon_sel_toy(dfr, cuts, smeared=True):
-    """Photon selection for the toy mc"""
-    ppt, peta = 'pT_gamma', 'y_gamma'
-    if smeared:
-        ppt += '_sm'
-        peta += '_sm'
-
-    return pt_eta_sel(dfr.loc[:, ppt], dfr.loc[:, peta].abs(), cuts) & \
-        (dfr.loc[:, ppt] < 7) # to be able to apply efficiencies
-
-
-def jpsi_kin_sel_toy(dfr, min_pt=8, max_pt=20, max_rap=1.2, smeared=True):
-    """Jpsi kinematic selection for toy mc"""
-    jpt, jrap = 'pT_jpsi', 'y_jpsi'
-    if smeared:
-        jpt += '_sm'
-        jrap += '_sm'
-
-    return get_bin_cut_df(dfr, jpt, min_pt, max_pt) & \
-        (dfr.loc[:, jrap].abs() < max_rap)
-
-
-fiducial_toy = lambda df: single_mu_sel_toy(df, fiducial_cuts())
-loose_toy = lambda df: single_mu_sel_toy(df, loose_cuts())
-photon_toy = lambda df: photon_sel_toy(df, flat_pt(0.41, 1.5))
 photon_mc = lambda df: photon_sel(df, flat_pt(0.41, 1.5))
 
 # basic selection for the real MC (will always be used)
-BASIC_SEL_MC = (
-    trigger_sel,
-    jpsi_kin_sel
-)
-# same for toy
 BASIC_SEL_TOY = (
-    jpsi_kin_sel_toy,
+    jpsi_kin_sel,
+)
+# additionally require trigger and vertex prob for MC
+BASIC_SEL_MC = BASIC_SEL_TOY + (
+    trigger_sel,
+    vtx_prob_sel,
+    deta_sel
 )
 
 # selection sets for real MC
 SELECTIONS_MC = OrderedDict()
-SELECTIONS_MC['loose'] = BASIC_SEL_MC + (loose_muon_sel,)
-SELECTIONS_MC['fiducial'] = BASIC_SEL_MC + (fiducial_muon_sel,)
+# SELECTIONS_MC['loose'] = BASIC_SEL_MC + (loose_muon_sel,)
+# SELECTIONS_MC['fiducial'] = BASIC_SEL_MC + (fiducial_muon_sel,)
 SELECTIONS_MC['loose + photon'] = BASIC_SEL_MC + (loose_muon_sel, photon_mc)
 SELECTIONS_MC['fiducial + photon'] = BASIC_SEL_MC + (fiducial_muon_sel, photon_mc)
 # same for toy
 SELECTIONS_TOY = OrderedDict()
-SELECTIONS_TOY['loose'] = BASIC_SEL_TOY + (loose_toy,)
-SELECTIONS_TOY['fiducial'] = BASIC_SEL_TOY + (fiducial_toy,)
-SELECTIONS_TOY['loose + photon'] = BASIC_SEL_TOY + (loose_toy, photon_toy)
-SELECTIONS_TOY['fiducial + photon'] = BASIC_SEL_TOY + (fiducial_toy, photon_toy)
+# SELECTIONS_TOY['loose'] = BASIC_SEL_TOY + (loose_toy,)
+# SELECTIONS_TOY['fiducial'] = BASIC_SEL_TOY + (fiducial_toy,)
+SELECTIONS_TOY['loose + photon'] = BASIC_SEL_TOY + (loose_muon_sel, photon_mc)
+SELECTIONS_TOY['fiducial + photon'] = BASIC_SEL_TOY + (fiducial_muon_sel, photon_mc)
 
 # which variables to plot and how they can be obtained from the dataframe
 VARIABLES = {
     'costh_HX': {
-        'toy': lambda df: df.loc[:, 'costh_HX_sm'].abs(),
-        'mc': lambda df: df.loc[:, 'costh_HX'].abs(),
+        'var': lambda df: df.loc[:, 'costh_HX'].abs(),
         'sett': (8, 0, 1)
     }
 }
 
 # define which variables to read in
+# first the ones that are common to both Toy and real MC, then the ones only
+# present in the real MC (into a separate) list, then add the efficiencies to
+# the Toy MC
 TOY_VARIABLES = [
-    '{pT,eta}_lep{N,P}_sm', # smeared single muon kinematics
-    'costh_HX_sm',
-    '{y,pT}_{gamma,jpsi}_sm', # smeared jpsi and photon kinematics
-    '*eff_sm', # smeared efficiencies
-]
-MC_VARIABLES = [
-    'trigger',
     'Jpsi{Pt,Rap}',
     'photon{Pt,Eta}',
     'mu{P,N}{Pt,Eta}',
     'costh_HX',
-    'pdgId'
+    'chicMass'
 ]
-
+MC_VARIABLES = TOY_VARIABLES + [
+    'trigger',
+    'pdgId',
+    'vtxProb',
+    'gen_photonEta'
+]
+TOY_VARIABLES += [
+    '*eff_sm'
+]
 PLOT_ATTRIBUTES = {
     'loose': {
         'mc': {'fillalpha': (default_colors()[4], 0.5), 'size': 0, 'marker': 22},
@@ -230,9 +191,9 @@ def main(args):
         for var in VARIABLES:
             hist_sett = VARIABLES[var]['sett']
             toy_ratios[name][var] = get_ratio(chi1data, chi2data,
-                                              VARIABLES[var]['toy'], toy_sel,
+                                              VARIABLES[var]['var'], toy_sel,
                                               hist_sett, get_weight_func())
-            mc_ratios[name][var] = get_ratio_mc(mcdata, VARIABLES[var]['mc'],
+            mc_ratios[name][var] = get_ratio_mc(mcdata, VARIABLES[var]['var'],
                                                 mc_sel, hist_sett)
 
     set_TDR_style()
@@ -254,8 +215,6 @@ def main(args):
             put_on_latex(latex, [(0.18, 0.96, name)])
             savename = '_'.join(['comp_real_toy', name, var]).replace(' + ', '_')
             can.SaveAs(savename + '.pdf')
-
-    # can.SaveAs('test_mc_comp_toy.pdf')
 
 
 if __name__ == '__main__':
