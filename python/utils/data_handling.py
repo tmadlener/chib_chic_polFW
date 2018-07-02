@@ -12,6 +12,8 @@ import numpy as np
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 
+from root_numpy import array2root
+
 from utils.misc_helpers import make_iterable
 
 def check_branch_available(tree, branch):
@@ -36,7 +38,7 @@ def check_branch_available(tree, branch):
     return False
 
 
-def store_dataframe(dfr, outfile, tname='chi2_values'):
+def store_dataframe(dfr, outfile, tname='chi2_values', **kwargs):
     """
     Store the dataframe either into a pkl file or into a root file via
     root_pandas.
@@ -48,7 +50,12 @@ def store_dataframe(dfr, outfile, tname='chi2_values'):
             .root a root file will be created (if root_pandas is available),
             Otherwise a .pkl file will be created with .root replaced with .pkl
         tname (str, optional): Name of the TTree to be used for storing the
-            DataFrame is stored to a root file
+            DataFrame if stored to a root file
+
+    Keyword Args:
+        Forwarded to root_pandas.to_root
+
+    See Also: root_pandas.to_root
     """
     logging.debug('Storing DataFrame to {}'.format(outfile))
     if not outfile.endswith('.pkl') and not outfile.endswith('.root'):
@@ -65,7 +72,7 @@ def store_dataframe(dfr, outfile, tname='chi2_values'):
         try:
             from root_pandas import to_root
             # current version of to_root doesn't support the store_index argument
-            to_root(dfr, outfile, tname, mode='w'# , store_index=False
+            to_root(dfr, outfile, tname, **kwargs# , store_index=False
             )
         except ImportError:
             logging.warning('Output to .root file was requested, but root_pandas'
@@ -74,6 +81,20 @@ def store_dataframe(dfr, outfile, tname='chi2_values'):
 
     if outfile.endswith('.pkl'):
         dfr.to_pickle(outfile)
+
+
+def add_branch(arr, bname, rfile, tname):
+    """
+    Add the passed array to an existing TTree in an existing TFile
+
+    Args:
+        arr (numpy.array): 1D numpy array that will be stored under a new branch
+        bname (str): Branch name for the values
+        rfile (str): Filename to which the new branch should be added
+        tname (str): Name of the TTree to which the values should be added
+    """
+    arr = np.array(arr, dtype=[(bname, np.find_common_type(arr, []))])
+    array2root(arr, rfile, treename=tname, mode='update')
 
 
 def get_dataframe(infile, treename=None, columns=None):

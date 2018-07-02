@@ -5,6 +5,8 @@ Script to add the single muon and photon efficiencies to the passed data
 
 import sys
 
+import numpy as np
+
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 
@@ -12,12 +14,12 @@ import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
-from utils.data_handling import get_dataframe, store_dataframe, apply_selections
+from utils.data_handling import get_dataframe, add_branch
 from utils.EfficiencyProvider import MuonEfficiencies, PhotonEfficiencies
 
 # names of the branches
-MUON_NAMES = ['lepP_sm', 'lepN_sm']
-PHOTON_NAME = 'gamma_sm'
+MUON_NAMES = ['muP', 'muN']
+PHOTON_NAME = 'photon'
 
 
 def get_effs(eff_file, oride_eff, eff_proto):
@@ -28,8 +30,7 @@ def get_effs(eff_file, oride_eff, eff_proto):
     """
     used_file = oride_eff if oride_eff is not None else eff_file
     if used_file is None:
-        logging.error('Need an efficiency file to setup {}'.format(eff_proto))
-        sys.exit(1)
+        return None
 
     return eff_proto(used_file)
 
@@ -39,8 +40,8 @@ def calc_effs(data, effs, branch):
     Calc the efficiencies for a given branch (i.e. particle) and return the
     results
     """
-    pt_branch = 'pT_' + branch
-    eta_branch = 'eta_' + branch
+    pt_branch = branch + 'Pt'
+    eta_branch = branch + 'Eta'
 
     logging.info('Calculating efficiencies for {}'.format(branch))
     return map(effs.eval, data.loc[:, pt_branch], data.loc[:, eta_branch])
@@ -62,21 +63,22 @@ def main(args):
     muon_effs = get_effs(args.efficiencies, args.muoneffs, MuonEfficiencies)
     phot_effs = get_effs(args.efficiencies, args.photoneffs, PhotonEfficiencies)
     treename = get_treename(args.datafile) # do this here and fail early in case
-    data = get_dataframe(args.datafile)
 
-    # TODO:
-    # Decide if we want selections here already, currently do not use any
-    # selection. This could mean that some events are assigned efficiencies
-    # that might be outside of the valid range of where they have been
-    # determined
-    # TODO: select only those events for which we have efficiencies and maybe
-    # make that cl args
-    data.loc[:, PHOTON_NAME + 'Eff'] = calc_effs(data, phot_effs, PHOTON_NAME)
-    for muon in MUON_NAMES:
-        data.loc[:, muon + 'Eff'] = calc_effs(data, muon_effs, muon)
+    # only read in the necessary columns and add newly created branches to file
+    columns = [n + '{Pt,Eta}' for n in MUON_NAMES + [PHOTON_NAME]]
+    data = get_dataframe(args.datafile, treename, columns=columns)
 
-    outfile = args.outfile if args.outfile else args.datafile
-    store_dataframe(data, outfile, treename)
+    if phot_effs is not None:
+        photon_effs = np.array(calc_effs(data, phot_effs, PHOTON_NAME))
+        add_branch(photon_effs, '_'.join(['gamma_sm', args.name]),
+                   args.datafile, treename)
+
+    if muon_effs is not None:
+        for muon in MUON_NAMES:
+            mu_effs = np.array(calc_effs(data, muon_effs, muon))
+            lep = 'lepP' if 'P' in muon else 'lepN' # for consistency
+            add_branch(mu_effs, '_'.join([lep, 'sm', args.name]),
+                       args.datafile, treename)
 
 
 if __name__ == '__main__':
@@ -93,9 +95,16 @@ if __name__ == '__main__':
     parser.add_argument('-ep', '--photoneffs', help='file containing photon '
                         'efficiencies. Overrides efficiencies argument',
                         default=None)
-    parser.add_argument('-o', '--outfile', help='Store output to a new file '
-                        'instead of updating the input file', type=str,
-                        default='')
+    # parser.add_argument('-o', '--outfile', help='Store output to a new file '
+    #                     'instead of updating the input file', type=str,
+    #                     default='')
+    parser.add_argument('-n', '--name', help='Name of the efficiencies that '
+                        'will be used in the output branch to identify them. '
+                        'The branch will be named (e.g.) gamma_sm_[name]. '
+                        'NOTE: The default will overwrite possibly existing '
+                        'efficiencies from the generation.', type=str,
+                        default='eff')
+
 
     clargs = parser.parse_args()
     main(clargs)

@@ -82,7 +82,8 @@ class EfficiencyProvider(object):
         if eta_bin is not None:
             return self.effs[eta_bin].Eval(pt)
 
-        return 0
+        # no valid efficiency: mark by returning -1
+        return -1
 
 
     def _find_eta_bin(self, eta):
@@ -93,7 +94,7 @@ class EfficiencyProvider(object):
             if eta >= self.eta_binning[i] and eta < self.eta_binning[i + 1]:
                 return self.eta_binning[i], self.eta_binning[i + 1]
 
-        logging.warning('Could not find efficiency for eta value of {:.4f}'
+        logging.debug('Could not find efficiency for eta value of {:.4f}'
                         .format(eta))
 
         return None
