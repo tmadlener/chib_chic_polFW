@@ -324,6 +324,7 @@ def mkplot(pltables, **kwargs):
             value will be determined from the passed pltables
         can (ROOT.TCanvas): Do not create new canvas but use passed canvas to
             plot on
+        log[xyz] (boolean, optional): Set the [xyz] axis to log scale
 
     Returns:
         TCanvasWrapper: Transparent wrapper class around a TCanvas that forwards
@@ -376,6 +377,13 @@ def mkplot(pltables, **kwargs):
     can.add_pltables(pltables)
     if leg is not None:
         can.add_tobject(leg)
+
+    if kwargs.pop('logy', False):
+        can.SetLogy()
+    if kwargs.pop('logx', False):
+        can.SetLogx()
+    if kwargs.pop('logz', False):
+        can.SetLogz()
 
     return can
 
