@@ -416,6 +416,18 @@ def put_on_latex(latex, text_info):
         latex.DrawLatex(left, top, text)
 
 
+def _set_ratio_properties(hist):
+    """
+    Set the properties of the histogram so that they look somewhat consistent
+    for the ratio pad of the baseline plot
+    """
+    hist.GetYaxis().SetTitleSize(0.08)
+    hist.GetXaxis().SetTitleSize(0.08)
+    hist.GetYaxis().SetLabelSize(0.08)
+    hist.GetXaxis().SetLabelSize(0.08)
+    hist.GetYaxis().SetTitleOffset(0.5)
+
+
 def baseline_plot(baseline, compplots, **kwargs):
     """
     Make a plot and compare the compplots with the baseline plots
@@ -460,16 +472,21 @@ def baseline_plot(baseline, compplots, **kwargs):
                   **kwargs)
 
     can.cd()
-    rpad = r.TPad('_'.join([can.GetName(), 'ratiopad']), 'rpad', 0, 0, 1, 0.3)
+    rpad = r.TPad('_'.join([can.GetName(), 'ratiopad']), 'rpad', 0, 0, 1, 0.33)
+    rpad.SetBottomMargin(0.2)
     r.SetOwnership(rpad, False)
     rpad.Draw()
 
     # remove some kwargs
-    for kwarg in ['yLabel', 'legPos', 'leg', 'legEntries', 'yRange']:
+    for kwarg in ['yLabel', 'legPos', 'leg', 'legEntries', 'yRange', 'logy']:
         kwargs.pop(kwarg, None)
 
+    ratios = [divide(p, baseline) for p in make_iterable(compplots)]
+    for ratio in ratios:
+        _set_ratio_properties(ratio)
+
     # determine the ratios and plot them
-    rpad = mkplot([divide(p, baseline) for p in make_iterable(compplots)],
+    rpad = mkplot(ratios,
                   attr=comp_attr, can=rpad, xLabel=xLabel,
                   yLabel=' / '.join([kwargs.pop('compname', 'distribution(s)'),
                                      base_name]),
