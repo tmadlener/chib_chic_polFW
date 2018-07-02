@@ -10,7 +10,10 @@ import json
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 
+import numpy as np
+
 from common_func import get_name
+
 
 def eff_param_string():
     """
@@ -29,20 +32,23 @@ def eff_param():
     return r.TF1('photon_eff_param', eff_param_string(), 0, 7)
 
 
-def set_params_errors(func, p0, p1, p2, p3, alpha, beta):
+def set_params_errors(func, *params, **kwargs):
     """
-    All the parameters as pairs of value and uncertainty.
-    If uncertainty = 0, the parameter is fixed
+    Set all the parameters as pairs of value and uncertainty (in the order they)
+    are in the params list. If uncertainty = 0, the parameter is fixed
     """
-    def cond_set_fix(func, pidx, pval, perr):
-        """Conditionally set the value and the error or fix the value"""
-        func.SetParameter(pidx, pval)
-        func.SetParError(pidx, perr)
-        if perr == 0:
-            func.FixParameter(pidx, pval)
+    sigma = kwargs.pop('sigma', 0)
+    central = np.array([p[0] for p in params])
+    uncer = np.array([p[1] for p in params])
 
-    for idx, val_err in enumerate((p0, p1, p2, p3, alpha, beta)):
-        cond_set_fix(func, idx, *val_err)
+    params = central + sigma * uncer
+    func.SetParameters(params)
+    if sigma == 0: # NOTE: only setting the uncertainties for the central result
+        func.SetParErrors(uncer)
+
+    for idx, err in enumerate(uncer):
+        if err == 0:
+            func.FixParameter(idx, func.GetParameter(idx))
 
 
 def load_params(param_file):
@@ -54,7 +60,7 @@ def load_params(param_file):
         return eff_params
 
 
-def create_param(params):
+def create_param(params, sigma_shift):
     """
     Create the function from the passed params and give it an appropriate name
     """
@@ -62,7 +68,8 @@ def create_param(params):
 
     set_params_errors(func,
                       params["p0"], params["p1"], params["p2"], params["p3"],
-                      params["alpha"], params["beta"])
+                      params["alpha"], params["beta"],
+                      sigma=sigma_shift)
 
     func.SetName(get_name(params["eta"], 'photon_eff_pt'))
     return func
@@ -75,7 +82,7 @@ def main(args):
 
     all_params = load_params(args.paramfile)
     for params in all_params:
-        eff = create_param(params)
+        eff = create_param(params, args.sigma)
         eff.Write()
 
     outfile.Close()
@@ -92,6 +99,9 @@ if __name__ == '__main__':
                         'should be stored', default='photon_effs_param.root')
     parser.add_argument('-u', '--update', help='update the output file instead '
                         'of recreating it', default=False, action='store_true')
+    parser.add_argument('-s', '--sigma', help='Use the central value + [sigma] '
+                        '* uncertainty for each parameter', type=float,
+                        default=0)
 
     clargs = parser.parse_args()
     main(clargs)
