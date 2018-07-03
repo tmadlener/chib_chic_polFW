@@ -224,3 +224,78 @@ def get_binning(graph):
         return None # without uncertainties there are no bins
 
     return np.array(zip(bins_lo, bins_hi))
+
+
+def _get_uncer_band(graph, combi, err_func):
+    """
+    Get the graph with the values along the uncertainty band of another graph
+
+    Args:
+        graph (ROOT.TGraph or inheriting): Graph that should be evaluated along
+            its uncertainty band
+        combi (function): Function taking two arguments the central y-value and
+            its uncertainty and returning one value that will be used as new
+            value of the graph
+        err_func (function): Function taking the graph as its only argument and
+            returning the uncertainty in the y direction. This will be passed to
+            the combi function as second argument
+
+    Returns:
+        ROOT.TGraph: The TGraph with the same x values as the passed graph and
+            y values shifted according to the combi function
+    """
+    x_vals = np.array(graph.GetX())
+    y_vals = np.array(graph.GetY())
+    n_points = graph.GetN()
+
+    y_err = err_func(graph)
+    return r.TGraph(n_points, x_vals, combi(y_vals, y_err))
+
+    if graph.InheritsFrom('TGraphAsymmErrors'):
+        _, _, _, y_errs = get_errors(graph)
+        return r.TGraph(n_points, x_vals, y_vals + y_errs)
+    if graph.InheritsFrom('TGraphErrors'):
+        _, y_errs = get_errors(graph)
+        return r.TGraph(n_points, x_vals, y_vals - y_errs)
+
+
+def get_upper_band(graph):
+    """
+    Get the graph evaluated at the upper uncertainty band of the passed graph
+
+    Args:
+        graph (ROOT.TGraph or inheriting): Graph that should be evaluated along
+            its upper uncertainty band
+
+    Returns:
+        ROOT.TGraph: The graph with the y-values along the upper uncertainty
+            bound of the passed in graph
+    """
+    err_func = lambda g: np.zeros(g.GetN()) # to catch TGraph
+    if graph.InheritsFrom('TGraphAsymmErrors'):
+        err_func = lambda g: get_errors(g)[3]
+    if graph.InheritsFrom('TGraphErrors'):
+        err_func = lambda g: get_errors(g)[1]
+
+    return _get_uncer_band(graph, lambda y, e: y + e, err_func)
+
+
+def get_lower_band(graph):
+    """
+    Get the graph evaluated at the upper uncertainty band of the passed graph
+
+    Args:
+        graph (ROOT.TGraph or inheriting): Graph that should be evaluated along
+            its lower uncertainty band
+
+    Returns:
+        ROOT.TGraph: The graph with the y-values along the lower uncertainty
+            bound of the passed in graph
+    """
+    err_func = lambda g: np.zeros(g.GetN()) # to catch TGraph
+    if graph.InheritsFrom('TGraphAsymmErrors'):
+        err_func = lambda g: get_errors(g)[2]
+    if graph.InheritsFrom('TGraphErrors'):
+        err_func = lambda g: get_errors(g)[1]
+
+    return _get_uncer_band(graph, lambda y, e: y - e, err_func)
