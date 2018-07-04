@@ -50,6 +50,13 @@ struct gen_config {
   bool CSframeIsNatural{false};   // generate chic polarization in the CS frame (true)
                                   // or in the HX frame (false)
 
+  size_t n_accepted{0}; // number of events that need to be accepted before the generation stops.
+                      // Set to 0, to never stop (i.e. simply run until n_events) is reached
+                      // This only takes effect if the number of accepted events is reached
+                      // before the number of generated events (n_events) is exhausted, so that this
+                      // can only be used to stop early, not to guarantee a certain number of
+                      // accepted events
+
   std::string genfile{"chicpolgen.root"}; // name of the output file
   // To not produce efficiency branches leave the efficiency file names empty
   std::string muonEffs{""}; // file name from where the muon efficiencies should be loaded
@@ -160,6 +167,8 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
   const double Mlepton = GenMassSettings.Mlepton;
   const double MpsiPDG = GenMassSettings.MpsiPDG.central;
+
+  const bool check_accept = config.n_accepted > 0;
 
   EffProv *muonEffs = nullptr;
   EffProv *photonEffs = nullptr;
@@ -336,11 +345,11 @@ void chicpolgen(const gen_config& config = gen_config{}){
   std::cout << "Progress: ";
 
   size_t accepted = 0;
-
+  int i_event = 0;
 /////////////////// CYCLE OF EVENTS ////////////////////////
-  for(int i_event = 1; i_event <= n_events; i_event++){
+  for(; i_event < n_events; i_event++){
 
-    if (i_event%n_step == 0) {
+    if ((i_event + 1) % n_step == 0) {
       std::cout << "X";  std::cout.flush();
     }
 
@@ -858,11 +867,14 @@ void chicpolgen(const gen_config& config = gen_config{}){
     tr->Fill();
     accepted++;
 
+    if (check_accept && accepted >= config.n_accepted) {
+      break;
+    }
   } // end of external loop (generated events)
 
   std::cout << '\n' << '\n';
 
-  std::cout << "accepted " << accepted <<" of " << n_events << " generated events" << std::endl;
+  std::cout << "accepted " << accepted <<" of " << i_event << " generated events" << std::endl;
 
   hfile->Write("", TObject::kWriteDelete);
 

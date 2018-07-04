@@ -3,7 +3,8 @@
 # Script for generating Toy MC samples
 
 # number of events to generate
-NEVENTS=1000000
+NEVENTS=20000000
+NACCEPT=1500000  # run until at least as many events are accepted (comment to exhaust NEVENTS)
 
 # efficiency files
 MUON_EFFS=$(pwd)/EffFiles/single_muon_effs_noTracking_L3ptg2_final_fit.root
@@ -18,22 +19,38 @@ OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen/gen_pt_range/
 # Additionally it is possible to set a min and max pt by appending |ptmin:ptmax to the settings
 declare -A SETTINGS
 # chic1 settings
-SETTINGS["chic1_unpolarized"]="1:2./3.:0"
+# SETTINGS["chic1_unpolarized"]="1:2./3.:0"
 # SETTINGS["chic1_max_negative"]="1:1:0"
 # SETTINGS["chic1_max_positive"]="1:0:0"
 
 # chic2 settings
-SETTINGS["chic2_unpolarized"]="2:2./5.:2./5."
+# SETTINGS["chic2_unpolarized"]="2:2./5.:2./5."
 # SETTINGS["chic2_max_negative"]="2:0:0"
 # SETTINGS["chic2_max_positive"]="2:0:1"
 
-# Add some pt ranges to the settings
-for MINPT in 0 5 8 10 12; do
-    for MAXPT in 15 20 30 50 70; do
-        SETTINGS["chic1_unpolarized_pt_"${MINPT}"_"${MAXPT}]=${SETTINGS["chic1_unpolarized"]}"|"${MINPT}":"${MAXPT}
-        SETTINGS["chic2_unpolarized_pt_"${MINPT}"_"${MAXPT}]=${SETTINGS["chic2_unpolarized"]}"|"${MINPT}":"${MAXPT}
-    done
+# ## Add some pt ranges to the settings
+# for MINPT in 0 5 7 10 12; do
+#     for MAXPT in 15 20 30 50 70; do
+#         SETTINGS["chic1_unpolarized_pt_"${MINPT}"_"${MAXPT}]="1:2./3.:0""|"${MINPT}":"${MAXPT}
+#         SETTINGS["chic2_unpolarized_pt_"${MINPT}"_"${MAXPT}]="2:2./5.:2./5.""|"${MINPT}":"${MAXPT}
+#     done
+# done
+
+## different min pt
+for MINPT in 0 5 7 10; do
+    SETTINGS["chic1_unpolarized_pt_"${MINPT}"_70"]="1:2./3.:0""|"${MINPT}":70"
+    SETTINGS["chic2_unpolarized_pt_"${MINPT}"_70"]="2:2./5.:2./5.""|"${MINPT}":70"
 done
+
+for MAXPT in 20 30 50 70; do
+    SETTINGS["chic1_unpolarized_pt_0_"${MAXPT}]="1:2./3.:0|0:"${MAXPT}
+    SETTINGS["chic2_unpolarized_pt_0_"${MAXPT}]="2:2./5.:2./5.|0:"${MAXPT}
+done
+
+
+## same settings as real MC
+# SETTINGS["chic1_unpolarized"]="1:2./3.:0|9.1286:78.9975"
+# SETTINGS["chic2_unpolarized"]="2:2./5.:2./5.|9.2456:80.01"
 
 for setting in ${!SETTINGS[@]}; do
     args=${SETTINGS["${setting}"]}
@@ -50,9 +67,13 @@ for setting in ${!SETTINGS[@]}; do
         pt_args="--ptmin "${ptmin}" --ptmax "${ptmax}
     fi
 
+    if [ -n "${NACCEPT}" ]; then
+        acceptarg="--naccept "${NACCEPT}
+    fi
     outfile=${OUTBASEDIR}/${setting}/toy_data.root
 
     # throw it to the batch system
     sbatch ./batchRunToyMCGen.sh ${outfile} ${state} ${helicity1} ${helicity2} ${NEVENTS} \
-           --muonEffs ${MUON_EFFS} --photonEffs ${PHOTON_EFFS} ${pt_args}
+           --muonEffs ${MUON_EFFS} --photonEffs ${PHOTON_EFFS} ${pt_args} --ymax 1.4 \
+           ${acceptarg}
 done

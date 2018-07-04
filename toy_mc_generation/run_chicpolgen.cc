@@ -20,6 +20,8 @@ int main(int argc, char *argv[])
   const auto ymax = parser.getOptionVal<double>("--ymax", 1.3);
   const auto CSframe = parser.getOptionVal<bool>("--CSframe", false);
 
+  const auto naccept = parser.getOptionVal<size_t>("--naccept", 0);
+
   const auto muonEffFile = parser.getOptionVal<std::string>("--muonEffs", "");
   const auto photonEffFile = parser.getOptionVal<std::string>("--photonEffs", "");
 
@@ -37,6 +39,8 @@ int main(int argc, char *argv[])
   config.y_min = ymin;
   config.y_max = ymax;
   config.CSframeIsNatural = CSframe;
+
+  config.n_accepted = naccept;
 
   config.muonEffs = muonEffFile;
   config.photonEffs = photonEffFile;
