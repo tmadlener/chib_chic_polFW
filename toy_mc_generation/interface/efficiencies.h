@@ -188,7 +188,7 @@ struct RangeFromFit {
       }
     }
     if (foundNegative) {
-      const double defPositive = (minX - maxX) / nPoints + lastNegative; // has to be positive by definition
+      const double defPositive = (maxX - minX) / nPoints + lastNegative; // has to be positive by definition
       std::cout << "Found negative values between " << lastNegative << " and " << defPositive << ". Now trying to find a more precise point\n";
       min = findRoot([fit](double x) { return fit->Eval(x); }, lastNegative, defPositive);
     }
