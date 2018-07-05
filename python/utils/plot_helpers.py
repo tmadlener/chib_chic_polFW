@@ -86,13 +86,13 @@ def default_colors():
 
     if not _colors: # only define colors if they have not been defined already
         rgbcolors = [ # rgb values of MATLABs default palette
-            [0, 0.4470, 0.7410],
-            [0.8500, 0.3250, 0.0980],
-            [0.9290, 0.6940, 0.1250],
-            [0.4940, 0.1840, 0.5560],
-            [0.4660, 0.6740, 0.1880],
-            [0.3010, 0.7450, 0.9330],
-            [0.6350, 0.0780, 0.1840]
+            [0, 0.4470, 0.7410],      # darkish blue
+            [0.8500, 0.3250, 0.0980], # "orangeish" red
+            [0.9290, 0.6940, 0.1250], # yellow
+            [0.4940, 0.1840, 0.5560], # purple
+            [0.4660, 0.6740, 0.1880], # green
+            [0.3010, 0.7450, 0.9330], # lightish blue
+            [0.6350, 0.0780, 0.1840]  # wine red
         ]
 
         # bind TColor.GetFreeColorIndex to a shorter name for less typing
