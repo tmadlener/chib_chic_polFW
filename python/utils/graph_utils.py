@@ -251,13 +251,6 @@ def _get_uncer_band(graph, combi, err_func):
     y_err = err_func(graph)
     return r.TGraph(n_points, x_vals, combi(y_vals, y_err))
 
-    if graph.InheritsFrom('TGraphAsymmErrors'):
-        _, _, _, y_errs = get_errors(graph)
-        return r.TGraph(n_points, x_vals, y_vals + y_errs)
-    if graph.InheritsFrom('TGraphErrors'):
-        _, y_errs = get_errors(graph)
-        return r.TGraph(n_points, x_vals, y_vals - y_errs)
-
 
 def get_upper_band(graph):
     """
