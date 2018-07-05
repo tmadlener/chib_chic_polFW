@@ -13,10 +13,9 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
-from utils.plot_helpers import mkplot, default_colors
+from utils.plot_helpers import mkplot, default_colors, get_y_max
 from utils.setup_plot_style import set_TDR_style, add_lumi_info
 from utils.PlotServer import PlotServer
-from utils.hist_utils import get_y_max
 from utils.data_base import JsonDataBase
 from utils.misc_helpers import get_full_trigger
 

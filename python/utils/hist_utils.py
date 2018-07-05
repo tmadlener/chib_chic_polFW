@@ -105,7 +105,7 @@ def set_labels(hist, xlabel='', ylabel=''):
         hist.SetYTitle(ylabel)
 
 
-def get_y_max(hists):
+def _get_y_max_hist(hists):
     """
     Get the maximum y-value of all histograms
 
@@ -119,7 +119,7 @@ def get_y_max(hists):
     return max(h.GetBinContent(h.GetMaximumBin()) for h in make_iterable(hists))
 
 
-def get_y_min(hists):
+def _get_y_min_hist(hists):
     """
     Get the minimum y-value of all histograms
 
@@ -133,7 +133,7 @@ def get_y_min(hists):
     return min(h.GetBinContent(h.GetMinimumBin()) for h in make_iterable(hists))
 
 
-def get_x_max(hists):
+def _get_x_max_hist(hists):
     """
     Get the maximum x-value of all histograms
 
@@ -149,7 +149,7 @@ def get_x_max(hists):
                for h in make_iterable(hists))
 
 
-def get_x_min(hists):
+def _get_x_min_hist(hists):
     """
     Get the minimum x-value of all histograms
 
@@ -251,8 +251,8 @@ def set_common_range(hists, axis='xy', dscale=0.1, drange=[None, None]):
     # define dict for mapping axis directions to corresponding functions for
     # obtaining extremal values
     rfuncs = {
-        'y': {'max': get_y_max, 'min': get_y_min},
-        'x': {'max': get_x_max, 'min': get_x_min}
+        'y': {'max': _get_y_max_hist, 'min': _get_y_min_hist},
+        'x': {'max': _get_x_max_hist, 'min': _get_x_min_hist}
     }
     ranges = {'x': None, 'y': None}
 

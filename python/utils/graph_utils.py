@@ -12,7 +12,7 @@ import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s: %(message)s')
 
-from utils.misc_helpers import get_vals_from_rwbuffer
+from utils.misc_helpers import get_vals_from_rwbuffer, make_iterable
 
 @decorator
 def out_of_range_default(func, *args):
@@ -292,3 +292,35 @@ def get_lower_band(graph):
         err_func = lambda g: get_errors(g)[1]
 
     return _get_uncer_band(graph, lambda y, e: y - e, err_func)
+
+
+def _get_y_max_graph(graph):
+    """
+    Get the maximum y value (discarding uncertainties) of a graph (or graphs)
+    """
+    max_vals = [np.max(np.array(g.GetY())) for g in make_iterable(graph)]
+    return np.max(max_vals)
+
+
+def _get_y_min_graph(graph):
+    """
+    Get the minimum y value (discarding uncertainties) of a graph (or graphs)
+    """
+    min_vals = [np.min(np.array(g.GetY())) for g in make_iterable(graph)]
+    return np.min(min_vals)
+
+
+def _get_x_max_graph(graph):
+    """
+    Get the maximum x value (discarding uncertainties) of a graph (or graphs)
+    """
+    max_vals = [np.max(np.array(g.GetX())) for g in make_iterable(graph)]
+    np.max(max_vals)
+
+
+def _get_x_min_graph(graph):
+    """
+    Get the minimum x value (discarding uncertainties) of a graph (or graphs)
+    """
+    min_vals = [np.min(np.array(g.GetX())) for g in make_iterable(graph)]
+    return np.min(min_vals)

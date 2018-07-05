@@ -10,9 +10,8 @@ r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
 
 from utils.PlotServer import PlotServer
-from utils.plot_helpers import mkplot, default_attributes
+from utils.plot_helpers import mkplot, default_attributes, get_y_max
 from utils.misc_helpers import create_random_str, cond_mkdir
-from utils.hist_utils import get_y_max
 from utils.setup_plot_style import set_TDR_style
 
 # plot gen curves as filled areas

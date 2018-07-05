@@ -10,13 +10,24 @@ Attributes:
     default_colors method should be used
 """
 
+import __builtin__
+
 import numpy as np
 
 import ROOT as r
 
 from itertools import product
 from utils.misc_helpers import create_random_str, make_iterable
-from utils.hist_utils import set_common_range, set_labels, divide
+from utils.hist_utils import (
+    set_common_range, set_labels, divide,
+    _get_y_min_hist, _get_y_max_hist, _get_x_min_hist, _get_x_max_hist
+)
+from utils.graph_utils import (
+    _get_y_min_graph, _get_y_max_graph, _get_x_min_graph, _get_x_max_graph
+)
+from utils.function_utils import (
+    _get_y_min_func, _get_y_max_func, _get_x_min_func, _get_x_max_func
+)
 
 _colors = []
 _color_indices = []
@@ -503,3 +514,89 @@ def baseline_plot(baseline, compplots, **kwargs):
     can.add_tobject(rpad)
 
     return can
+
+
+# Store them globally so they are not created every time the extremal function
+# is called
+EXTREMAL_GRAPH_FUNCS = {
+    'x': {'min': _get_x_min_graph, 'max': _get_x_max_graph},
+    'y': {'min': _get_y_min_graph, 'max': _get_y_max_graph},
+}
+EXTREMAL_HIST_FUNCS = {
+    'x': {'min': _get_x_min_hist, 'max': _get_x_max_hist},
+    'y': {'min': _get_y_min_hist, 'max': _get_y_max_hist},
+}
+EXTREMAL_FUNC_FUNCS = {
+    'x': {'min': _get_x_min_func, 'max': _get_x_max_func},
+    'y': {'min': _get_y_min_func, 'max': _get_y_max_func},
+}
+
+
+def _get_extremal_value(pltable, axis, value):
+    """
+    Helper function doing the actual work
+    """
+    vals = []
+    for plt in make_iterable(pltable):
+        if plt.InheritsFrom('TGraph'):
+            vals.append(EXTREMAL_GRAPH_FUNCS[axis][value](plt))
+        elif plt.InheritsFrom('TH1'):
+            vals.append(EXTREMAL_HIST_FUNCS[axis][value](plt))
+        elif plt.InheritsFrom('TF1'):
+            vals.append(EXTREMAL_FUNC_FUNCS[axis][value](plt))
+        # Do nothing if we can't handle it (TODO: introduce logging)
+
+    # somewhat hacky way to get either min or max depending on the desired value
+    return __builtin__.__dict__[value](vals)
+
+
+def get_x_max(pltable):
+    """
+    Get the maximum x-value of all passed pltables
+
+    Args:
+        pltable: plotable ROOT object(s)
+
+    Returns:
+        float: the maximum observed x value in all passed pltables
+    """
+    return _get_extremal_value(pltable, 'x', 'max')
+
+
+def get_x_min(pltable):
+    """
+    Get the minimum x-value of all passed pltables
+
+    Args:
+        pltable: plotable ROOT object(s)
+
+    Returns:
+        float: the minimum observed x value in all passed pltables
+    """
+    return _get_extremal_value(pltable, 'x', 'min')
+
+
+def get_y_max(pltable):
+    """
+    Get the maximum y-value of all passed pltables
+
+    Args:
+        pltable: plotable ROOT object(s)
+
+    Returns:
+        float: the maximum observed y value in all passed pltables
+    """
+    return _get_extremal_value(pltable, 'y', 'max')
+
+
+def get_y_min(pltable):
+    """
+    Get the minimum y-value of all passed pltables
+
+    Args:
+        pltable: plotable ROOT object(s)
+
+    Returns:
+        float: the minimum observed y value in all passed pltables
+    """
+    return _get_extremal_value(pltable, 'y', 'min')
