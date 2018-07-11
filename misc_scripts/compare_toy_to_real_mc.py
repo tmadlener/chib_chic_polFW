@@ -66,7 +66,6 @@ TOY_VARIABLES = [
     'photon{Pt,Eta}',
     'mu{P,N}{Pt,Eta}',
     'costh_HX',
-    'chicMass'
 ]
 MC_VARIABLES = TOY_VARIABLES + [
     'trigger',
@@ -175,8 +174,8 @@ def get_ratio_mc(dfr, variable, selections, hist_sett):
 def main(args):
     """Main"""
     mcdata = get_dataframe(args.mcfile, columns=MC_VARIABLES)
-    chi1data = get_dataframe(args.chic1file, columns=TOY_VARIABLES)
-    chi2data = get_dataframe(args.chic2file, columns=TOY_VARIABLES)
+    chi1data = get_dataframe(args.chic1file, 'tr', columns=TOY_VARIABLES)
+    chi2data = get_dataframe(args.chic2file, 'tr', columns=TOY_VARIABLES)
 
     mc_ratios = OrderedDict()
     toy_ratios = OrderedDict()
