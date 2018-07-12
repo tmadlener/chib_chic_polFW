@@ -13,7 +13,9 @@ logging.basicConfig(level=logging.INFO,
 
 from root_numpy import fill_hist
 
-from utils.misc_helpers import make_iterable, create_random_str
+from utils.misc_helpers import (
+    make_iterable, create_random_str, get_vals_from_rwbuffer
+)
 
 def draw_var_to_hist(tree, hist, var, cut='', weight=None):
     """
@@ -160,6 +162,31 @@ def get_x_min(hists):
     """
     # 0 is underflow bin (thus starting at 1)
     return min(h.GetBinLowEdge(1) for h in make_iterable(hists))
+
+
+def get_binning(hist, axis='X'):
+    """
+    Get the binning of the passed histogram along the passed axis
+
+    Args:
+        hist (ROOT.TH1 or inheriting): Histogram for which the binning is of
+            interest
+        axis (char): Either 'X', 'Y' or 'Z' (depending on the passed hist not
+            all are possible!). Defines for which axis the binning is desired
+
+    Returns:
+        np.array: The array with the bin eges
+    """
+    n_bins = getattr(hist, 'GetNbins' + axis)()
+    # first check if the histogram has non-uniform binning
+    # TODO: Check if there is a direct way to check if the edges buffer is null
+    # instead of going through the try-except machinery
+    edges = getattr(hist, 'Get' + axis + 'axis')().GetXbins().GetArray()
+    try:
+        return get_vals_from_rwbuffer(edges, n_bins + 1)
+    except IndexError:
+        pass
+    return np.linspace(get_x_min(hist), get_x_max(hist), n_bins + 1)
 
 
 def set_range_hist(hist, x_range=None, y_range=None):
