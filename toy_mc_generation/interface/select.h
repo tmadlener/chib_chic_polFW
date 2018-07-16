@@ -46,4 +46,17 @@ public:
   }
 };
 
+class LooseMuonSelector : public Selector {
+public:
+  virtual bool accept(TLorentzVector const& p4) const override final {
+    const double absEta = std::abs(p4.Eta());
+    const double pT = p4.Pt();
+
+    // pT > 3.5 GeV, if |eta| < 1.2
+    // pT > 3.5 - (|eta| - 1.2) * 2.5 GeV, if 1.2 < |eta| < 1.6
+    return ((absEta < 1.2 && pT > 3.5) ||
+            (absEta > 1.2 && absEta < 1.6 && pT > 3.5 - (absEta - 1.2) * 2.5));
+  }
+};
+
 #endif
