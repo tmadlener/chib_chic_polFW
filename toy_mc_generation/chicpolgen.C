@@ -32,7 +32,8 @@ struct gen_config {
 
   // some example parameter sets:
   // * chic1 unpolarized: R = 2/3, R2 = 0
-  // * chic1 with lambdatheta = +1 (maximum positive): R = 0, R2 = 0 // * chic1 with lambdatheta = -1/3 (maximum negative): R = 1, R2 = 0
+  // * chic1 with lambdatheta = +1 (maximum positive): R = 0, R2 = 0
+  // * chic1 with lambdatheta = -1/3 (maximum negative): R = 1, R2 = 0
   // * chic2 unpolarized: R = 2/5, R2 = 2/5
   // * chic2 with lambdatheta = +1 (maximum positive): R = 0, R2 = 1
   // * chic2 with lambdatheta = -3/5 (maximum negative): R = 0, R2 = 0
@@ -189,9 +190,9 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
   // Selectors to act on the smeared variables
   // TODO: Make this configurable in some way
-  const auto jpsiSelector = std::make_unique<PtRangeAbsRapiditySelector>(Range{7, 21}, 1.25);
+  const auto jpsiSelector = std::make_unique<PtRangeAbsRapiditySelector>(Range{8, 20}, 1.25);
   const auto muonSelector = std::make_unique<LooseMuonSelector>();
-  const auto photonSelector = std::make_unique<MinPtMaxEtaSelector>(0.35, 1.6);
+  const auto photonSelector = std::make_unique<MinPtMaxEtaSelector>(0.41, 1.5);
 
   // To accept all events without filters
   // const auto jpsiSelector = std::make_unique<AllSelector>();
@@ -308,18 +309,20 @@ void chicpolgen(const gen_config& config = gen_config{}){
   // double ca_sm_gamma_jpsi;     tr->Branch("ca_sm_gamma_jpsi", &ca_sm_gamma_jpsi);
   // double ca_sm_mu_mu;     tr->Branch("ca_sm_mu_mu", &ca_sm_mu_mu);
 
-  double lepP_eff, lepN_eff, lepP_eff_sm, lepN_eff_sm;
-  double gamma_eff, gamma_eff_sm;
+  // double lepP_eff, lepN_eff;
+  double lepP_eff_sm, lepN_eff_sm;
+  // double gamma_eff;
+  double gamma_eff_sm;
 
   if (!config.muonEffs.empty()) {
-    tr->Branch("lepP_eff", &lepP_eff);
-    tr->Branch("lepN_eff", &lepN_eff);
+    // tr->Branch("lepP_eff", &lepP_eff);
+    // tr->Branch("lepN_eff", &lepN_eff);
     tr->Branch("lepP_eff_sm", &lepP_eff_sm);
     tr->Branch("lepN_eff_sm", &lepN_eff_sm);
   }
 
   if (!config.photonEffs.empty()) {
-    tr->Branch("gamma_eff", &gamma_eff);
+    // tr->Branch("gamma_eff", &gamma_eff);
     tr->Branch("gamma_eff_sm", &gamma_eff_sm);
   }
 
@@ -859,13 +862,13 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
     // add the desired efficiencies
     if (muonEffs) {
-      lepP_eff = muonEffs->Eval(pT_lepP, eta_lepP);
-      lepN_eff = muonEffs->Eval(pT_lepN, eta_lepN);
+      // lepP_eff = muonEffs->Eval(pT_lepP, eta_lepP);
+      // lepN_eff = muonEffs->Eval(pT_lepN, eta_lepN);
       lepP_eff_sm = muonEffs->Eval(pT_lepP_sm, eta_lepP_sm);
       lepN_eff_sm = muonEffs->Eval(pT_lepN_sm, eta_lepN_sm);
     }
     if (photonEffs) {
-      gamma_eff = photonEffs->Eval(pT_gamma, y_gamma);
+      // gamma_eff = photonEffs->Eval(pT_gamma, y_gamma);
       gamma_eff_sm = photonEffs->Eval(pT_gamma_sm, y_gamma_sm);
     }
 
