@@ -151,7 +151,7 @@ double func_pT_gen(double* x, double* /*par*/)
 
 
 void chicpolgen(const gen_config& config = gen_config{}){
-
+  gROOT->SetBatch();
   config.print(true);
   // translate configuration into const variables
   const double Ebeam = std::sqrt(config.pbeam * config.pbeam + GenMassSettings.Mprot * GenMassSettings.Mprot);

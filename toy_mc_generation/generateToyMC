@@ -3,54 +3,47 @@
 # Script for generating Toy MC samples
 
 # number of events to generate
-NEVENTS=20000000
-NACCEPT=1500000  # run until at least as many events are accepted (comment to exhaust NEVENTS)
+NEVENTS=50000000
+# NACCEPT=1500000  # run until at least as many events are accepted (comment to exhaust NEVENTS)
 
 # efficiency files
 MUON_EFFS=$(pwd)/EffFiles/single_muon_effs_noTracking_L3ptg2_final_fit.root
 PHOTON_EFFS=$(pwd)/EffFiles/photon_effs_param.root
 
 # output base directory
-OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen/gen_pt_range/
+OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/high_stats_llratio_samples/
+# OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/compare_real_mc_gen_rap/
+
+# Generate the distribution root file on the fly
+GEN_DISTS=0
+
+CHIC1_GENPTRANGE="9.1286:78.9975" # same as "real MC"
+CHIC2_GENPTRANGE="9.2456:80.01"   # same as "real MC"
+
+
+if [[ ${GEN_DISTS} -eq 1 ]]; then
+    DIST_ARG="--create-dists"
+fi
+
+# cleans up ratio so that it can easily be printed and used in filenames
+function pratio() {
+    echo $(echo ${1} | sed "s|/|o|;s/\.//g")
+}
 
 # all the settings to run (must contain state:helicity1:helicity2)
 # the keys will be turned into the output directories and the value
 # will be split along the ':' and then used as state, helicity1 and helicity2 input arguments
 # Additionally it is possible to set a min and max pt by appending |ptmin:ptmax to the settings
 declare -A SETTINGS
-# chic1 settings
-# SETTINGS["chic1_unpolarized"]="1:2./3.:0"
-# SETTINGS["chic1_max_negative"]="1:1:0"
-# SETTINGS["chic1_max_positive"]="1:0:0"
-
-# chic2 settings
-# SETTINGS["chic2_unpolarized"]="2:2./5.:2./5."
-# SETTINGS["chic2_max_negative"]="2:0:0"
-# SETTINGS["chic2_max_positive"]="2:0:1"
-
-# ## Add some pt ranges to the settings
-# for MINPT in 0 5 7 10 12; do
-#     for MAXPT in 15 20 30 50 70; do
-#         SETTINGS["chic1_unpolarized_pt_"${MINPT}"_"${MAXPT}]="1:2./3.:0""|"${MINPT}":"${MAXPT}
-#         SETTINGS["chic2_unpolarized_pt_"${MINPT}"_"${MAXPT}]="2:2./5.:2./5.""|"${MINPT}":"${MAXPT}
-#     done
-# done
-
-## different min pt
-for MINPT in 0 5 7 10; do
-    SETTINGS["chic1_unpolarized_pt_"${MINPT}"_70"]="1:2./3.:0""|"${MINPT}":70"
-    SETTINGS["chic2_unpolarized_pt_"${MINPT}"_70"]="2:2./5.:2./5.""|"${MINPT}":70"
+for CHIC1_R in "0" "1" "2./3."; do
+    SETTINGS["chic1_R_"$(pratio ${CHIC1_R})]="1:"${CHIC1_R}":0|"${CHIC1_GENPTRANGE}
 done
+for CHIC2_R in "0,0" "1,0" "0,1" "2./5.,2./5."; do
+    CHIC2_R1=$(echo ${CHIC2_R} | awk -F',' '{print $1}')
+    CHIC2_R2=$(echo ${CHIC2_R} | awk -F',' '{print $2}')
 
-for MAXPT in 20 30 50 70; do
-    SETTINGS["chic1_unpolarized_pt_0_"${MAXPT}]="1:2./3.:0|0:"${MAXPT}
-    SETTINGS["chic2_unpolarized_pt_0_"${MAXPT}]="2:2./5.:2./5.|0:"${MAXPT}
+    SETTINGS["chic2_R1_"$(pratio ${CHIC2_R1})"_R2_"$(pratio ${CHIC2_R2})]="2:"${CHIC2_R1}":"${CHIC2_R2}"|"${CHIC2_GENPTRANGE}
 done
-
-
-## same settings as real MC
-# SETTINGS["chic1_unpolarized"]="1:2./3.:0|9.1286:78.9975"
-# SETTINGS["chic2_unpolarized"]="2:2./5.:2./5.|9.2456:80.01"
 
 for setting in ${!SETTINGS[@]}; do
     args=${SETTINGS["${setting}"]}
@@ -75,5 +68,6 @@ for setting in ${!SETTINGS[@]}; do
     # throw it to the batch system
     sbatch ./batchRunToyMCGen.sh ${outfile} ${state} ${helicity1} ${helicity2} ${NEVENTS} \
            --muonEffs ${MUON_EFFS} --photonEffs ${PHOTON_EFFS} ${pt_args} --ymax 1.4 \
-           ${acceptarg}
+           ${acceptarg} \
+           ${DIST_ARG}
 done
