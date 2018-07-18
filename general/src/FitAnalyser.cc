@@ -23,6 +23,7 @@
 #include <memory>
 #include <iomanip>
 #include <regex>
+#include <cmath>
 
 
 FitAnalyser::FitAnalyser(const Fitter &f) :
@@ -157,7 +158,7 @@ double FitAnalyser::GetVariableValue(csr variable_name, bool &ok)
   return ok = true, var->getValV();
 }
 
-void FitAnalyser::PlotFitResult(csr output_file, const std::vector<double> & lines, bool addResultBox)
+void FitAnalyser::PlotFitResult(csr output_file, const std::vector<double> & lines, bool addResultBox, bool noTitle)
 {
   if (!output_file.empty()) gROOT->SetBatch(kTRUE);
   auto canv = new TCanvas("fit_results", "Fit Results", 1200, 1000);
@@ -170,7 +171,8 @@ void FitAnalyser::PlotFitResult(csr output_file, const std::vector<double> & lin
 
   auto plot = var->frame();
   auto pull = var->frame();
-  plot->SetTitle(("Fit results from " + m_wsname + ";" + var->GetTitle() + ";").c_str());
+  std::string titel = noTitle ? "" : "Fit results from " + m_wsname;
+  plot->SetTitle((titel + ";" + var->GetTitle() + ";").c_str());
   pull->SetTitle(";;Pull");
   plot->SetMinimum(0);
 
@@ -215,8 +217,8 @@ void FitAnalyser::PlotFitResult(csr output_file, const std::vector<double> & lin
   double small_marg = 0.05;
   TPad *plot_pad = new TPad("plot", "", 0, pull_size, 1, 1);
   TPad *pull_pad = new TPad("pull", "", 0, 0, 1, pull_size);
-  plot_pad->SetMargin(big_marg, small_marg, 0.1, 0.1);
-  pull_pad->SetMargin(big_marg, small_marg, small_marg, 0);
+  plot_pad->SetMargin(big_marg, small_marg, 0.1, noTitle ? small_marg : 0.1);
+  pull_pad->SetMargin(big_marg, small_marg, small_marg, small_marg);
   plot_pad->SetGrid();
   pull_pad->SetGrid();
   pull_pad->SetTicks(1, 1);
@@ -255,7 +257,190 @@ void FitAnalyser::PlotFitResult(csr output_file, const std::vector<double> & lin
 
   for (double x : lines) plot->addObject(new TLine(x, plot->GetMinimum(), x, plot->GetMaximum()));
 
-  if(addResultBox) plot->addObject(ibox);
+  if (addResultBox) plot->addObject(ibox);
+
+  // Draw to canvas
+  canv->cd();
+  pull_pad->Draw();
+  plot_pad->Draw();
+  plot_pad->cd();
+  plot->Draw();
+  pull_pad->cd();
+  pull->Draw();
+
+  if (!output_file.empty()) canv->SaveAs(output_file.c_str());
+}
+
+void FitAnalyser::CustomPlot(csr output_file)
+{
+  std::vector<double> lines;
+  bool noTitle = true;
+  bool addResultBox = true;
+
+  if (!output_file.empty()) gROOT->SetBatch(kTRUE);
+  auto canv = new TCanvas("fit_results", "Fit Results", 1200, 1000);
+
+  auto var = GetVariable();
+  auto ds = GetDataset();
+  auto model = dynamic_cast<RooAddPdf*>(GetPdf());
+  auto ws = GetWorkspace(true);
+  if (!ds || !var || !model || !ws) return;
+
+  std::string xachsentitel = "m_{#mu^{+}#mu^{-}";
+  if (m_fitvarname == "dimuon_mass") xachsentitel += "}[GeV]";
+  else xachsentitel += "#gamma}[GeV]";
+
+  var->SetTitle(xachsentitel.c_str());
+
+  auto plot = var->frame();
+  auto pull = var->frame();
+  std::string titel = noTitle ? "" : "Fit results from " + m_wsname;
+  plot->SetTitle((titel + ";" + var->GetTitle() + ";").c_str());
+  pull->SetTitle(";;Pull");
+  plot->SetMinimum(0);
+
+  // Pads for the two plots
+  double pull_size = 0.15;
+  double big_marg = 0.15;
+  double small_marg = 0.05;
+  TPad *plot_pad = new TPad("plot", "", 0, pull_size, 1, 1);
+  TPad *pull_pad = new TPad("pull", "", 0, 0, 1, pull_size);
+  // Werte beziehen sich immer auf aktuelles Pad, also 0.1 bedeuted etwas anderes im pull_pad als im plot_pad
+  plot_pad->SetMargin(big_marg, small_marg, 0.1, noTitle ? small_marg : 0.1);
+  pull_pad->SetMargin(big_marg, small_marg, 0.2, 0.1);
+  plot_pad->SetGrid();
+  pull_pad->SetGrid();
+  pull_pad->SetTicks(1, 1);
+
+
+  // Legend - TODO: find a solution
+  //https://root-forum.cern.ch/t/pdf-color-in-tlegend/26621
+
+  // Print variables on the plot
+  double iboxy1 = 0.7;
+  if (m_fitvarname == "dimuon_mass") iboxy1 = 0.8;
+
+  auto ibox = new TPaveText(0.7, iboxy1, 0.98 - plot_pad->GetTopMargin(), 0.98 - plot_pad->GetRightMargin(), "NBNDC");
+  ibox->SetFillColor(0);
+  ibox->SetTextSize(ibox->GetTextSize()*0.6);
+  ibox->AddText("8 < p_{T}^{#mu#mu} < 50 GeV");
+  ibox->AddText("");
+
+  {
+    auto chi2_ndof = get_chi2_ndof();
+    std::stringstream ss;
+    ss << std::fixed << "#chi^{2}/N_{dof}: "
+      << std::setprecision(2) << chi2_ndof.first << "/"
+      << std::setprecision(0) << chi2_ndof.second;
+    ibox->AddText(ss.str().c_str());
+  }
+  ibox->AddText("");
+
+  {
+    auto vars = { ws->var("N1"), ws->var("N2"), ws->var("Nbg") };
+    for (TObject* var : vars) {
+      auto v = dynamic_cast<RooRealVar*>(var);
+      if (!v) continue;
+
+      std::stringstream ss;
+      ss << std::fixed << std::setprecision(0);
+      ss << v->GetName() << ": " << v->getVal();
+
+      ibox->AddText(ss.str().c_str());
+    }
+  }
+  TPaveText *mintext = nullptr, *maxtext = nullptr;
+  if (m_fitvarname == "dimuon_mass") {
+
+    bool ok = false;
+    double rangemin = EvaluateFormula("mu1s-3*TMath::Sqrt(tail_left*sigma1s1*sigma1s1+(1-tail_left)*sigma1s2*sigma1s2)", ok);
+    double rangemax = EvaluateFormula("mu1s+3*TMath::Sqrt(tail_left*sigma1s1*sigma1s1+(1-tail_left)*sigma1s2*sigma1s2)", ok);
+
+    //std::stringstream ss;
+    //ss << std::fixed << std::setprecision(2);
+    //ss << "#Upsilon(1S) 3#sigma region: [" << rangemin << ", " << rangemax << "]";
+    //ibox->AddText(ss.str().c_str());
+
+    double rangemaxndc = (rangemax - 8.7) / 2.4;
+    double rangeminndc = (rangemin - 8.7) / 2.4;
+    auto ibox = new TPaveText(rangemaxndc + 0.07, 0.8, rangemaxndc + 0.18, 0.85, "NBNDC");
+    ibox->SetFillColor(0);
+    ibox->SetTextColor(kRed + 2);
+    ibox->AddText("#mu(#Upsilon(1S)) + 3#sigma");
+    {
+      std::stringstream ss;
+      ss << std::setprecision(3) << rangemax;
+      ibox->AddText(ss.str().c_str());
+    }
+    mintext = ibox;
+
+    ibox = new TPaveText(rangeminndc, 0.8, rangeminndc + 0.11, 0.85, "NBNDC");
+    ibox->SetFillColor(0);
+    ibox->SetTextColor(kRed + 2);
+    ibox->AddText("#mu(#Upsilon(1S)) - 3#sigma");
+    {
+      std::stringstream ss;
+      ss << std::setprecision(3) << rangemin;
+      ibox->AddText(ss.str().c_str());
+    }
+    maxtext = ibox;
+
+    lines.push_back(rangemin);
+    lines.push_back(rangemax);
+  }
+
+  ibox->Print();
+
+
+  // Plot model and dataset and get pull
+  ds->plotOn(plot);
+  model->plotOn(plot, RooFit::LineColor(kRed));
+  auto pull_histo = plot->pullHist();
+
+  auto y = pull->GetYaxis();
+  y->SetLabelSize(big_marg*0.8);
+  y->SetTitleOffset(0.3);
+  y->SetTitleSize(0.2);
+  y->SetLabelSize(0.2);
+  y->SetTickSize(0.01);
+  y->SetNdivisions(4, 0, 0, false);
+  auto x = pull->GetXaxis();
+  x->SetLabelSize(0);
+  x->SetTickSize(0.15);
+
+  double pullmin = pull_histo->getYAxisMin();
+  double pullmax = pull_histo->getYAxisMax();
+  double pullrange = ceil(abs(pullmax));
+  if (abs(pullmin) > abs(pullmax)) pullrange = ceil(abs(pullmin)) / 1.1;
+  pull_histo->setYAxisLimits(-pullrange, pullrange);
+  std::cout << "PULLRANGE: " << pullrange << ", " << pullmin << ", " << pullmax << ", " << ceil(abs(pullmin)) << ", " << ceil(abs(pullmax)) << std::endl;
+
+  pull->addPlotable(pull_histo, "P");
+  pull->addObject(new TLine(var->getMin(), 0, var->getMax(), 0));
+
+  // Plot single pdfs
+  auto pdfs = model->pdfList();
+  for (auto i = 0, s = pdfs.getSize(); i < s; ++i) {
+    auto p = model->plotOn(plot, RooFit::Components(*pdfs.at(i)), RooFit::LineColor(kBlue + 2 - 2 * i), RooFit::LineWidth(2), RooFit::LineStyle(kDashed));
+  }
+
+  //plot dataset again, to be on top
+  ds->plotOn(plot);
+
+  for (double x : lines) {
+    auto line = new TLine(x, plot->GetMinimum(), x, plot->GetMaximum());
+    line->SetLineColor(kRed + 2);
+    line->SetLineStyle(7);
+    line->SetLineWidth(2);
+    plot->addObject(line);
+    //plot->addObject(new TLine(x, plot->GetMinimum(), x, plot->GetMaximum()));
+  }
+
+  if (addResultBox) plot->addObject(ibox);
+  if (m_fitvarname == "dimuon_mass") {
+    plot->addObject(mintext);
+    plot->addObject(maxtext);
+  }
 
   // Draw to canvas
   canv->cd();

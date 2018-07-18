@@ -17,6 +17,9 @@ CFLAGSINC := $(ROOTFLAGS) -I $(INCDIR) -I $(GENINCDIR)
 
 LIB := $(ROOTLIBS)
 
+dictbld=$(BUILDDIR)/dict
+CUSTOMFUNCTIONS := $(dictbld).o $(BUILDDIR)/ExpGaussExp.o $(BUILDDIR)/DoubleSidedCB.o
+
 defaulttarget:
 	@echo "No default target implemented."
 	@echo "Available targets:"
@@ -44,7 +47,7 @@ cleanpreselection: cleanutils  cleantreeproc cleanparalooper
 #####################
 # CHIB FITTING
 
-fitting : $(BUILDDIR)/fitting.o $(BUILDDIR)/fitter.o $(BUILDDIR)/fitanalyser.o $(BUILDDIR)/utils.o $(BUILDDIR)/chiorganizer.o $(BUILDDIR)/ExpGaussExp.o $(BUILDDIR)/dict.o
+fitting : $(BUILDDIR)/fitting.o $(BUILDDIR)/fitter.o $(BUILDDIR)/fitanalyser.o $(BUILDDIR)/utils.o $(BUILDDIR)/chiorganizer.o $(CUSTOMFUNCTIONS)
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB) $(ROOFITLIBS)
 $(BUILDDIR)/fitting.o: $(SRCDIR)/chib_fitting.cc $(fit_header)
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
@@ -69,15 +72,23 @@ cleanoutput: cleanchiorganizer cleanutils cleantreemerger  cleanparalooper
 #####################
 # HELPER TOOLS
 
-helper : getworkspacefile
+helper : getworkspacefile fitresults
 
 getworkspacefile: $(BUILDDIR)/getworkspacefile.o  $(BUILDDIR)/chiorganizer.o $(BUILDDIR)/utils.o
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)
 $(BUILDDIR)/getworkspacefile.o: $(SRCDIR)/getworkspacefile.cc $(INCDIR)/ChiOrganizer.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
-
-cleanhelper: cleanchiorganizer cleanutils
+cleangetworkspacefile:
 	rm -f $(BUILDDIR)/getworkspacefile.o $(TARGET)/getworkspacefile
+	
+fitresults: $(BUILDDIR)/fitresults.o  $(BUILDDIR)/chiorganizer.o $(BUILDDIR)/fitanalyser.o $(BUILDDIR)/fitter.o $(BUILDDIR)/utils.o $(CUSTOMFUNCTIONS)
+	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB) $(ROOFITLIBS)
+$(BUILDDIR)/fitresults.o: $(SRCDIR)/chib_fitresults.cc $(INCDIR)/ChiOrganizer.h $(GENINCDIR)/FitAnalyser.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+cleanfitresults:
+	rm -f $(BUILDDIR)/fitresults.o $(TARGET)/fitresults
+	
+cleanhelper: cleanchiorganizer cleanfitanalyser cleanutils cleanfitresults cleangetworkspacefile cleancustomfuncs
 #
 #####################
 
@@ -151,20 +162,26 @@ $(BUILDDIR)/chiorganizer.o: $(SRCDIR)/ChiOrganizer.cc $(INCDIR)/ChiOrganizer.h $
 cleanchiorganizer:
 	rm -f $(BUILDDIR)/chiorganizer.o
 
+	
+	
 #
 # CUSTOM ROOFIT FUNCTIONS
 #
-dictbld=$(BUILDDIR)/dict
+
+# Add new custom functins to CUSTOMFUNCTIONS variable
+
 dictpcm=dict_rdict.pcm
 $(BUILDDIR)/ExpGaussExp.o : $(GENSRCDIR)/ExpGaussExp.cxx $(GENINCDIR)/ExpGaussExp.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
-$(dictbld).o: $(GENINCDIR)/ExpGaussExp.h  $(GENINCDIR)/linkdef.h
+$(BUILDDIR)/DoubleSidedCB.o : $(GENSRCDIR)/DoubleSidedCB.cxx $(GENINCDIR)/DoubleSidedCB.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+$(dictbld).o: $(GENINCDIR)/ExpGaussExp.h $(GENINCDIR)/DoubleSidedCB.h  $(GENINCDIR)/linkdef.h
 	rm -f $(dictbld).cxx
 	rootcling $(dictbld).cxx -c $^
 	$(CC) $(dictbld).cxx -o $@ $(CFLAGSINC) $(LIB) -c -I.
 	cp $(BUILDDIR)/$(dictpcm) $(TARGET)
 cleancustomfuncs:
-	rm -f $(BUILDDIR)/$(dictpcm) $(TARGET)/$(dictpcm) $(BUILDDIR)/ExpGaussExp.o $(dictbld).o
+	rm -f $(BUILDDIR)/$(dictpcm) $(TARGET)/$(dictpcm) $(CUSTOMFUNCTIONS) $(dictbld).o
 
 
 #

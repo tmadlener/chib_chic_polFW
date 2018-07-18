@@ -15,6 +15,8 @@ CFLAGSINC := $(ROOTFLAGS) -I $(INCDIR) -ggdb
 
 LIB := $(ROOTLIBS)
 
+CUSTOMFUNCTIONS := $(BUILDDIR)/ExpGaussExp.o $(BUILDDIR)/DoubleSidedCB.o
+
 defaulttarget:
 	@echo "No default target implemented"
 	@echo "Available targets:"
@@ -22,6 +24,7 @@ defaulttarget:
 	@echo "   treeproc [cleantreeproc]"
 	@echo "   treemerger [cleantreemerger]"
 	@echo "   fitter [cleanfitter]"
+	@echo "   sharedfunctions [cleansharedfunctions]"
 
 ################################
 # PARALLEL TREE LOOPER EXAMPLE #
@@ -58,11 +61,11 @@ cleantreemerger:
 ##################
 # FITTER EXAMPLE #
 ##################
-fitter : $(BUILDDIR)/fitterexample.o $(BUILDDIR)/fitter.o $(BUILDDIR)/utils.o $(BUILDDIR)/fitanalyser.o $(BUILDDIR)/ExpGaussExp.o $(BUILDDIR)/dict.o
+fitter : $(BUILDDIR)/fitterexample.o $(BUILDDIR)/fitter.o $(BUILDDIR)/utils.o $(BUILDDIR)/fitanalyser.o $(CUSTOMFUNCTIONS) $(BUILDDIR)/dict.o
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)  -lRooFit -lRooFitCore -lRooStats
 $(BUILDDIR)/fitterexample.o: $(TESTDIR)/fitter_example.cc $(INCDIR)/Fitter.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
-cleanfitter: cleanexpgaussexp
+cleanfitter: cleancustomfuncs
 	rm -f $(BUILDDIR)/fitterexample.o $(BUILDDIR)/fitter.o $(TARGET)/fitter
 
 
@@ -104,19 +107,41 @@ $(BUILDDIR)/fitanalyser.o: $(SRCDIR)/FitAnalyser.cc $(INCDIR)/FitAnalyser.h
 $(BUILDDIR)/utils.o: $(SRCDIR)/utils.cc $(INCDIR)/utils.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
 
+
 #
-# EXPGAUSSEXP ROOFIT FUNCTION
+# CUSTOM ROOFIT FUNCTIONS
 #
+
+# Add new custom functins to CUSTOMFUNCTIONS variable
+
 dictbld=$(BUILDDIR)/dict
 dictpcm=dict_rdict.pcm
 $(BUILDDIR)/ExpGaussExp.o : $(SRCDIR)/ExpGaussExp.cxx $(INCDIR)/ExpGaussExp.h
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
-$(dictbld).o: $(INCDIR)/ExpGaussExp.h  $(INCDIR)/linkdef.h
+$(BUILDDIR)/DoubleSidedCB.o : $(SRCDIR)/DoubleSidedCB.cxx $(INCDIR)/DoubleSidedCB.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+$(dictbld).o: $(INCDIR)/ExpGaussExp.h $(INCDIR)/DoubleSidedCB.h  $(INCDIR)/linkdef.h
 	rm -f $(dictbld).cxx
 	rootcling $(dictbld).cxx -c $^
 	$(CC) $(dictbld).cxx -o $@ $(CFLAGSINC) $(LIB) -c -I.
 	cp $(BUILDDIR)/$(dictpcm) $(TARGET)
-cleanexpgaussexp:
-	rm -f $(BUILDDIR)/$(dictpcm) $(TARGET)/$(dictpcm) $(BUILDDIR)/ExpGaussExp.o $(dictbld).o
+cleancustomfuncs:
+	rm -f $(BUILDDIR)/$(dictpcm) $(TARGET)/$(dictpcm) $(CUSTOMFUNCTIONS) $(dictbld).o
 
-	
+sharedfunctions: $(TARGET)/CustomRooFitFunctions.so
+dictbldshared=$(BUILDDIR)/dictshared
+dictpcmshared=dictshared_rdict.pcm
+$(TARGET)/CustomRooFitFunctions.so : $(BUILDDIR)/ExpGaussExp_shared.o  $(BUILDDIR)/DoubleSidedCB_shared.o $(dictbldshared).o
+	$(CC) -shared $^ $(CFLAGSINC) $(LIB) -o $@ -lRooFit -lRooFitCore -lRooStats
+$(BUILDDIR)/ExpGaussExp_shared.o : $(SRCDIR)/ExpGaussExp.cxx $(INCDIR)/ExpGaussExp.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c -fPIC
+$(BUILDDIR)/DoubleSidedCB_shared.o : $(SRCDIR)/DoubleSidedCB.cxx $(INCDIR)/DoubleSidedCB.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c -fPIC
+$(dictbldshared).o: $(INCDIR)/ExpGaussExp.h $(INCDIR)/DoubleSidedCB.h $(INCDIR)/linkdef.h
+	rm -f $(dictbldshared).cxx
+	rootcling $(dictbldshared).cxx -c -fPIC $^
+	$(CC) $(dictbldshared).cxx -o $@ $(CFLAGSINC) $(LIB) -c -I. -fPIC
+	cp $(BUILDDIR)/$(dictpcmshared) $(TARGET)
+cleansharedfunctions:
+	rm -f $(BUILDDIR)/$(dictpcmshared) $(TARGET)/$(dictpcmshared) $(TARGET)/CustomRooFitFunctions.so \
+	$(BUILDDIR)/DoubleSidedCB_shared.o $(BUILDDIR)/ExpGaussExp_shared.o $(dictbldshared).o

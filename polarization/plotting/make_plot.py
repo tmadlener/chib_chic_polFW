@@ -96,8 +96,10 @@ def setup_legend(frame, ratio):
     """
     position = {
         'CS': [0.2, 0.6, 0.65, 0.75],
-        'HX': [0.5, 0.65, 0.95, 0.8],
-        'PX': [0.6, 0.5, 0.9, 0.65] # TODO: only CS and HX "optimized" for now
+        #'HX': [0.5, 0.65, 0.95, 0.8],
+        'HX': [0.8, 0.8, 0.9, 0.9],
+       # 'PX': [0.6, 0.5, 0.9, 0.65] # TODO: only CS and HX "optimized" for now
+        'PX': [0.8, 0.8, 0.9, 0.9]
     }
     # TODO: dynamic placement
     leg = r.TLegend(*position[frame])
@@ -241,7 +243,7 @@ def get_trigger_year_info(inputlist):
 def nice_leg_entries(leg_entries):
     """Replace dict strings with nicer plotting strings"""
     for i, entry in enumerate(leg_entries):
-        leg_entries[i] = re.sub(r'chi(c|b)(\d)', r'#chi_{\1\2}', entry)
+        leg_entries[i] = ' ' + re.sub(r'chi(c|b)(\d)', r'#chi_{\1\2}', entry)
 
     return leg_entries
 
@@ -295,7 +297,7 @@ def main(args):
             data_leg = [leg_entries[(k[0], k[1]),] for k in data_hists]
             mc_leg = [leg_entries[(k[0], k[1]),] for k in mc_hists]
         else:
-            data_leg = [', '.join([leg_entries[(k[0], k[1]),], k[2]])
+            data_leg = [', '.join(filter(None, [leg_entries[(k[0], k[1]),], k[2]]))
                         for k in data_hists]
             data_leg = nice_leg_entries(data_leg)
             mc_leg = [', '.join([leg_entries[(k[0], k[1]),], k[2]])
@@ -315,6 +317,7 @@ def main(args):
     # to have same y-range for everything, have to do it manually, as
     # mkplot can't handle it in two different calls
     y_max = get_y_max(data_hists.values() + mc_hists.values()) * 1.1
+    if args.ymax : y_max= args.ymax
 
     set_TDR_style()
     can = None # declare here to be able to switch the two calls below
@@ -359,6 +362,8 @@ if __name__ == '__main__':
     parser.add_argument('-nr', '--norm-ratio', help='Normalize the ratio by a '
                         'factor obtained from a fit to a constant',
                         action='store_true', default=False)
+    parser.add_argument('-ymax', '--ymax', type=float, default=None,
+                        help='ymax for plot')
 
 
     plot_type = parser.add_mutually_exclusive_group(required=True)

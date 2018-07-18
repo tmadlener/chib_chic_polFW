@@ -44,7 +44,8 @@ public:
   RooFitResult *GetFitResult(csr result_name = "");
   RooAbsPdf *GetPdf(csr pdf_name = "");
   double GetVariableValue(csr variable_name, bool &ok);
-  void PlotFitResult(csr output_file = "", const std::vector<double> & lines = std::vector<double>(), bool addResultBox = true);
+  void PlotFitResult(csr output_file = "", const std::vector<double> & lines = std::vector<double>(), bool addResultBox = true, bool noTitle = false);
+  void CustomPlot(csr output_file = "");
   double EvaluateFormula(csr formula, bool &ok);
   double GetXForQuantile(csr pdf_name, double quantileq, bool &ok);
   //double GetIntegralValue(/*TODO: pdf_name, range*/);

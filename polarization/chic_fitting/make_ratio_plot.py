@@ -23,6 +23,7 @@ from utils.roofit_utils import get_var_err
 from utils.data_handling import get_dataframe
 from utils.setup_plot_style import set_TDR_style
 from utils.graph_utils import scale_graph, get_y
+from utils.chib_fitting import ChibMassModel
 
 from common_func import get_bin_sel_info
 

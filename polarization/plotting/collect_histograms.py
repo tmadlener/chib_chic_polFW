@@ -11,6 +11,7 @@ Attributes:
 """
 
 import re
+import numpy as np
 
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
@@ -57,7 +58,7 @@ def get_key_from_var(var):
     return ''
 
 
-def get_proto_hist(var, name, nbins=None):
+def get_proto_hist(var, name, nbins=None, binning=None):
     """
     Get prototype histogram for a given variable
 
@@ -74,11 +75,13 @@ def get_proto_hist(var, name, nbins=None):
     hist_var = get_key_from_var(var)
     if hist_var:
         histset = default_hist_set[hist_var]
-        if nbins is None:
-            nbins = histset['n_bins']
+    # This way, because otherwise logging is not correct
+        if nbins: histset['n_bins'] = nbins
         logging.debug('Using histogram settings {}'.format(histset))
-        hist =  r.TH1D(name, '',
-                       histset['n_bins'], histset['min'], histset['max'])
+
+        if binning is not None: hist =  r.TH1D(name, '', len(binning)-1, binning)
+        else: hist =  r.TH1D(name, '', histset['n_bins'],
+                             histset['min'], histset['max'])
         set_hist_opts(hist)
     else:
         logging.warning('Could not get histogram settings for var: {}'
@@ -121,8 +124,9 @@ def divide_hists(hnum, hdenom, cutsigma=None):
     return ratio
 
 
-def get_hists_for_frame(tree, frame, pvars, cutsigma=None,
-                        states=['chic1', 'chic2'], nbins=None):
+def get_hists_for_frame(tree, frame, pvars, cutsigma=None, 
+                        states=['chic1', 'chic2'], nbins=None,
+                        binning=None):
     """
     Get all histograms for a frame
 
@@ -135,7 +139,8 @@ def get_hists_for_frame(tree, frame, pvars, cutsigma=None,
             continue
         hists[var] = {}
         for state in states:
-            hists[var][state] = get_proto_hist(pvar, '_'.join([state, pvar]), nbins)
+            hists[var][state] = get_proto_hist(pvar, '_'.join([state, pvar]),
+                                               nbins, binning)
             draw_expr = get_draw_expr(var, frame)
             weight = weight_branches[state]
             draw_var_to_hist(tree, hists[var][state], draw_expr, '', weight)
@@ -148,7 +153,8 @@ def get_hists_for_frame(tree, frame, pvars, cutsigma=None,
 
 
 def get_hists_from_file(rfile, treename, frames, cutsigma=None,
-                        states=['chic1', 'chic2'], nbins=None):
+                        states=['chic1', 'chic2'], nbins=None, 
+                        binning=None):
     """
     Get all histograms from file
 
@@ -159,7 +165,7 @@ def get_hists_from_file(rfile, treename, frames, cutsigma=None,
     for frame in frames:
         hists[frame] = get_hists_for_frame(tree, frame,
                                            ['phi', 'costh', 'cosalpha'],
-                                           cutsigma, states, nbins)
+                                           cutsigma, states, nbins, binning)
 
     return hists
 
@@ -188,8 +194,10 @@ def main(args):
     if args.state == 'chib':
         states = ['chib1', 'chib2']
 
+    binning = np.array(args.binning).astype(np.float) if args.binning else None
     file_hists = get_hists_from_file(infile, args.treename, frames,
-                                     args.cutsigma, states, args.nbins)
+                                     args.cutsigma, states, args.nbins,
+                                     binning)
 
     top_dir = args.topdir
     if not top_dir:
@@ -231,6 +239,9 @@ if __name__ == '__main__':
                         'used in the directory structure created in the output '
                         'file. If not empty, overrides \'mc\' or \'data\' which'
                         ' are the default', default='', type=str)
+    parser.add_argument('-bins','--binning', default=None, nargs='+',
+                         help='Set variable bin widths, '
+                        'separeted by space, e.g -bins 0 0.2 0.6 1')
 
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--chic', action='store_const', dest='state',

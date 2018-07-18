@@ -15,28 +15,51 @@
 Long64_t ChibPreselection::entry_idx = 0;
 std::mutex ChibPreselection::entry_mtx;
 
-ChibPreselection::ChibPreselection(const std::vector<std::string>& infilenames, const std::string & outfilename, const std::string & intreename, const std::string & outtreename) :
-  TreeProcessor(infilenames, outfilename, intreename, outtreename)
+ChibPreselection::ChibPreselection(const std::vector<std::string>& infilenames, const std::string & outfilename, const std::string & intreename, const std::string & outtreename, int year) :
+  TreeProcessor(infilenames, outfilename, intreename, outtreename),
+  m_year(year)
 {
-  for (const auto &tb : {
-    "HLT_Dimuon8_Upsilon_Barrel_v"
-  }) {
-    for (int i = 1; i < 8; ++i)  triggers.push_back(tb + std::to_string(i));
+  if (m_year == 2016) {
+    for (const auto &tb : {
+      "HLT_Dimuon8_Upsilon_Barrel_v"
+    }) {
+      for (int i = 1; i < 8; ++i)  triggers.push_back(tb + std::to_string(i));
+    }
+
+    var_collections = {
+      {"chi_p4","dimuon_p4", "photon_p4", "muonP_p4","muonN_p4"},
+      { "rf1S_chi_p4", "rf1S_photon_p4"/*"rf1S_dimuon_p4", "rf1S_muonP_p4", "rf1S_muonN_p4" */},
+      { "rf2S_chi_p4", "rf2S_photon_p4"/*"rf2S_dimuon_p4", "rf2S_muonP_p4", "rf2S_muonN_p4"*/ },
+      { "rf3S_chi_p4", "rf3S_photon_p4"/*"rf3S_dimuon_p4", "rf3S_muonP_p4", "rf3S_muonN_p4"*/ }
+    };
+    
+    // Add trigger to branches to read
+    for (const auto &c : var_collections) AddBranchesNeededOnlyAsInput(c);
+    AddBranchesNeededOnlyAsInput(triggers);
+
+    // Add Branches to copy
+    AddBranchesToCopy({ "dz", "vProb" , "q_value", "conversionflag", "probFit1S", "rf1S_rank", "probFit2S", "rf2S_rank", "probFit3S", "rf3S_rank", "pi0rejected", "pi0_abs_mass", "numPrimaryVertices" });
+
+    min_pt = 8;
+    m_trigminval = 0; // bei rerco hat das mit matching nicht funktioniert, 1 only matched else 0
+    muonNname = "muonN_p4";
+
   }
 
-  var_collections = {
-    {"chi_p4","dimuon_p4", "photon_p4", "muonP_p4","muonN_p4"},
-    { "rf1S_chi_p4", "rf1S_photon_p4"/*"rf1S_dimuon_p4", "rf1S_muonP_p4", "rf1S_muonN_p4" */},
-    { "rf2S_chi_p4", "rf2S_photon_p4"/*"rf2S_dimuon_p4", "rf2S_muonP_p4", "rf2S_muonN_p4"*/ },
-    { "rf3S_chi_p4", "rf3S_photon_p4"/*"rf3S_dimuon_p4", "rf3S_muonP_p4", "rf3S_muonN_p4"*/ }
-  };
+  if (m_year == 2017) {
+    triggers.emplace_back("dimuon10ups_trigger");
+    triggers.emplace_back("dimuon12ups_trigger");
 
-  // Add branches to read
-  for (const auto &c : var_collections) AddBranchesNeededOnlyAsInput(c);
-  AddBranchesNeededOnlyAsInput(triggers);
+    AddBranchesToCopy(triggers);
 
-  // Add Branches to copy
-  AddBranchesToCopy({ "dz", "vProb" , "q_value", "conversionflag", "probFit1S", "rf1S_rank", "probFit2S", "rf2S_rank", "probFit3S", "rf3S_rank", "pi0rejected", "pi0_abs_mass", "numPrimaryVertices"});
+    AddBranchesNeededOnlyAsInput({ "chi_p4","dimuon_p4", "photon_p4", "muonP_p4", "muonM_p4", "rf1S_chi_p4", "rf2S_chi_p4", "rf3S_chi_p4" }); 
+    
+    AddBranchesToCopy({ "dz", "photon_flags", "probFit1S", "rf1S_rank", "probFit2S", "probFit3S", "numPrimaryVertices" });
+    
+    min_pt = 10;
+    m_trigminval = 0;
+    muonNname = "muonM_p4";
+  }
 
 
 }
@@ -48,12 +71,9 @@ bool ChibPreselection::fill_and_cut_variables()
   static thread_local auto & chi = get_branch<TLorentzVector*>("chi_p4");
   static thread_local auto & dimuon = get_branch<TLorentzVector*>("dimuon_p4");
   static thread_local auto & muPos = get_branch<TLorentzVector*>("muonP_p4");
-  static thread_local auto & muNeg = get_branch<TLorentzVector*>("muonN_p4");
+  static thread_local auto & muNeg = get_branch<TLorentzVector*>(muonNname.c_str());
 
   static thread_local auto & photon = get_branch<TLorentzVector*>("photon_p4");
-  static thread_local auto & rf1SPhoton = get_branch<TLorentzVector*>("rf1S_photon_p4");
-  static thread_local auto & rf2SPhoton = get_branch<TLorentzVector*>("rf2S_photon_p4");
-  static thread_local auto & rf3SPhoton = get_branch<TLorentzVector*>("rf2S_photon_p4");
 
   static thread_local auto & chi_rf1s = get_branch<TLorentzVector*>("rf1S_chi_p4");
   //static thread_local auto & dimuon_rf1s = get_branch<TLorentzVector*>("rf1S_dimuon_p4");
@@ -71,8 +91,6 @@ bool ChibPreselection::fill_and_cut_variables()
   //static thread_local auto & muNeg_rf3s = get_branch<TLorentzVector*>("rf3S_muonN_p4");
 
 
-  static thread_local auto & vProb = get_branch<double>("vProb");
-
   static thread_local bool get_trigger = true;
   static thread_local std::vector<std::reference_wrapper<const UInt_t> > trigs;
   if (get_trigger) {
@@ -84,7 +102,6 @@ bool ChibPreselection::fill_and_cut_variables()
     }
   }
 
-
   // CUTS - TODO: LOGGING
 
   //
@@ -93,17 +110,17 @@ bool ChibPreselection::fill_and_cut_variables()
 
   // Trigger Cut
   bool trig_passed = false;
-  for (const auto &t : trigs) if (t > 1 /*>1: 2016 this means only matched*/) { trig_passed = true;  break; }
+  for (const auto &t : trigs) if (t > m_trigminval /*>1: 2016 this means only matched*/) { trig_passed = true;  break; }
   if (!trig_passed) return false;
 
-  // Single Muon Cut
+   // Single Muon Cut
   if (!accept_muon(muPos) || !accept_muon(muNeg)) return false;
 
   // Dimuon Mass
   if (dimuon->M() < 8.5 || dimuon->M() > 11.5) return false;
 
   // Pt
-  if (dimuon->Pt() < 8 || dimuon->Pt() > 999) return false;
+  if (dimuon->Pt() < min_pt || dimuon->Pt() > 999) return false;
 
   // Rapidity
   if (dimuon->Rapidity() < -1.2 || dimuon->Rapidity() > 1.2) return false;
@@ -111,7 +128,10 @@ bool ChibPreselection::fill_and_cut_variables()
   // Cowboys/Seagulls
 
   // Dimuon Vertex Probability  (vProb)
-  if (vProb < 0.01) return false;
+  if (m_year == 2016) {
+    static thread_local auto & vProb = get_branch<double>("vProb");
+    if (vProb < 0.01) return false;
+  }
 
   // Photon Eta, Rap
 
@@ -127,8 +147,15 @@ bool ChibPreselection::fill_and_cut_variables()
   auto dimuon_id = make_lorentz_flat(out_vars, chi, dimuon);
   make_mu_things(out_vars, muPos, muNeg, dimuon_id);
 
-  fill_photon_vars({ photon, rf1SPhoton, rf2SPhoton, rf3SPhoton });
-  
+  if (m_year == 2016) {
+    static thread_local auto & rf1SPhoton = get_branch<TLorentzVector*>("rf1S_photon_p4");
+    static thread_local auto & rf2SPhoton = get_branch<TLorentzVector*>("rf2S_photon_p4");
+    static thread_local auto & rf3SPhoton = get_branch<TLorentzVector*>("rf2S_photon_p4");
+    fill_photon_vars({ photon, rf1SPhoton, rf2SPhoton, rf3SPhoton });
+  }
+
+  if (m_year == 2017) fill_photon_vars({ photon});
+
   // Only chi
   make_lorentz_flat(out_vars_rf1S, chi_rf1s);
   make_lorentz_flat(out_vars_rf2S, chi_rf2s);
@@ -287,7 +314,11 @@ void ChibPreselection::setup_photon_vars() // has to correspond to fill_photon_v
 {
   for (size_t i = 0; i < 32; ++i) photon_vars.push_back(0);
   int id = -1;
-  for (auto &suf : std::vector<std::string>{ "","_rf1S","_rf2S","_rf3S" }) {
+  std::vector<std::string> suffixes;
+  if (m_year == 2016) suffixes = { "", "_rf1S", "_rf2S", "_rf3S" };
+  if (m_year == 2017) suffixes = { "" };
+
+  for (auto &suf : suffixes) {
     m_out_tree->Branch(("photon_rap" + suf).c_str(), &photon_vars.at(++id));
     m_out_tree->Branch(("photon_eta" + suf).c_str(), &photon_vars.at(++id));
     m_out_tree->Branch(("photon_energy" + suf).c_str(), &photon_vars.at(++id));
@@ -313,13 +344,14 @@ int main(int argc, char **argv) {
   auto nEvents = parser.getOptionVal<Long64_t>("--events", -1);
   auto nThreads = parser.getOptionVal<Long64_t>("--threads", 8);
   auto recreate = parser.getOptionVal<bool>("--recreate", false);
+  auto year = parser.getOptionVal<int>("--year", 2016);
 
   if (!recreate && file_exists(outfile)) {
     std::cout << "File '" << outfile << "' exists already, to force recreation use the option '--recreate true'." << std::endl;
     return -1;
   }
 
-  ChibPreselection preselection(infiles, outfile, intree, outtree);
+  ChibPreselection preselection(infiles, outfile, intree, outtree, year);
   preselection.process(nEvents, nThreads);
 
 }

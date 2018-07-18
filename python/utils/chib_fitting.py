@@ -2,6 +2,9 @@
 
 from utils.FitModel import FitModel
 
+from ROOT import gSystem
+gSystem.Load('$CHIB_CHIC_POLFW_DIR/general/bin/CustomRooFitFunctions')
+
 """
 Module containing the basic setup for the chib fitting
 """
@@ -18,7 +21,10 @@ class ChibMassModel(FitModel):
             config_file: Name of the json file containing the model definition
         """
         self.config_file = config_file
-
+        from ROOT import RooMsgService
+        RooMsgService.instance().setSilentMode(True)
+        RooMsgService.instance().setGlobalKillBelow(4)
+	
         with open(config_file, 'r') as f:
             data = json.load(f)
             self.mname = data["chi_fitvar"]["name"]

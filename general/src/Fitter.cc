@@ -27,6 +27,14 @@ const std::string Fitter::snapshot_name = "fitter_results_jn";
 
 void Fitter::Fit(int numCPUs, bool enableMinos, bool extendedFit)
 {
+  uint32_t flag(0);
+  if (enableMinos) flag |= FitFlag::EnableMinos;
+  if (extendedFit) flag |= FitFlag::ExtendedFit;
+  Fit(numCPUs, flag);
+}
+
+void Fitter::Fit(int numCPUs, uint32_t fit_flags)
+{
   scopeLog log("Fitter");
   if (!params_ok()) return;
 
@@ -80,7 +88,12 @@ void Fitter::Fit(int numCPUs, bool enableMinos, bool extendedFit)
   {
     scopeLog log("Fitting");
     stopwatch watch("Fitting");
-    fit_results.reset(model->fitTo(ds, RooFit::NumCPU(numCPUs), RooFit::Minos(enableMinos), RooFit::Save(true), RooFit::Extended(extendedFit)));
+    int print_level = 1;
+    if (FitFlag::SuppressOutput & fit_flags) print_level = -1;
+    if (FitFlag::MaximumOutput & fit_flags) print_level = 3;
+    fit_results.reset(model->fitTo(ds, RooFit::NumCPU(numCPUs), RooFit::Minos(FitFlag::EnableMinos & fit_flags), RooFit::Save(true),
+      RooFit::Extended(FitFlag::ExtendedFit & fit_flags), RooFit::Warnings(FitFlag::SuppressWarnings & fit_flags), RooFit::PrintEvalErrors(1),
+      RooFit::PrintLevel(print_level)));
     fit_results->Print();
   }
 
@@ -181,7 +194,7 @@ RooDataSet Fitter::get_dataset(TFile* f, bool *ok)
     if (ok) *ok = true;
     return RooDataSet(dataset_name.c_str(), dataset_name.c_str(), ds, arg_set);
   }
-  
+
   std::cout << "Could not create the RooDataset." << std::endl;
   return RooDataSet();
 }

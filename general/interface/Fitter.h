@@ -25,23 +25,32 @@ class Fitter
   friend FitAnalyser;
 
 public:
+
+  enum FitFlag : uint32_t {
+    ExtendedFit = 1 << 0,
+    EnableMinos = 1 << 1,
+    SuppressWarnings = 1 << 2,
+    SuppressOutput = 1 << 3,
+    MaximumOutput = 1 << 4
+  };
+
   using csr = const std::string &;
   void SetWorkspaceName(csr workspace_name, bool force_refit = false) {
     m_wsname = workspace_name;
     m_force_refit = force_refit;
   }
   void SetOutfile(csr outfile_name, bool force_recreation = false) {
-    m_ofname = outfile_name; 
+    m_ofname = outfile_name;
     m_force_recreation = force_recreation;
   }
 
-  void SetInputData(csr datafile_name, csr tree_name) { 
+  void SetInputData(csr datafile_name, csr tree_name) {
     m_in_filename = datafile_name;
     m_in_wsname = "";
     m_in_dsname = "";
     m_in_treename = tree_name;
   }
-  
+
   void SetInputData(csr datafile_name, csr workspace_name, csr dataset_name) {
     m_in_filename = datafile_name;
     m_in_treename = "";
@@ -49,7 +58,7 @@ public:
     m_in_dsname = dataset_name;
 
   }
-  
+
   void SetModel(const std::vector<std::string>& factory_strings, csr model_name, csr fitvariable_name, double min, double max) {
     m_factory_strings = factory_strings;
     m_modelname = model_name;
@@ -64,7 +73,7 @@ public:
   void AddBinVariable(csr variable_name, double min, double max) {
 
     // If min == max -> full range
-    
+
     // If variable already exists it is updated with the given borders
     auto it = std::find(m_roo_vars.begin(), m_roo_vars.end(), variable_name);
     if (it != m_roo_vars.end()) {
@@ -81,13 +90,14 @@ public:
   }
 
   void Fit(int numCPUs = 8, bool enableMinos = true, bool extendedFit = false);
+  void Fit(int numCPUs = 8, uint32_t fit_flags = 0);
 
   virtual ~Fitter();
 
   static const std::string dataset_name;
   static const std::string snapshot_name;
 
-  
+
 
 private:
   std::string m_wsname;

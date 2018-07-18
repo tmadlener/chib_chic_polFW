@@ -4,10 +4,15 @@ class ChibPreselection : public TreeProcessor
 {
 
 public:
-  ChibPreselection(const std::vector<std::string> & infilenames, const std::string & outfilename, const std::string &intreename, const std::string &outtreename);
+  ChibPreselection(const std::vector<std::string> & infilenames, const std::string & outfilename, const std::string &intreename, const std::string &outtreename, int year);
   virtual ~ChibPreselection() {};
 
 private:
+  int m_year = 0;
+  double min_pt = 8;
+  int m_trigminval = 1;
+  std::string muonNname;
+
   virtual bool fill_and_cut_variables() override;
   virtual ParallelTreeLooper* clone() const override { return new ChibPreselection(*this); }
   virtual void setup_new_branches() override;

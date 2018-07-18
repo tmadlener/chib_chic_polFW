@@ -175,7 +175,7 @@ int main(int argc, char **argv) {
   }
 
   dimuon_fitter.SetModel(c_dimuon_model, c_dimuon_modelname, c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max);
-  dimuon_fitter.Fit(8, true);
+  dimuon_fitter.Fit(8, Fitter::EnableMinos);
 
   // Add input data DataID to workspace file
   {
@@ -245,7 +245,9 @@ int main(int argc, char **argv) {
 
 
   chi_fitter.SetModel(c_chi_model, c_chi_modelname, c_chi_fitvar, c_chi_fitrange_min, c_chi_fitrange_max);
-  chi_fitter.Fit(8, true, c_extended_chi_fit);
+  u_int32_t flag = Fitter::EnableMinos;
+  if (c_extended_chi_fit) flag |= Fitter::ExtendedFit;
+  chi_fitter.Fit(8, flag);
 
   // Create output file with tree containing sWeights
 
