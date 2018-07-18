@@ -23,4 +23,8 @@ if [[ -z "${CHIB_CHIC_POLFW_DIR+x}" ]] || $(check_args_flag "--force" ${@}); the
     source ${CHIB_CHIC_POLFW_DIR}/scripts/bash_functions.sh
 
     fetch_json_header ${@}
+
+    if $(check_args_flag "--run-tests" ${@}); then
+        run_tests
+    fi
 fi

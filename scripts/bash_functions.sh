@@ -41,6 +41,16 @@ function fetch_json_header() {
     fi
 }
 
+## run all the available tests
+function run_tests() {
+    if [[ $# -eq 0 ]]; then
+        python -m unittest discover ${CHIB_CHIC_POLFW_DIR}/python/test
+    else
+        python -m unittest ${@}
+    fi
+
+}
+
 ## get a variable length random string that can be used to name temp directories
 function rand_str() {
     if [[ $# -eq 0 ]]; then
