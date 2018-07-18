@@ -140,10 +140,11 @@ def apply_selections(dataframe, selections, negate=False):
     Args:
         dataframe (pandas.DataFrame): The data to which the selections should be
             applied
-        selections (list or function): List of functions taking the DataFrame as
-            single argument and returning a list of booleans (with the same
-            number) of rows as the DataFrame, where the elements with True will
-            be selected
+        selections (list of functions, function or numpy.ndarray): List of
+            functions taking the DataFrame as single argument and returning a
+            list of booleans (with the same number) of rows as the DataFrame,
+            where the elements with True will be selected or a selection array
+            that can be used to index into a DataFrame and select certain events
         negate (Boolean): Instead of returning all events fulfilling the
             selection return all events not fulfilling the selection
 
@@ -154,9 +155,18 @@ def apply_selections(dataframe, selections, negate=False):
     if selections is None:
         return dataframe
 
-    sum_selection = np.ones(dataframe.shape[0], dtype=bool)
-    for sel in make_iterable(selections):
-        sum_selection &= sel(dataframe)
+    if isinstance(selections, np.ndarray):
+        sum_selection = selections
+    else:
+        selections = make_iterable(selections)
+        # Check if all selections are actually functions. If not sipmly log as
+        # this will fail in the next few lines anyway
+        if not all(callable(f) for f in selections):
+            logging.error('Passed selections are not all functions and also not'
+                          ' an array of boolean indices')
+        sum_selection = np.ones(dataframe.shape[0], dtype=bool)
+        for sel in selections:
+            sum_selection &= sel(dataframe)
 
     if negate:
         sum_selection = np.invert(sum_selection)
