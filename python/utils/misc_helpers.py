@@ -226,9 +226,22 @@ def get_equi_pop_bins(dfr, get_var, n_bins):
     """
     bin_var = np.sort(get_var(dfr))
     dbin = bin_var.shape[0] / n_bins # number of events per bin
-    # bin borders are the elements at the positions i * dbin - 1
-    binb = [bin_var[0]] + [bin_var[i * dbin - 1] for i in xrange(1, n_bins)]
-    binb += [bin_var[-1]] # the last bin has to include everything up to the max
+    n_overflow = bin_var.shape[0] % n_bins
+
+    if n_overflow == 0:
+        # bin borders are the elements at the positions i * dbin - 1
+        edge_idcs = [0] + [i * dbin - 1 for i in xrange(1, n_bins)] + [-1]
+    else: # distribute the overflowing events evenly over the whole range
+        edge_idcs = [0]
+        for i in xrange(1, n_bins):
+            if i < n_overflow:
+                edge_idcs.append(i * dbin + i)
+            else:
+                edge_idcs.append(i * dbin + n_overflow)
+
+        edge_idcs.append(-1)
+
+    binb = [bin_var[i] for i in edge_idcs]
 
     return zip(binb[:-1], binb[1:])
 
@@ -252,10 +265,8 @@ def get_costh_binning(dfr, n_bins, full_range=False, selection=None):
             first bin starts at 0 and the last one ends at 1, regardless of the
             exact values for the bin borders
     """
-    if selection is not None:
-        sel_dfr = dfr[selection]
-    else:
-        sel_dfr = dfr
+    from utils.data_handling import apply_selections
+    sel_dfr = apply_selections(dfr, selection)
 
     abs_costh = lambda d: np.abs(d.costh_HX)
     binning = get_equi_pop_bins(sel_dfr, abs_costh, n_bins)
@@ -284,10 +295,8 @@ def get_bin_means(dfr, get_var, bins, selection=None):
     Returns:
         list: list of mean values for each bin
     """
-    if selection is not None:
-        sel_dfr = dfr[selection]
-    else:
-        sel_dfr = dfr
+    from utils.data_handling import apply_selections
+    sel_dfr = apply_selections(dfr, selection)
 
     var = get_var(sel_dfr)
     means = []

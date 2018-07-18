@@ -155,7 +155,7 @@ def apply_selections(dataframe, selections, negate=False):
     if selections is None:
         return dataframe
 
-    if isinstance(selections, np.ndarray):
+    if isinstance(selections, np.ndarray) or isinstance(selections, pd.Series):
         sum_selection = selections
     else:
         selections = make_iterable(selections)
