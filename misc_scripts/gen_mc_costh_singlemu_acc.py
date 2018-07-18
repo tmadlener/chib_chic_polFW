@@ -17,7 +17,8 @@ from data_single_muon_acc import (
     basic_sel, jpsi_kin_sel, fiducial_cuts, loose_cuts, flat_pt
 )
 
-from utils.data_handling import get_dataframe, apply_selections, create_histogram
+from utils.data_handling import get_dataframe, apply_selections
+form utils.hist_utils import create_histogram
 from utils.misc_helpers import get_bin_cut_df, cond_mkdir
 from utils.plot_helpers import mkplot, default_colors
 from utils.selection_functions import get_cut_funcs
