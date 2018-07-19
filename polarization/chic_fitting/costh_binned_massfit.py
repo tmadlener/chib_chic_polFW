@@ -4,10 +4,7 @@ Script for running costh binned mass fits
 """
 
 import re
-import pickle
-import sys
-
-import numpy as np
+import json
 
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
@@ -52,19 +49,16 @@ def get_ws_vars(state, massmodel=None):
     return wsvars[state]
 
 
-def import_data(wsp, datatree, state, massmodel=None):
+def import_data(wsp, datatree, datavars):
     """
     Import all data that is necessary to the workspace
     """
-    # definition of variables to be created in the workspace
-    # NOTE: some of them act as preselection (e.g. vtxProb and JpsiRap)
     logging.info('Importing dataset')
-    dvars = get_ws_vars(state, massmodel)
 
     # deactivate all branches and just activate the used ones
     datatree.SetBranchStatus('*', 0)
     varlist = []
-    for dvar in dvars:
+    for dvar in datavars:
         wsp.factory(dvar)
         branch_var = re.sub(r'([A-Za-z_]*)\[.*\]', r'\1', dvar)
         datatree.SetBranchStatus(branch_var, 1)
@@ -92,109 +86,150 @@ def do_binned_fits(mass_model, wsp, costh_bins):
         mass_model.fit(wsp, savename, bin_sel)
 
 
-def rw_bin_sel_pklfile(args):
+def create_bin_info_json(state, nbins, datafile, fitfile, bininfo_file=None):
     """
-    Read and update the pickle file for J/psi or create it for chic
+    Determine the costh binning and store the information into a json
     """
-    if args.state == 'jpsi' and not args.pklfile:
-        logging.fatal('Need a pickle file containing the costh binning for '
-                      'doing jpsi fits')
-        sys.exit(1)
+    if bininfo_file is None:
+        bininfo_file = fitfile.replace('.root', '_bin_sel_info.json')
 
-    # if chic: determine the costh binning and create the pkl file
-    if args.state == 'chic' or args.state == 'chib':
-        if not args.pklfile:
-            pklfile = args.outfile.replace('.root', '_bin_sel_info.pkl')
-        else:
-            pklfile = args.pklfile
+    treename = 'chic_tuple' if state == 'chic' else 'data'
+    dfr = get_dataframe(datafile, treename, columns=['costh_HX'])
 
-        treename = 'chic_tuple' if args.state == 'chic' else 'data'
-        dfr = get_dataframe(args.datafile, treename)
+    costh_bins = get_costh_binning(dfr, nbins)
+    costh_means = get_bin_means(dfr, lambda d: d.costh_HX.abs(), costh_bins)
 
-        costh_bins = get_costh_binning(dfr, args.nbins)
-        costh_means = get_bin_means(dfr, lambda d: np.abs(d.costh_HX),
-                                    costh_bins)
-
-        bin_sel_info = {
-            'costh_bins': costh_bins,
-            'costh_means': costh_means,
-        }
-        with open(pklfile, 'w') as pklf:
-            pickle.dump(bin_sel_info, pklf)
-
-    # if jpsi: read the pklfile, get the costh information and update the basic
-    # selection and store a new pickle file
-    else:
-        with open(args.pklfile, 'r') as pklf:
-            bin_sel_info = pickle.load(pklf)
-            costh_bins = bin_sel_info['costh_bins']
-        # write updated file
-        with open(args.pklfile.replace('.pkl', '_jpsi.pkl'), 'w') as pklf:
-            pickle.dump(bin_sel_info, pklf)
+    bin_sel_info = {
+        'costh_bins': costh_bins,
+        'costh_means': costh_means,
+    }
+    with open(bininfo_file, 'w') as info_file:
+        json.dump(bin_sel_info, info_file, sort_keys=True, indent=2)
 
     return costh_bins
 
 
-def main(args):
-    """Main"""
-    # Make output directory here, since next function wants to write to it
+def rw_bin_sel_json(bininfo_file, datafile, updated_name=None):
+    """
+    Read the passed bin info file, get the costh_binning and calculate updated
+    costh means for the bins and store the resulting content into a new file
+    """
+    if updated_name is None:
+        updated_name = bininfo_file.replace('.json', '_jpsi.json')
+
+    with open(bininfo_file, 'r') as info_file:
+        bin_info = json.load(info_file)
+
+    dfr = get_dataframe(datafile, 'jpsi_tuple', columns=['costh_HX'])
+
+    costh_bins = bin_info['costh_bins']
+    costh_means = get_bin_means(dfr, lambda d: d.costh_HX.abs(), costh_bins)
+    bin_info['costh_means'] = costh_means
+
+    with open(updated_name, 'w') as info_file:
+        json.dump(bin_info, info_file, sort_keys=True, indent=2)
+
+    return costh_bins
+
+
+def run_fit(model, tree, costh_bins, datavars, outfile):
+    """Import data, run fits and store the results"""
+    wsp = r.RooWorkspace('ws_mass_fit')
+    import_data(wsp, tree, datavars)
+    model.define_model(wsp)
+    wsp.Print()
+
+    do_binned_fits(model, wsp, costh_bins)
+    wsp.writeToFile(outfile)
+
+
+def run_chic_fit(args):
+    """Setup everything and run the chic fits"""
+    logging.info('Running chic fits')
     cond_mkdir_file(args.outfile)
-    costh_bins = rw_bin_sel_pklfile(args)
 
+    model = ChicMassModel('chicMass')
+    costh_binning = create_bin_info_json('chic', args.nbins, args.datafile,
+                                         args.outfile, args.bin_info)
+
+    dvars = get_ws_vars('chic')
     dataf = r.TFile.Open(args.datafile)
-    treename = {
-        'chic' : 'chic_tuple',
-        'chib' : 'data',
-        'jpsi' : 'jpsi_tuple'
-        }
+    tree = dataf.Get('chic_tuple')
+    run_fit(model, tree, costh_binning, dvars, args.outfile)
 
-    datat = dataf.Get(treename[args.state])
 
-    # create the workspace
-    ws = r.RooWorkspace('ws_mass_fit')
-    if args.state == 'chic':
-        mass_model = ChicMassModel('chicMass')
-    elif args.state == 'chib':
-        mass_model = ChibMassModel(args.configfile)
-    else:
-        mass_model = JpsiMassModel('JpsiMass')
-    import_data(ws, datat, args.state, mass_model)
-    mass_model.define_model(ws)
-    ws.Print()
+def run_chib_fit(args):
+    """Setup everything and run the chic fits"""
+    logging.info('Running chib fits')
+    cond_mkdir_file(args.outfile)
+    model = ChibMassModel(args.configfile)
+    costh_binning = create_bin_info_json('chib', args.nbins, args.datafile,
+                                         args.outfile, args.bin_info)
 
-    do_binned_fits(mass_model, ws, costh_bins)
+    dvars = get_ws_vars('chib', model)
+    dataf = r.TFile.Open(args.datafile)
+    tree = dataf.Get('data')
+    run_fit(model, tree, costh_binning, dvars, args.outfile)
 
-    ws.writeToFile(args.outfile)
+
+def run_jpsi_fit(args):
+    """Setup everything and run the chic fits"""
+    logging.info('Running jpsi fits')
+    cond_mkdir_file(args.outfile)
+    model = JpsiMassModel('JpsiMass')
+    costh_binning = rw_bin_sel_json(args.costh_bin_file, args.datafile,
+                                    args.bin_info)
+
+    dvars = get_ws_vars('jpsi')
+    dataf = r.TFile.Open(args.datafile)
+    tree = dataf.Get('jpsi_tuple')
+    run_fit(model, tree, costh_binning, dvars, args.outfile)
 
 
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='script for running costh '
                                      'binned mass fits')
-    parser.add_argument('datafile', help='File containing the flat data tuple. '
-                        'NOTE: All events that are in the tuple will be used so'
-                        ' make sure to have the sample only contain what is '
-                        'needed')
-    parser.add_argument('outfile', help='Output file containing all the fit '
-                        'results in a workspace')
-    parser.add_argument('-n', '--nbins', type=int, default=4,
-                        help='number of costh bins')
-    parser.add_argument('-pf', '--pklfile', help='Pickle file containing the '
-                        'costh binning. Required  as input for J/psi. Overrides'
-                        ' default name for chic.', type=str, default='')
-    parser.add_argument('--configfile', help='Config file in json format for chib model.',
-                        type=str, default='config.json')
 
-    state_sel = parser.add_mutually_exclusive_group()
-    state_sel.add_argument('--chic', action='store_const', dest='state',
-                           const='chic', help='Do mass fits for chic data')
-    state_sel.add_argument('--jpsi', action='store_const', dest='state',
-                           const='jpsi', help='Do mass fits for jpsi data')
-    state_sel.add_argument('--chib', action='store_const', dest='state',
-                           const='chib', help='Do mass fits for chib data')
-    parser.set_defaults(state='chic')
+    subparsers = parser.add_subparsers(help='Mode to run', dest='mode')
 
+    # parser for global flags
+    global_parser = argparse.ArgumentParser(add_help=False)
+
+    global_parser.add_argument('datafile', help='File containing the flat data '
+                               'tuple. NOTE: All events that are in the tuple '
+                               'will be used so make sure to have the sample '
+                               'only contain what is needed')
+    global_parser.add_argument('outfile', help='Output file containing all the '
+                               'fit results in a workspace')
+    global_parser.add_argument('-n', '--nbins', type=int, default=4,
+                               help='number of costh bins')
+    global_parser.add_argument('-b', '--bin-info', help='json file containing '
+                               'the costh binning information (output). If not '
+                               'provided a default name will be used',
+                               default=None)
+
+    # Add the chic parser
+    chic_parser = subparsers.add_parser('chic', description='Run the fits using'
+                                     ' chic mass model',
+                                     parents=[global_parser])
+    chic_parser.set_defaults(func=run_chic_fit)
+
+    # Add the chib parser
+    chib_parser = subparsers.add_parser('chib', description='Run the fits using'
+                                     ' chib mass model',
+                                     parents=[global_parser])
+    chib_parser.add_argument('configfile', help='Config file in json format '
+                             'for chib model.')
+    chib_parser.set_defaults(func=run_chib_fit)
+
+    # Add the jpsi parser
+    jpsi_parser = subparsers.add_parser('jpsi', description='Run the fits using'
+                                     ' jpsi mass model',
+                                     parents=[global_parser])
+    jpsi_parser.add_argument('costh_bin_file', help='json file containing the '
+                             'costh binning information')
+    jpsi_parser.set_defaults(func=run_jpsi_fit)
 
     clargs = parser.parse_args()
-
-    main(clargs)
+    clargs.func(clargs)
