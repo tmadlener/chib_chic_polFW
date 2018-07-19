@@ -90,6 +90,35 @@ function pklview() {
 }
 export -f pklview
 
+## Convert old-style pkl files from fits to json files, so that they can be used by newer versions as well
+function pkl2json() {
+    if [[ $# -eq 0 ]]; then
+        echo "usage: pkl2json PKLFILE [JSONFILE]"
+        return 64
+    fi
+    if [[ $# -ge 1 ]]; then
+        pklfile=$1
+        shift
+        if [[ $# -ge 1 ]]; then
+            jsonfile=$2
+        else
+            jsonfile=$(echo ${pklfile} | sed 's/.pkl/.json/')
+        fi
+        if [[ ${jsonfile} = ${pklfile} ]]; then
+            echo "input and output file are the same"
+            return 1
+        fi
+    fi
+
+    if [[ ! -f ${pklfile} ]]; then
+        echo "${pklfile} not found"
+        return 1
+    fi
+
+    python -c "import pickle; import json; json.dump(pickle.load(open('${pklfile}')), open('${jsonfile}', 'w'), indent=2)"
+}
+export -f pkl2json
+
 ## print the current date and the name of a time point
 function print_date() {
     echo "-------------------- "${@}": " $(date) " --------------------"
