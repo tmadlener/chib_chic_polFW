@@ -6,6 +6,7 @@ Make the plots of the fit results for each costh bin
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
+
 from os.path import dirname
 
 import logging
@@ -20,8 +21,7 @@ from utils.misc_helpers import cond_mkdir, get_bin_cut_root
 
 from common_func import get_bin_sel_info
 
-
-def make_fit_res_plots(wsp, costh_bins, base_sel, state, outdir, **kwargs):
+def make_fit_res_plots(wsp, costh_bins, state, outdir, **kwargs):
     """
     Make the plots with the fit results
 
@@ -37,12 +37,11 @@ def make_fit_res_plots(wsp, costh_bins, base_sel, state, outdir, **kwargs):
     for i, ctbin in enumerate(costh_bins):
         costh_cut = get_bin_cut_root('TMath::Abs(costh_HX)', *ctbin)
         snapname = 'snap_costh_bin_{}'.format(i)
-        full_selection = combine_cuts([costh_cut, base_sel])
 
         pdfname = '/'.join([outdir, 'mass_fit_{}_costh_bin_{}.pdf'
                             .format(state, i)])
 
-        mass_model.plot(wsp, pdfname, snapname, full_selection, **kwargs)
+        mass_model.plot(wsp, pdfname, snapname, costh_cut, **kwargs)
         mass_model.plot_fit_params(wsp, pdfname.replace('.pdf', '_fit_res.pdf'),
                                    snapname)
 
@@ -52,7 +51,7 @@ def main(args):
     ffile = r.TFile.Open(args.fitfile)
     ws = ffile.Get('ws_mass_fit')
 
-    bin_sel_info = get_bin_sel_info(args.pklfile, args.fitfile)
+    bin_sel_info = get_bin_sel_info(args.bin_info, args.fitfile)
 
     outdir = args.outdir
     if not outdir:
@@ -60,8 +59,8 @@ def main(args):
     cond_mkdir(outdir)
 
     make_fit_res_plots(ws, bin_sel_info['costh_bins'],
-                       bin_sel_info['basic_sel'], args.state, outdir,
-                       logy=args.logy, configfile=args.configfile)
+                       args.state, outdir, logy=args.logy,
+                       configfile=args.configfile)
 
 
 if __name__ == '__main__':
@@ -70,10 +69,9 @@ if __name__ == '__main__':
                                      'of the chic mass')
     parser.add_argument('fitfile', help='file containing the workspace with '
                         'the fit results and the dataset used for fitting')
-    parser.add_argument('-pf', '--pklfile', help='Pickle file containing the '
-                        'costh binning and selection informations. Use this to '
-                        'override the default which derives the name from the '
-                        'fitfile', default='', type=str)
+    parser.add_argument('-b', '--bin-info', help='Json file containing the '
+                        'costh binning. Use this to override the default which'
+                        ' derives the name from the fitfile', default='', type=str)
     parser.add_argument('-o', '--outdir', help='Directory to which the plots '
                         'get stored (defaults to same directory as fitfile)',
                         default='', type=str)

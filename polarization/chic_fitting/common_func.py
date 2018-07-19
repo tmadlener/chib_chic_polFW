@@ -3,16 +3,16 @@
 Module containing functionality shared by scripts in this folder
 """
 
-import pickle
+import json
 
-def get_bin_sel_info(pklfile, fitfile):
+def get_bin_sel_info(jsonfile, fitfile):
     """
     Get the binning and selection info
     """
-    if not pklfile:
-        pklfile = fitfile.replace('.root', '_bin_sel_info.pkl')
+    if not jsonfile:
+        jsonfile = fitfile.replace('.root', '_bin_sel_info.json')
 
-    with open(pklfile, 'r') as pklf:
-        bin_sel_info = pickle.load(pklf)
+    with open(jsonfile, 'r') as jsonf:
+        bin_sel_info = json.load(jsonf)
 
     return bin_sel_info
