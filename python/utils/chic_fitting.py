@@ -122,16 +122,24 @@ class ChicMassModel(FitModel):
 
         ## combine model
         ws.factory('Nchic1[10000, 0, 200000]')
-        ws.factory('Nchic2[10000, 0, 200000]')
-        # ws.factory('r_chic2_chic1[0.5, 0, 1]')
         ws.factory('Nchic0[300, 0, 10000]')
         ws.factory('Nbkg[30000, 0, 200000]')
 
+        ## leave Nchic2 free and make ratio a formula var
+        ws.factory('Nchic2[10000, 0, 200000]')
         r_c2_c1 = r.RooFormulaVar('r_chic2_chic1[0.5, 0, 1]', '@0 / @1',
                                   r.RooArgList(get_var(ws, 'Nchic2'),
                                                get_var(ws, 'Nchic1')))
-
         ws_import(ws, r_c2_c1)
+
+        ## make ratio free and Nchic2 depend on it
+        # ws.factory('r_chic2_chic1[0.5, 0, 1]')
+        # Nchic2 = r.RooFormulaVar('Nchic2', '@0 * @1',
+        #                          r.RooArgList(get_var(ws, 'r_chic2_chic1'),
+        #                                       get_var(ws, 'Nchic1')))
+        # ws_import(ws, Nchic2)
+
+
         Nsignal = r.RooFormulaVar('Nsignal', '@0 + @1 + @2',
                                   r.RooArgList(get_var(ws, 'Nchic1'),
                                                get_var(ws, 'Nchic2'),
