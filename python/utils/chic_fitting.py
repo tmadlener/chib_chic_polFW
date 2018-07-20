@@ -127,7 +127,7 @@ class ChicMassModel(FitModel):
 
         ## leave Nchic2 free and make ratio a formula var
         ws.factory('Nchic2[10000, 0, 200000]')
-        r_c2_c1 = r.RooFormulaVar('r_chic2_chic1[0.5, 0, 1]', '@0 / @1',
+        r_c2_c1 = r.RooFormulaVar('r_chic2_chic1', '@0 / @1',
                                   r.RooArgList(get_var(ws, 'Nchic2'),
                                                get_var(ws, 'Nchic1')))
         ws_import(ws, r_c2_c1)
