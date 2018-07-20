@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/USSR/bin/env python
 """
 Module to do some symbolic calculations
 """
@@ -53,3 +53,80 @@ def func_cov(func, free_params):
     return jaco.T.dot(cov.dot(jaco))
 
 
+def _lambda_theta(j, simplified=True):
+    """
+    Get the lambda_theta formula for the given J state,
+    See PRD 83, 096001 (2011) for details
+    """
+    h2, g2, g3 = 0, 0, 0 # E1-approximation
+    delta_1 = sp.S(2) / 5 * h2**2
+    delta_2 = 2 * g2**2 + sp.S(5) / 7 * g3**2
+
+
+    if simplified:
+        R, R2 = sp.symbols('R, R2')
+    else:
+        bm1, bp1, bm2, bp2 = sp.symbols('b_0, b_{-1}, b_{+1}, b_{-2}, b_{+2}')
+        R = abs(bp1)**2 + abs(bm1)**2
+        R2 = abs(bp2)**2 + abs(bm2)**2
+
+    b02 = abs(1 - R - R2)
+
+    D1 = (2 * (1 + delta_1) * b02 + (3 - delta_1) * R) / (1 - 3*delta_1)
+    D2 = (2 * (5 - delta_2) * b02 + (9 - delta_2) * R + 2 * (3 + delta_2) * R2) /\
+         (1 - delta_2)
+
+    if j == 1:
+        # For j = 1, there is no Jz = 2 component -> remove it
+        return (1 / D1 * (2 * b02 - R)).subs({R2: 0})
+
+    if j == 2:
+        return - 3 / D2 * (2 * b02 + R - 2 * R2)
+
+
+def lth_2(**kwargs):
+    """
+    Get lambda theta for the J=2 state
+
+    Keyword Args:
+        R1 (float, or sympy.Symbol): The fraction of |Jz|=1,
+        R2 (flaot, or sympy.Symbol): The fraction of |Jz|=2
+        simplified (Boolean, optional, default=True): If false return the
+            formula using actual b_m parameters instead of simplified version
+            with Rs
+
+    Returns:
+        A sympy expression or a number depending on the inputs
+    """
+    lth = _lambda_theta(2, kwargs.pop('simplified', True))
+    R1 = kwargs.pop('R1', None)
+    R2 = kwargs.pop('R2', None)
+
+    if R1 is not None:
+        lth = lth.subs({'R': R1})
+
+    if R2 is not None:
+        lth = lth.subs({'R2': R2})
+
+    return lth
+
+
+def lth_1(**kwargs):
+    """
+    Get lambda theta for the J=2 state
+
+    Keyword Args:
+        R (float, or sympy.Symbol): The fraction of |Jz|=1,
+        simplified (Boolean, optional, default=True): If false return the
+            formula using actual b_m parameters instead of simplified version
+            with Rs
+
+    Returns:
+        A sympy expression or a number depending on the inputs
+    """
+    lth = _lambda_theta(1, kwargs.pop('simplified', True))
+    R = kwargs.pop('R', None)
+
+    if R is not None:
+        lth = lth.subs({'R': R})
+    return lth
