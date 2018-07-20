@@ -97,7 +97,7 @@ def add_branch(arr, bname, rfile, tname):
     array2root(arr, rfile, treename=tname, mode='update')
 
 
-def get_dataframe(infile, treename=None, columns=None):
+def get_dataframe(infile, treename=None, **kwargs):
     """
     Get the dataframe from the input file.
 
@@ -109,8 +109,10 @@ def get_dataframe(infile, treename=None, columns=None):
             Since it is possible to store multiple trees in one file it can be
             necessary to specify which on to read. Option is only used for reads
             from .root files.
-        columns (str or sequence of str, optional): Only read the specified
-            branches into the DataFrame (only used when reading from a root file)
+    Keyword Args:
+         Forwarded to root_pandas.read_root
+
+    See also: root_pandas.read_root
 
     Returns:
         pandas.DataFrame: The dataframe read from the file.
@@ -125,7 +127,7 @@ def get_dataframe(infile, treename=None, columns=None):
     if infile.endswith('.root'):
         try:
             from root_pandas import read_root
-            return read_root(infile, key=treename, columns=columns)
+            return read_root(infile, key=treename, **kwargs)
         except ImportError:
             # log and bail out
             logging.error('Requested to read DataFrame from {}, but could not '
