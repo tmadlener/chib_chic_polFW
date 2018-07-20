@@ -175,3 +175,10 @@ def get_n_events(data, selections=None, weight=None):
     if hasattr(weight, '__call__'):
         return weight(sel_data).sum()
     return sel_data[weight].sum()
+
+
+def toy_reco(df, eff_name='gamma_eff_sm'):
+    """
+    Select only those events for which the efficiency is larger than 0
+    """
+    return df.loc[:, eff_name] > 0
