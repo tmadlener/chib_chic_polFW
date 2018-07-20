@@ -16,6 +16,10 @@ from utils.roofit_utils import get_var_err
 from utils.hist_utils import get_binning, divide
 from utils.graph_utils import get_errors
 
+# data event numbers (from costh integrated fit)
+N_CHIC1 = 63139.0
+N_CHIC2 = 28114.0
+
 def get_fit_graph(wsp, costh_bins, costh_means):
     """
     Get the graph of the ratio from the workspace
@@ -48,13 +52,8 @@ def calc_chi2(pred_hist, data_graph):
     """
     # Need to select the bins without over- and underflow bin here
     pred = np.array([b for b in pred_hist][1:pred_hist.GetNbinsX() + 1])
-    data_central = np.array(data_graph.GetX())
+    data_central = np.array(data_graph.GetY())
     _, _, data_err, _ = get_errors(data_graph)
-
-
-    print(pred)
-    print(data_central)
-    print(data_err)
 
     return np.sum((pred - data_central) / data_err)**2
 
@@ -85,11 +84,15 @@ def main(args):
                                   [h for h in histlist if 'chic2' in h])
 
     for chi1_hist, chi2_hist in ratio_combs:
-        # TODO: scale ratio to data costh integrated
-        ratio = divide(histfile.Get(chi2_hist), histfile.Get(chi1_hist))
+        # Scale individual histograms to data numbers
+        h_chi1 = histfile.Get(chi1_hist)
+        h_chi1.Scale(N_CHIC1 / h_chi1.Integral())
+        h_chi2 = histfile.Get(chi2_hist)
+        h_chi2.Scale(N_CHIC2 / h_chi2.Integral())
+        ratio = divide(h_chi2, h_chi1)
 
         chi2 = calc_chi2(ratio, fit_graph)
-        print chi1_hist, chi2_hist, chi2
+        print chi1_hist, chi2_hist, chi2, r.TMath.Prob(chi2, 4)
 
 
 if __name__ == '__main__':
