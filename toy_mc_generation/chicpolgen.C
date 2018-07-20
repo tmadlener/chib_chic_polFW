@@ -190,7 +190,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
   // Selectors to act on the smeared variables
   // TODO: Make this configurable in some way
-  const auto jpsiSelector = std::make_unique<PtRangeAbsRapiditySelector>(Range{8, 20}, 1.25);
+  const auto jpsiSelector = std::make_unique<PtRangeAbsRapiditySelector>(Range{8, 20}, 1.20);
   const auto muonSelector = std::make_unique<LooseMuonSelector>();
   const auto photonSelector = std::make_unique<MinPtMaxEtaSelector>(0.41, 1.5);
 
