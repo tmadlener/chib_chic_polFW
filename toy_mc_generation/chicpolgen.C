@@ -23,6 +23,7 @@
 
 #define GENRAPIDITY 1 // set to zero to generate the chic eta instead of the chic rapidity
 
+
 /** * Configuration and settings for the generation
  *
  * Including some default values
@@ -62,6 +63,7 @@ struct gen_config {
   // To not produce efficiency branches leave the efficiency file names empty
   std::string muonEffs{""}; // file name from where the muon efficiencies should be loaded
   std::string photonEffs{""}; // file name from where the photon efficiencies should be loaded
+  ULong_t seed = 0; // 0:seeded with TUUID, other: for testing purposes, to generate same random numbers
 
   void print(bool verbose) const {
     std::cout << "--------------------------------------------------\n";
@@ -87,6 +89,7 @@ struct gen_config {
     std::cout << "output file: " << genfile << '\n';
     std::cout << "--------------------------------------------------" << std::endl;
   }
+
 };
 
 /**
@@ -197,7 +200,9 @@ void chicpolgen(const gen_config& config = gen_config{}){
   // const auto photonSelector = std::make_unique<AllSelector>();
 
   delete gRandom;
-  gRandom = new TRandom3(0);
+  gRandom = new TRandom3(config.seed);
+
+    std::cout << "seed: " << config.seed <<", first Rndm() val: " << gRandom->Rndm() << "\n\n";
 
   // create the functions from which the chic and the jpsi masses are drawn
   const auto chicMassDist = std::bind(&TRandom3::Gaus, std::ref(gRandom),
@@ -227,6 +232,8 @@ void chicpolgen(const gen_config& config = gen_config{}){
   TFile* hfile = new TFile( config.genfile.c_str(), "RECREATE", "chicpolgen");
 
   TTree* tr = new TTree("tr", "tr");
+
+  Long64_t event_id = 0; tr->Branch("event_id", &event_id);
 
   double pT_chi;        tr->Branch( "gen_chicPt",         &pT_chi);
   double pT;            tr->Branch( "gen_JpsiPt",             &pT);
@@ -346,13 +353,16 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
   photonCrystalBall->Draw();
 
+#ifndef TESTING
   const int n_step = n_events/50;
   std::cout << '\n';
   std::cout << "------------------------------------------------------------" << '\n';
   std::cout << "Progress: ";
+#endif
 
   size_t accepted = 0;
   int i_event = 0;
+
 /////////////////// CYCLE OF EVENTS ////////////////////////
   for(; i_event < n_events; i_event++){
 
@@ -360,6 +370,8 @@ void chicpolgen(const gen_config& config = gen_config{}){
       std::cout << "X";  std::cout.flush();
     }
 
+    ++event_id;
+    
   // generation of chic in the CMS of the proton-proton event
 
     // M:
@@ -385,7 +397,6 @@ void chicpolgen(const gen_config& config = gen_config{}){
     // pL:
     double rap_sign = gRandom->Uniform(-1., 1.); rap_sign /= fabs(rap_sign);
     y_chi = rap_distr->GetRandom() * rap_sign;
-
     double mT = sqrt( Mchi*Mchi + pT_chi*pT_chi );
     double pL1 = 0.5 *mT * exp(y_chi);
     double pL2 = - 0.5 *mT * exp(-y_chi);
@@ -402,22 +413,16 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
   // generation of full angular distribution
 
-
     const double angdistr_max = 0.02;
-
-
-    double angdistr_rnd;
-    // initialize this to the max double value, so that a printout appears if an invalid setting for
-    // chic_state has been chosen
-    // NOTE: this also makes the macro go into an infinite loop
-    double angdistr = std::numeric_limits<double>::max();
-
+    double angdistr_rnd = 0;   
+    double angdistr = std::numeric_limits<double>::max(); // initialize this to the max double value, so that a printout appears if an invalid setting for
+        // chic_state has been chosen
+        // NOTE: this also makes the macro go into an infinite loop
 
     double sinTH_psi  = 100.;
     double PHI_psi = 2. * PIG * gRandom->Rndm();
     double sinth_chihe = 100.;
     double cosphi_chihe = 100.;
-
 
     do {
          cosTH_psi = -1. + 2. * gRandom->Rndm();
@@ -577,6 +582,15 @@ void chicpolgen(const gen_config& config = gen_config{}){
     } while ( angdistr_rnd > angdistr );
 
 
+  // 4-vector:
+
+    TLorentzVector chi;
+    chi.SetXYZM( pT_chi * cos(Phi_chi) , pT_chi * sin(Phi_chi), pL_chi, Mchi );
+    
+#ifdef TESTING
+    //chi.Print();
+    std::cout << pT_chi << ", "<< Mchic << ", " << Mpsi <<", " << Mchi << std::endl;
+#endif
 
  // psi 4-momentum in the chi rest frame, wrt the chosen chi_c polarization axes:
 
@@ -793,7 +807,13 @@ void chicpolgen(const gen_config& config = gen_config{}){
     lepN.Boost(psi_to_cm);
     pT_lepN = lepN.Perp();
     eta_lepN = lepN.PseudoRapidity();
-
+    
+#ifdef TESTING
+    lepP.Print();
+    lepN.Print();
+    std::cout << "HX:" << costh_he <<"/" << phi_he
+             << " CS:" << costh_cs <<"/" << phi_cs << std::endl;
+#endif
 
   // accepted events:
 
@@ -850,7 +870,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
     // ca_mu_mu = TMath::Cos(lepP.Angle(lepN.Vect()));
     // ca_sm_mu_mu = TMath::Cos(smearedLepP.Angle(smearedLepN.Vect()));
-
+if (false) {
     const auto angles_HX = calcAnglesInFrame(smearedLepN, smearedLepP, RefFrame::HX);
     costh_HX_sm = angles_HX.costh;
     phi_HX_sm = angles_HX.phi;
@@ -870,13 +890,20 @@ void chicpolgen(const gen_config& config = gen_config{}){
       // gamma_eff = photonEffs->Eval(pT_gamma, y_gamma);
       gamma_eff_sm = photonEffs->Eval(pT_gamma_sm, y_gamma_sm);
     }
-
+}
     tr->Fill();
     accepted++;
 
     if (check_accept && accepted >= config.n_accepted) {
       break;
     }
+
+#ifndef TESTING
+    if (n_step!=0 && i_event%n_step == 0) {
+      std::cout << "X";  std::cout.flush();
+    }
+#endif
+
   } // end of external loop (generated events)
 
   std::cout << '\n' << '\n';

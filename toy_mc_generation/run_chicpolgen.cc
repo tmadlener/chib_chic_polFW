@@ -9,6 +9,7 @@
 int main(int argc, char *argv[])
 {
   const auto parser = ArgParser(argc, argv);
+
   const auto genFileName = parser.getOptionVal<std::string>("--genfile", "chicpolgen.root");
   const auto helicity1 = parser.getOptionVal<double>("--helicity1", 2./3.);
   const auto helicity2 = parser.getOptionVal<double>("--helicity2", 0);
@@ -19,6 +20,7 @@ int main(int argc, char *argv[])
   const auto ymin = parser.getOptionVal<double>("--ymin", 0);
   const auto ymax = parser.getOptionVal<double>("--ymax", 1.3);
   const auto CSframe = parser.getOptionVal<bool>("--CSframe", false);
+  const auto rnd_seed = parser.getOptionVal<ULong_t>("--seed", 0); // for testing purposes, 0 seeds with TUUID
 
   const auto naccept = parser.getOptionVal<size_t>("--naccept", 0);
 
@@ -39,6 +41,7 @@ int main(int argc, char *argv[])
   config.y_min = ymin;
   config.y_max = ymax;
   config.CSframeIsNatural = CSframe;
+  config.seed = rnd_seed;
 
   config.n_accepted = naccept;
 
