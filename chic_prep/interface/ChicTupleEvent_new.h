@@ -52,6 +52,7 @@ public:
 
 private:
   std::vector<IdentityWrapper<int>> _intVars;
+  // std::vector<IdentityWrapper<unsigned>> _intVars; // for 2017 (NOTE: only works as long as trigger is the only int variable!)
   std::vector<IdentityWrapper<double>> _doubleVars;
   std::vector<TLorentzVectorWrapper> _fourMomentaVars;
 

@@ -6,6 +6,8 @@
 
 #include "TTree.h"
 
+#include <iostream>
+
 template<typename EventT>
 class TTreeLooper {
 public:
@@ -51,9 +53,10 @@ void TTreeLooper<EventT>::loop(EventT& event, const long int maxEvents)
       count++;
     }
 
-    printProgress<PS>(i, nEvents - 1, startTime);// -1 to reach 100 % 
-
+    printProgress<PS>(i, nEvents - 1, startTime);// -1 to reach 100 %
   }
+
+  std::cout << "Converted " << count << " events from a total of " << nEvents << "\n";
 }
 
 #endif

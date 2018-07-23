@@ -67,16 +67,20 @@ public:
 };
 
 
-class TLorentzVectorWrapper : public Wrapper<TLorentzVector*, 5, double> {
+class TLorentzVectorWrapper : public Wrapper<TLorentzVector*, 9, double> {
 public:
   TLorentzVectorWrapper(const std::string name, const std::string prefix) :
-    Wrapper<TLorentzVector*, 5, double>(name, prefix, {
+    Wrapper<TLorentzVector*, 9, double>(name, prefix, {
         // all information that is necessary to fully reconstruct TLorentzVector plus some more
         std::make_pair("Pt", [] (const TLorentzVector* t) { return t->Pt(); }),
           std::make_pair("Rap", [] (const TLorentzVector* t) { return t->Rapidity(); }),
           std::make_pair("Mass", [] (const TLorentzVector* t) { return t->M(); }),
           std::make_pair("Eta", [] (const TLorentzVector* t) { return t->Eta(); }),
-          std::make_pair("Phi", [] (const TLorentzVector* t) { return t->Phi(); })
+          std::make_pair("Phi", [] (const TLorentzVector* t) { return t->Phi(); }),
+          std::make_pair("P", [] (const TLorentzVector* t) { return t->P(); }),
+          std::make_pair("Px", [] (const TLorentzVector* t) { return t->Px(); }),
+          std::make_pair("Py", [] (const TLorentzVector* t) { return t->Py(); }),
+          std::make_pair("Pz", [] (const TLorentzVector* t) { return t->Pz(); })
           }) {}
 };
 
