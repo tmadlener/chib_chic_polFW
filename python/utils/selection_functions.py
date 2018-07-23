@@ -7,7 +7,7 @@ TODO: Make pylint happy (or at least happier) by cleaning up code
 
 import numpy as np
 
-from utils.misc_helpers import get_bin_cut_df
+from utils.misc_helpers import get_bin_cut_df, get_full_trigger
 from utils.data_handling import apply_selections
 
 def get_cut_funcs(coords):
@@ -89,11 +89,32 @@ def photon_sel(df, cuts, gen=False):
     return pt_eta_sel(df[phot_name + 'Pt'], df[phot_name + 'Eta'].abs(), cuts)
 
 
-def trigger_sel(df):
+TRIGGER_BIT_MAP = {
+    # 2012
+    'HLT_Dimuon8_Jpsi': 1,
+    # 2016
+    'HLT_Dimuon10_Jpsi_Barrel': 1 << 0,
+    'HLT_Dimuon16_Jpsi': 1 << 1,
+    'HLT_Dimuon20_Jpsi': 1 << 2,
+    # 2017
+    'HLT_Dimuon20_Jpsi_Barrel_Seagulls': 1 << 0,
+    'HLT_Dimuon25_Jpsi': 1 << 1,
+}
+
+
+def trigger_sel(df, trigger='HLT_Dimuon8_Jpsi'):
     """Apply the trigger selection (reco and data only)"""
-    trigger_bit = 1 # for Dimuon8_Jpsi; 2 for Dimuon10_Jpsi (2012 only)
+    full_trigger = get_full_trigger(trigger)
+    trigger_bit = TRIGGER_BIT_MAP[full_trigger]
     # NOTE: assuming that the trigger decision is stored in 'trigger' column
     return (df.trigger & trigger_bit) == trigger_bit
+
+
+def prompt_sel(dfr, ctau_sigma=2.5):
+    """
+    Select prompt events using a lifetime significance cut
+    """
+    return (dfr.Jpsict.abs() / dfr.JpsictErr) < ctau_sigma
 
 
 def vtx_prob_sel(df, prob=0.01):
@@ -149,6 +170,13 @@ def loose_cuts():
     return coords
 
 
+def gen_filter_cuts():
+    """Gen level filter cut values"""
+    return (
+        (1.0, 2.5), (1.0, 1.0), (2.5, 1.0), (2.5, 0)
+    )
+
+
 def fiducial_muon_sel(df, gen=False):
     """
     The fiducial muon selection
@@ -159,6 +187,11 @@ def fiducial_muon_sel(df, gen=False):
 def loose_muon_sel(df, gen=False):
     """The loose muon selection"""
     return single_muon_sel(df, loose_cuts(), gen)
+
+
+def gen_filter_sel(df, gen=True):
+    """The generation level filter muon selection"""
+    return single_muon_sel(df, gen_filter_cuts(), gen)
 
 
 def get_n_events(data, selections=None, weight=None):
