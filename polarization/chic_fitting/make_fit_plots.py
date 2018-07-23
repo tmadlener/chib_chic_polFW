@@ -10,7 +10,7 @@ r.gROOT.SetBatch()
 from os.path import dirname
 
 import logging
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
 from utils.chic_fitting import ChicMassModel
@@ -45,6 +45,9 @@ def make_fit_res_plots(wsp, costh_bins, state, outdir, **kwargs):
         mass_model.plot_fit_params(wsp, pdfname.replace('.pdf', '_fit_res.pdf'),
                                    snapname)
 
+        if kwargs.get('ppars', False):
+            mass_model.print_fit_params(wsp, 'fit_res_costh_bin_{}'.format(i))
+
 
 def main(args):
     """Main"""
@@ -60,7 +63,7 @@ def main(args):
 
     make_fit_res_plots(ws, bin_sel_info['costh_bins'],
                        args.state, outdir, logy=args.logy,
-                       configfile=args.configfile)
+                       configfile=args.configfile, ppars=args.print_pars)
 
 
 if __name__ == '__main__':
@@ -77,6 +80,9 @@ if __name__ == '__main__':
                         default='', type=str)
     parser.add_argument('--logy', default=False, action='store_true',
                         help='Use log-scale on y-axis')
+    parser.add_argument('-p', '--print-pars', help='Print the free parameters '
+                        'to the terminal as well', action='store_true',
+                        default=False)
 
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--chic', action='store_const', dest='state',

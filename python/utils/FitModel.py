@@ -198,6 +198,24 @@ class FitModel(object):
         can.SaveAs(pdfname)
 
 
+    def print_fit_params(self, wsp, fitresname):
+        """
+        Print all free fit parameters
+
+        Args:
+            wsp (ROOT.RooWorkspace): workspace where the model is stored
+            fitresname (str): Name of fit results that will be printed
+        """
+        logging.debug('printing free parameters of %s', fitresname)
+        fit_res = wsp.genobj(fitresname)
+        free_params = fit_res.floatParsFinal()
+        for i in xrange(free_params.getSize()):
+            var = free_params[i]
+            print('{} = {:.4f} +/- {:.4f}'.format(var.GetName(), var.getVal(),
+                                                  var.getError()))
+
+
+
     def fix_params(self, wsp, param_vals):
         """
         Fix the parameters in the workspace to given or current values
