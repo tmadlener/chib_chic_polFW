@@ -500,3 +500,26 @@ def longest_match(string, poss_strings):
     match_strs.sort(key=lambda x: len(x))
 
     return match_strs[-1]
+
+
+def unique_w_key(elements, key):
+    """
+    Get unique elements of an iterable where uniqueness is defined by the key
+
+    Args:
+        elements (iterable): Elements that are possibly non-unique
+        key (callable): Function that takes one element of the iterable as
+            argument and returns a hashable object which will be used to compare
+            different elements
+
+    Returns:
+        list of unique elements. If there are multiple elements that evaluate to
+            the same value according to the key function the first element of
+            the elements will be used
+    """
+    seen = set()
+    # set.add returns None so that the first expression in the comprehension has
+    # two effects: adding it to the seen dict, and also using it in the list
+    # comprehension, but only if it is not already in seen
+    # see: https://stackoverflow.com/a/10024750
+    return [seen.add(key(e)) or e for e in elements if key(e) not in seen]

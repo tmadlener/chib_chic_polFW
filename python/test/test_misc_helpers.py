@@ -217,5 +217,18 @@ class TestGetBinMeans(unittest.TestCase):
         self.assertTrue(np.all(np.isclose(bin_centers, means, atol=5e-3, rtol=0)))
 
 
+class TestUniqueWKey(unittest.TestCase):
+    def test_unique_w_key(self):
+        tuple_l = [(1, '1'), (2, '2'), (3, '1'), (4, '4'), (5, '5')]
+        unique_l = mh.unique_w_key(tuple_l, lambda e: e[1])
+        self.assertEqual(unique_l, [(1, '1'), (2, '2'), (4, '4'), (5, '5')])
+
+        unique_l = mh.unique_w_key(tuple_l, lambda e: e[0])
+        self.assertEqual(unique_l, tuple_l)
+
+        unique_l = mh.unique_w_key(tuple_l, lambda e: e[0] % 3)
+        self.assertEqual(unique_l, [(1, '1'), (2, '2'), (3, '1')])
+
+
 if __name__ == '__main__':
     unittest.main()

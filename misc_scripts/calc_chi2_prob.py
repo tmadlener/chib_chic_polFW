@@ -2,23 +2,30 @@
 """
 Script to calculate the chi2 probability of data to Toy MC predictions
 """
+import re
 import json
 import numpy as np
+import sympy as sp
 
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
 
+from scipy.stats import norm, chi2
 from itertools import product
 
 from utils.symbolic import lth_1, lth_2
 from utils.roofit_utils import get_var_err
-from utils.hist_utils import get_binning, divide
+from utils.hist_utils import divide
 from utils.graph_utils import get_errors
+from utils.plot_helpers import mkplot, setup_legend
+from utils.misc_helpers import unique_w_key
+
 
 # data event numbers (from costh integrated fit)
 N_CHIC1 = 63139.0
 N_CHIC2 = 28114.0
+
 
 def get_fit_graph(wsp, costh_bins, costh_means):
     """
@@ -55,7 +62,7 @@ def calc_chi2(pred_hist, data_graph):
     data_central = np.array(data_graph.GetY())
     _, _, data_err, _ = get_errors(data_graph)
 
-    return np.sum((pred - data_central) / data_err)**2
+    return np.sum(((pred - data_central) / data_err)**2)
 
 
 def get_ratio_combs(chi1_hists, chi2_hists):
@@ -63,6 +70,32 @@ def get_ratio_combs(chi1_hists, chi2_hists):
     Get all the possible ratio combinations
     """
     return product(chi1_hists, chi2_hists)
+
+
+def get_delta_lambda(chi1_name, chi2_name):
+    """
+    Get the delta lambda from the chi1 and the chi2 name
+    """
+    ratio_rgx = r'([0-9]o?[0-9]?)'
+    chi1_rgx = r'.*_R_' + ratio_rgx
+    chi2_rgx = r'.*_R1_' + ratio_rgx + '_R2_' + ratio_rgx
+
+    lth1 = None
+    lth2 = None
+
+    m = re.search(chi1_rgx, chi1_name)
+    if m:
+        R = sp.S(m.group(1).replace('o', '/'))
+        lth1 = lth_1(R=R)
+
+    m = re.search(chi2_rgx, chi2_name)
+    if m:
+        R1 = sp.S(m.group(1).replace('o', '/'))
+        R2 = sp.S(m.group(2).replace('o', '/'))
+
+        lth2 = lth_2(R1=R1, R2=R2)
+
+    return lth2 - lth1
 
 
 def main(args):
@@ -83,6 +116,7 @@ def main(args):
     ratio_combs = get_ratio_combs([h for h in histlist if 'chic1' in h],
                                   [h for h in histlist if 'chic2' in h])
 
+    ratios = []
     for chi1_hist, chi2_hist in ratio_combs:
         # Scale individual histograms to data numbers
         h_chi1 = histfile.Get(chi1_hist)
@@ -91,8 +125,39 @@ def main(args):
         h_chi2.Scale(N_CHIC2 / h_chi2.Integral())
         ratio = divide(h_chi2, h_chi1)
 
-        chi2 = calc_chi2(ratio, fit_graph)
-        print chi1_hist, chi2_hist, chi2, r.TMath.Prob(chi2, 4)
+        chisqu = calc_chi2(ratio, fit_graph)
+        # ratios['|'.join([chi2_hist, chi1_hist])] = ratio
+        ratios.append((get_delta_lambda(chi1_hist, chi2_hist),
+                       ratio, chisqu))
+
+
+    ratios.sort(key=lambda rr: sp.N(rr[0]))
+    # print before removing "duplicates"
+    for ratio in ratios:
+        print('Delta lambda = {}, chi2 = {:.2f}, p = {:.3e}, sigma = {:.1f}'
+              # .format(ratio[0], ratio[2], r.TMath.Prob(ratio[2], 4)))
+              .format(ratio[0], ratio[2], chi2.sf(ratio[2], 4),
+                      norm.isf(chi2.sf(ratio[2], 4))))
+
+    # only retain one of the possible delta lambda = 0 results
+    ratios = unique_w_key(ratios, lambda rr: rr[0])
+
+    leg = setup_legend(0.12, 0.12, 0.5, 0.4)
+    leg.SetNColumns(2)
+
+    plot_toy = [sp.S(x) for x in ['-8/5', '-1', '-1/3', '0', '4/3']]
+
+    can = mkplot([rr[1] for rr in ratios if rr[0] in plot_toy],
+                 yRange=[0, 0.55], yLabel='#chi_{c2} / #chi_{c1}',
+                 leg=leg,
+                 legEntries=['#Delta#lambda_{#theta} = ' + str(rr[0])
+                             for rr in ratios if rr[0] in plot_toy])
+
+    can = mkplot(fit_graph, can=can, leg=can.attached_tobjects[0],
+                 legEntries=['data'],
+                 attr=[{'color': 1, 'marker': 20, 'size': 1.5}], drawOpt='PE')
+
+    can.SaveAs('simple_chi2_overview_toy_data_comp.pdf')
 
 
 if __name__ == '__main__':
