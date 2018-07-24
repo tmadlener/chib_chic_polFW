@@ -12,19 +12,15 @@ r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
 
 from scipy.stats import norm, chi2
+from scipy.optimize import minimize
 from itertools import product
 
 from utils.symbolic import lth_1, lth_2
-from utils.roofit_utils import get_var_err
+from utils.roofit_utils import get_var_err, get_var
 from utils.hist_utils import divide
 from utils.graph_utils import get_errors
 from utils.plot_helpers import mkplot, setup_legend
 from utils.misc_helpers import unique_w_key
-
-
-# data event numbers (from costh integrated fit)
-N_CHIC1 = 63139.0
-N_CHIC2 = 28114.0
 
 
 def get_fit_graph(wsp, costh_bins, costh_means):
@@ -62,7 +58,13 @@ def calc_chi2(pred_hist, data_graph):
     data_central = np.array(data_graph.GetY())
     _, _, data_err, _ = get_errors(data_graph)
 
-    return np.sum(((pred - data_central) / data_err)**2)
+    def chisquare((norm,)):
+        return np.sum((( norm * pred - data_central) / data_err)**2)
+
+    min_res = minimize(chisquare, np.array(data_central[0]), method='nelder-mead')
+    fit_norm = min_res.x[0]
+
+    return np.sum(((fit_norm * pred - data_central) / data_err)**2), fit_norm
 
 
 def get_ratio_combs(chi1_hists, chi2_hists):
@@ -118,26 +120,24 @@ def main(args):
 
     ratios = []
     for chi1_hist, chi2_hist in ratio_combs:
-        # Scale individual histograms to data numbers
         h_chi1 = histfile.Get(chi1_hist)
-        h_chi1.Scale(N_CHIC1 / h_chi1.Integral())
+        h_chi1.Scale(1 / h_chi1.Integral())
         h_chi2 = histfile.Get(chi2_hist)
-        h_chi2.Scale(N_CHIC2 / h_chi2.Integral())
+        h_chi2.Scale(1 / h_chi2.Integral())
         ratio = divide(h_chi2, h_chi1)
 
-        chisqu = calc_chi2(ratio, fit_graph)
-        # ratios['|'.join([chi2_hist, chi1_hist])] = ratio
+        chisqu, fit_norm = calc_chi2(ratio, fit_graph)
         ratios.append((get_delta_lambda(chi1_hist, chi2_hist),
-                       ratio, chisqu))
-
+                       ratio, chisqu, fit_norm))
+        ratio.Scale(fit_norm)
 
     ratios.sort(key=lambda rr: sp.N(rr[0]))
     # print before removing "duplicates"
     for ratio in ratios:
-        print('Delta lambda = {}, chi2 = {:.2f}, p = {:.3e}, sigma = {:.1f}'
-              # .format(ratio[0], ratio[2], r.TMath.Prob(ratio[2], 4)))
-              .format(ratio[0], ratio[2], chi2.sf(ratio[2], 4),
-                      norm.isf(chi2.sf(ratio[2], 4))))
+        print('Delta lambda = {}, N = {:.3f}, chi2 = {:.2f}, p = {:.3e}, sigma = {:.1f}'
+              .format(ratio[0], ratio[3], ratio[2],
+                      chi2.sf(ratio[2], fit_graph.GetN() - 1),
+                      norm.isf(chi2.sf(ratio[2], fit_graph.GetN() - 1))))
 
     # only retain one of the possible delta lambda = 0 results
     ratios = unique_w_key(ratios, lambda rr: rr[0])
@@ -148,7 +148,7 @@ def main(args):
     plot_toy = [sp.S(x) for x in ['-8/5', '-1', '-1/3', '0', '4/3']]
 
     can = mkplot([rr[1] for rr in ratios if rr[0] in plot_toy],
-                 yRange=[0, 0.55], yLabel='#chi_{c2} / #chi_{c1}',
+                 yRange=[0, 0.65], yLabel='#chi_{c2} / #chi_{c1}',
                  leg=leg,
                  legEntries=['#Delta#lambda_{#theta} = ' + str(rr[0])
                              for rr in ratios if rr[0] in plot_toy])
@@ -157,7 +157,7 @@ def main(args):
                  legEntries=['data'],
                  attr=[{'color': 1, 'marker': 20, 'size': 1.5}], drawOpt='PE')
 
-    can.SaveAs('simple_chi2_overview_toy_data_comp.pdf')
+    can.SaveAs('simple_chi2_overview_toy_data_comp_5bins.pdf')
 
 
 if __name__ == '__main__':
