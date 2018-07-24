@@ -5,6 +5,8 @@ Tests for misc_helpers functions
 
 import unittest
 
+import ROOT as r
+r.PyConfig.IgnoreCommandLineOptions = True
 import pandas as pd
 import numpy as np
 
@@ -228,6 +230,51 @@ class TestUniqueWKey(unittest.TestCase):
 
         unique_l = mh.unique_w_key(tuple_l, lambda e: e[0] % 3)
         self.assertEqual(unique_l, [(1, '1'), (2, '2'), (3, '1')])
+
+
+class TestGetNpFromTMatrix(unittest.TestCase):
+    def test_get_symmetric(self):
+        n_dim = 3
+
+        # fill a matrix
+        matrix = r.TMatrixTSym(float)(n_dim)
+        # create a symmetric random matrix
+        m_matrix = np.random.uniform(size=(n_dim, n_dim))
+        m_matrix = (m_matrix + m_matrix.T) / 2
+
+        # TODO: There should be a way to write directly to the TMatrixT buffer,
+        # but I currently can't seem to get the types to match
+        for i in xrange(n_dim):
+            for j in xrange(n_dim):
+                matrix[i][j] = m_matrix[i][j]
+
+        # some (trivial) setup tests
+        self.assertEqual(len(m_matrix), matrix.GetNrows())
+        self.assertEqual(len(m_matrix[0]), matrix.GetNcols())
+
+        np_matrix = mh.get_np_from_tmatrix(matrix)
+
+        self.assertEqual(m_matrix.shape, np_matrix.shape)
+        self.assertTrue(np.allclose(np_matrix, m_matrix, atol=1e-6, rtol=0))
+
+
+    def test_arbitrary_matrix(self):
+        n_cols = 3
+        n_rows = 4
+
+        matrix = r.TMatrixT(float)(n_rows, n_cols)
+        m_matrix = np.random.uniform(size=(n_rows, n_cols))
+        for i in xrange(n_rows):
+            for j in xrange(n_cols):
+                matrix[i][j] = m_matrix[i][j]
+
+        # some (trivial) setup tests
+        self.assertEqual(len(m_matrix), matrix.GetNrows())
+        self.assertEqual(len(m_matrix[0]), matrix.GetNcols())
+
+        np_matrix = mh.get_np_from_tmatrix(matrix)
+        self.assertEqual(m_matrix.shape, np_matrix.shape)
+        self.assertTrue(np.allclose(np_matrix, m_matrix, atol=1e-6, rtol=0))
 
 
 if __name__ == '__main__':

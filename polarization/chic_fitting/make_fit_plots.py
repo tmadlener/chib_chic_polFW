@@ -48,6 +48,10 @@ def make_fit_res_plots(wsp, costh_bins, state, outdir, **kwargs):
         if kwargs.get('ppars', False):
             mass_model.print_fit_params(wsp, 'fit_res_costh_bin_{}'.format(i))
 
+        if kwargs.get('corr_matrix', False):
+            mass_model.plot_corr_matrix(wsp, 'fit_res_costh_bin_{}'.format(i),
+                                        pdfname.replace('.pdf', '_corrmat.pdf'))
+
 
 def main(args):
     """Main"""
@@ -63,7 +67,8 @@ def main(args):
 
     make_fit_res_plots(ws, bin_sel_info['costh_bins'],
                        args.state, outdir, logy=args.logy,
-                       configfile=args.configfile, ppars=args.print_pars)
+                       configfile=args.configfile, ppars=args.print_pars,
+                       corr_matrix=args.corr_matrix)
 
 
 if __name__ == '__main__':
@@ -83,6 +88,9 @@ if __name__ == '__main__':
     parser.add_argument('-p', '--print-pars', help='Print the free parameters '
                         'to the terminal as well', action='store_true',
                         default=False)
+    parser.add_argument('-c', '--corr-matrix', help='Make a plot of the corr '
+                        'matrix of all the free parameters', default=False,
+                        action='store_true')
 
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--chic', action='store_const', dest='state',

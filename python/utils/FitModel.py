@@ -3,11 +3,16 @@
 import ROOT as r
 import ROOT.RooFit as rf
 
+import seaborn as sb
+import matplotlib.pyplot as plt
+
 import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
-from utils.roofit_utils import ws_import, get_var, get_chi2_ndf
+from utils.roofit_utils import (
+    ws_import, get_var, get_chi2_ndf, get_corr_matrix
+)
 from utils.misc_helpers import create_random_str
 from utils.plot_helpers import setup_latex, put_on_latex
 
@@ -214,6 +219,20 @@ class FitModel(object):
             print('{} = {:.4f} +/- {:.4f}'.format(var.GetName(), var.getVal(),
                                                   var.getError()))
 
+
+    def plot_corr_matrix(self, wsp, fitresname, pdfname):
+        """
+        Print the correlation matrix of a given fitresult
+        """
+        fit_res = wsp.genobj(fitresname)
+        corr_matrix = get_corr_matrix(fit_res)
+        fig = plt.figure(figsize=corr_matrix.shape)
+
+        sb.heatmap(corr_matrix, annot=True, fmt='.2f', square=True)
+        plt.xticks(rotation=90)
+        plt.yticks(rotation=0)
+
+        fig.savefig(pdfname, bbox_inches='tight')
 
 
     def fix_params(self, wsp, param_vals):

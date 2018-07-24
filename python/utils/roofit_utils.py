@@ -6,6 +6,10 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
+import pandas as pd
+
+from utils.misc_helpers import get_np_from_tmatrix
+
 
 def ws_import(wsp, *args):
     """
@@ -41,6 +45,7 @@ def get_var(wsp, varname):
     var = wsp.function(varname)
     if var:
         return var
+
 
 def get_var_err(wsp, varname, fit_res=None):
     """
@@ -96,3 +101,26 @@ def get_chi2_ndf(fit_res, frame, pdfname, histname):
                   .format(n_float_pars, n_bins, chi2_ndf))
 
     return chi2, ndf
+
+
+def get_corr_matrix(fit_result):
+    """
+    Get the correlation matrix from the passed fit_result as a numpy 2D array
+
+    Args:
+        fit_result (ROOT.RooFitResult): Fit result for which the correlation
+            matrix of the free parameters should be obtained
+
+    Returns:
+        pandas.DataFrame: A dataframe containing the correlation matrix and the
+            names of the variables as columns and indices (to facilitate
+            plotting via seaborn)
+    """
+    # corr matrix of free params
+    corr_matrix = get_np_from_tmatrix(fit_result.correlationMatrix())
+    # Since the list comprehension tries to access the n+1 element of the
+    # RooArgList we have to do this in two steps manually
+    float_pars = fit_result.floatParsFinal()
+    float_pars = [float_pars[i].GetName() for i in xrange(len(float_pars))]
+
+    return pd.DataFrame(corr_matrix, index=float_pars, columns=float_pars)

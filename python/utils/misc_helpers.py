@@ -370,6 +370,23 @@ def get_vals_from_rwbuffer(rw_buffer, n_points):
     return np.array(vals)
 
 
+def get_np_from_tmatrix(tmatrix):
+    """
+    Convert a TMatrixT<T> to a numpy array
+
+    Args:
+        tmatrix (TMatrixT<T>): The ROOT matrix to convert into a numpy array
+
+    Returns:
+        numpy.array: a 2D numpy array with the values of the tmatrix
+    """
+    n_cols = tmatrix.GetNcols()
+    n_rows = tmatrix.GetNrows()
+
+    raw_vals = get_vals_from_rwbuffer(tmatrix.GetMatrixArray(), n_cols * n_rows)
+    return np.reshape(raw_vals, (n_rows, n_cols))
+
+
 @decorator
 def log_key_error(func, *args):
     """
