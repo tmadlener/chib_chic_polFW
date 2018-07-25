@@ -26,6 +26,7 @@ class ChibMassModel(FitModel):
             self.model_strings = data["chi_model"]
             self.fitvarmin = data["chi_fitvar"]["min"]
             self.fitvarmax = data["chi_fitvar"]["max"]
+            self.nevent_vars = data['sweight_yields']
 
         self.components = (
             ('chib1', 7, 417, '#chi_{b1}'),

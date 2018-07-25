@@ -18,7 +18,7 @@ from utils.misc_helpers import (
     get_costh_binning, get_bin_means, cond_mkdir_file, get_bin_cut_root,
     chunks
 )
-from utils.roofit_utils import get_var, ws_import
+from utils.roofit_utils import get_var, ws_import, get_args
 from utils.chic_fitting import ChicMassModel
 from utils.jpsi_fitting import JpsiMassModel
 from utils.chib_fitting import ChibMassModel
@@ -49,6 +49,21 @@ def get_ws_vars(state, massmodel=None):
     return wsvars[state]
 
 
+def get_shape_params(wsp, savename, mass_model):
+    """
+    Get the (free) shape parameters of the model and the fit result
+    corresponding to the savename
+    """
+    fit_res = wsp.genobj('fit_res_{}'.format(savename))
+    all_params = [p.GetName() for p in get_args(fit_res.floatParsFinal())]
+    event_params = mass_model.nevent_vars
+
+    for evpar in event_params:
+        all_params.remove(evpar)
+
+    return all_params
+
+
 def import_data(wsp, datatree, datavars):
     """
     Import all data that is necessary to the workspace
@@ -76,7 +91,7 @@ def import_data(wsp, datatree, datavars):
     ws_import(wsp, data)
 
 
-def do_binned_fits(mass_model, wsp, costh_bins):
+def do_binned_fits(mass_model, wsp, costh_bins, refit=False):
     """
     Do the fits in all costh bins
     """
@@ -84,6 +99,15 @@ def do_binned_fits(mass_model, wsp, costh_bins):
         bin_sel = get_bin_cut_root('TMath::Abs(costh_HX)', *ctbin)
         savename = 'costh_bin_{}'.format(ibin)
         mass_model.fit(wsp, savename, bin_sel)
+        if refit:
+            # fix all but the event number variables to their current values
+            # in the workspace and refit them leaving only the event numbers
+            # free (and don't forget to release the shape again afterwards)
+            shape_par = get_shape_params(wsp, savename, mass_model)
+            mass_model.fix_params(wsp, [(sp, None) for sp in shape_par])
+            refit_sn = 'refit_costh_bin_{}'.format(ibin)
+            mass_model.fit(wsp, refit_sn, bin_sel)
+            mass_model.release_params(wsp, shape_par)
 
 
 def create_bin_info_json(state, nbins, datafile, fitfile, bininfo_file=None):
@@ -132,14 +156,14 @@ def rw_bin_sel_json(bininfo_file, datafile, updated_name=None):
     return costh_bins
 
 
-def run_fit(model, tree, costh_bins, datavars, outfile):
+def run_fit(model, tree, costh_bins, datavars, outfile, refit=False):
     """Import data, run fits and store the results"""
     wsp = r.RooWorkspace('ws_mass_fit')
     import_data(wsp, tree, datavars)
     model.define_model(wsp)
     wsp.Print()
 
-    do_binned_fits(model, wsp, costh_bins)
+    do_binned_fits(model, wsp, costh_bins, refit)
     wsp.writeToFile(outfile)
 
 
@@ -155,7 +179,7 @@ def run_chic_fit(args):
     dvars = get_ws_vars('chic')
     dataf = r.TFile.Open(args.datafile)
     tree = dataf.Get('chic_tuple')
-    run_fit(model, tree, costh_binning, dvars, args.outfile)
+    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit)
 
 
 def run_chib_fit(args):
@@ -169,7 +193,7 @@ def run_chib_fit(args):
     dvars = get_ws_vars('chib', model)
     dataf = r.TFile.Open(args.datafile)
     tree = dataf.Get('data')
-    run_fit(model, tree, costh_binning, dvars, args.outfile)
+    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit)
 
 
 def run_jpsi_fit(args):
@@ -183,7 +207,7 @@ def run_jpsi_fit(args):
     dvars = get_ws_vars('jpsi')
     dataf = r.TFile.Open(args.datafile)
     tree = dataf.Get('jpsi_tuple')
-    run_fit(model, tree, costh_binning, dvars, args.outfile)
+    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit)
 
 
 if __name__ == '__main__':
@@ -208,6 +232,10 @@ if __name__ == '__main__':
                                'the costh binning information (output). If not '
                                'provided a default name will be used',
                                default=None)
+    global_parser.add_argument('--refit', help='Fit the shape parameters and '
+                               'the number of events and then rerun the fit '
+                               'after fixing the shape parameters',
+                               default=False, action='store_true')
 
     # Add the chic parser
     chic_parser = subparsers.add_parser('chic', description='Run the fits using'

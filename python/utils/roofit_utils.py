@@ -103,6 +103,24 @@ def get_chi2_ndf(fit_res, frame, pdfname, histname):
     return chi2, ndf
 
 
+def get_args(rooarglist):
+    """
+    Get all elements from a ROOT.RooArgList.
+
+    In principle it is possible to iterate over a RooArgList, however, it does
+    not stop at the last element, resulting in a possible null-pointer
+    dereference. This is just a helper function to circumvent this
+
+    Args:
+        rooarglist (ROOT.RooArgList)
+
+    Returns:
+        a generator expression yielding all elements of the passed RooArgList
+    """
+    n_elem = len(rooarglist) # Why ever this works
+    return (rooarglist[i] for i in xrange(n_elem))
+
+
 def get_corr_matrix(fit_result):
     """
     Get the correlation matrix from the passed fit_result as a numpy 2D array
@@ -118,9 +136,6 @@ def get_corr_matrix(fit_result):
     """
     # corr matrix of free params
     corr_matrix = get_np_from_tmatrix(fit_result.correlationMatrix())
-    # Since the list comprehension tries to access the n+1 element of the
-    # RooArgList we have to do this in two steps manually
-    float_pars = fit_result.floatParsFinal()
-    float_pars = [float_pars[i].GetName() for i in xrange(len(float_pars))]
+    float_pars = [p.GetName() for p in get_args(fit_result.floatParsFinal())]
 
     return pd.DataFrame(corr_matrix, index=float_pars, columns=float_pars)

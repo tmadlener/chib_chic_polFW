@@ -30,6 +30,7 @@ class FitModel(object):
         self.components = None
         self.mname = None
         self.legpos = None
+        self.nevent_vars = None
         raise NotImplementedError('__init__ has to be defined by derived class')
 
     def define_model(self, wsp):
@@ -253,9 +254,22 @@ class FitModel(object):
             else:
                 debug_msg = 'Fixing {} to {}'
 
-            logging.debug(debug_msg.format(par, val))
+            logging.info(debug_msg.format(par, val))
             get_var(wsp, par).setVal(val)
             get_var(wsp, par).setConstant(True)
+
+
+    def release_params(self, wsp, param_names):
+        """
+        Release the parameters in the workspace
+
+        Args:
+            wsp (ROOT.RooWorkspace): workspace containing all the variables
+            param_names (list of strings): Names of the parameters in the
+                workspace to release
+        """
+        for par in param_names:
+            get_var(wsp, par).setConstant(False)
 
 
     def _setup_legend(self):

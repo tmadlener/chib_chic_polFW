@@ -22,6 +22,7 @@ class JpsiMassModel(FitModel):
         self.full_model = 'M_fullModel_jpsi'
         self.mname = mname
         self.legpos = (0.7, 0.8, 0.9, 0.9)
+        self.nevent_vars = ['Njpsi', 'Nbkg_jpsi']
         self.components = (
             (self.signal, 7, 632, 'J/#psi'),
             (self.bkg_model, 7, 1, 'BG')
@@ -99,8 +100,10 @@ class JpsiMassModel(FitModel):
 
         self.fix_params(wsp, par_fix_vals)
 
-        wsp.factory('Njpsi[1e6, 0, 5e7]')
-        wsp.factory('Nbkg_jpsi[1e5, 0, 5e6]')
+        wsp.factory('{}[1e6, 0, 5e7]'.format(self.nevent_vars[0])) # Njpsi
+        wsp.factory('{}[1e5, 0, 5e6]'.format(self.nevent_vars[-1])) # Nbkg_jpsi
 
-        wsp.factory('SUM::{}(Njpsi * {},  Nbkg_jpsi * {})'
-                    .format(self.full_model, self.signal, self.bkg_model))
+        wsp.factory('SUM::{}({} * {},  {} * {})'
+                    .format(self.full_model,
+                            self.nevent_vars[0], self.signal,
+                            self.nevent_vars[-1], self.bkg_model))

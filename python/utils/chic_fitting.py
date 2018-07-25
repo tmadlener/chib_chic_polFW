@@ -29,6 +29,8 @@ class ChicMassModel(FitModel):
         self.signal = 'M_signal'
         self.bkg_model = 'M_background'
         self.legpos = (0.18, 0.5, 0.38, 0.7)
+        self.nevent_vars = ['Nchic0', 'Nchic1', 'Nchic2', 'Nbkg']
+
         self.components = (
             (self.chic0, 7, 901, '#chi_{c0}'),
             (self.chic1, 7, 417, '#chi_{c1}'),
@@ -84,31 +86,32 @@ class ChicMassModel(FitModel):
                    .format(self.chic0, self.mname))
 
         ## background
-        ws.factory('q01S[3.1, 3.0, 3.2]')
-        ws.factory('alpha1[0.6, 0, 5.0]')
-        ws.factory('beta1[-2.5, -10, 0]')
+        # ws.factory('q01S[3.1, 3.0, 3.2]')
+        # ws.factory('alpha1[0.6, 0, 5.0]')
+        # ws.factory('beta1[-2.5, -10, 0]')
 
-        a1 = r.RooFormulaVar('a1', 'TMath::Abs(@0 - @1)',
-                             r.RooArgList(get_var(ws, 'chicMass'),
-                                          get_var(ws, 'q01S')))
-        b1 = r.RooFormulaVar('b1', '@0 * (@1 - @2)',
-                             r.RooArgList(get_var(ws, 'beta1'),
-                                          get_var(ws, 'chicMass'),
-                                          get_var(ws, 'q01S')))
-        signum1 = r.RooFormulaVar('signum1',
-                                  '(TMath::Sign(-1., @0 - @1) + 1) / 2.',
-                                  r.RooArgList(get_var(ws, self.mname),
-                                               get_var(ws, 'q01S')))
-        ws_import(ws, r.RooArgSet(a1, b1, signum1))
+        # a1 = r.RooFormulaVar('a1', 'TMath::Abs(@0 - @1)',
+        #                      r.RooArgList(get_var(ws, 'chicMass'),
+        #                                   get_var(ws, 'q01S')))
+        # b1 = r.RooFormulaVar('b1', '@0 * (@1 - @2)',
+        #                      r.RooArgList(get_var(ws, 'beta1'),
+        #                                   get_var(ws, 'chicMass'),
+        #                                   get_var(ws, 'q01S')))
+        # signum1 = r.RooFormulaVar('signum1',
+        #                           '(TMath::Sign(-1., @0 - @1) + 1) / 2.',
+        #                           r.RooArgList(get_var(ws, self.mname),
+        #                                        get_var(ws, 'q01S')))
+        # ws_import(ws, r.RooArgSet(a1, b1, signum1))
 
-        # ws.factory('BK_p1[0, -1, 1]')
-        # ws.factory('BK_p2[0, -1, 1]')
-        # M_background = r.RooPolynomial('M_background', 'M_background', ws.var('chicMass'),
-        #                               r.RooArgList(ws.var('BK_p1'), ws.var('BK_p2')))
+        # M_background = r.RooGenericPdf(self.bkg_model, 'signum1 * pow (a1, alpha1) * exp(b1)',
+        #                                r.RooArgList(ws.function('a1'), ws.function('signum1'), ws.function('b1'),
+        #                                             ws.var('alpha1')))
 
-        M_background = r.RooGenericPdf(self.bkg_model, 'signum1 * pow (a1, alpha1) * exp(b1)',
-                                       r.RooArgList(ws.function('a1'), ws.function('signum1'), ws.function('b1'),
-                                                    ws.var('alpha1')))
+        # polynomial background
+        ws.factory('BK_p1[0, -1, 1]')
+        ws.factory('BK_p2[0, -1, 1]')
+        M_background = r.RooPolynomial('M_background', 'M_background', ws.var('chicMass'),
+                                      r.RooArgList(ws.var('BK_p1'), ws.var('BK_p2')))
 
         ws_import(ws, M_background)
 
@@ -121,32 +124,36 @@ class ChicMassModel(FitModel):
         # ws.var('beta1').setConstant(True)
 
         ## combine model
-        ws.factory('Nchic1[10000, 0, 200000]')
-        ws.factory('Nchic0[300, 0, 10000]')
-        ws.factory('Nbkg[30000, 0, 200000]')
+        ws.factory('{}[10000, 0, 200000]'.format(self.nevent_vars[1])) # Nchic1
+        ws.factory('{}[300, 0, 10000]'.format(self.nevent_vars[0])) # Nchic0
+        ws.factory('{}[30000, 0, 200000]'.format(self.nevent_vars[-1])) # Nbkg
 
         ## leave Nchic2 free and make ratio a formula var
-        ws.factory('Nchic2[10000, 0, 200000]')
+        ws.factory('{}[10000, 0, 200000]'.format(self.nevent_vars[2])) # Nchic2
         r_c2_c1 = r.RooFormulaVar('r_chic2_chic1', '@0 / @1',
-                                  r.RooArgList(get_var(ws, 'Nchic2'),
-                                               get_var(ws, 'Nchic1')))
+                                  r.RooArgList(get_var(ws, self.nevent_vars[2]),
+                                               get_var(ws, self.nevent_vars[1])))
         ws_import(ws, r_c2_c1)
 
         ## make ratio free and Nchic2 depend on it
         # ws.factory('r_chic2_chic1[0.5, 0, 1]')
-        # Nchic2 = r.RooFormulaVar('Nchic2', '@0 * @1',
+        # Nchic2 = r.RooFormulaVar(self.nevent_vars[2], '@0 * @1',
         #                          r.RooArgList(get_var(ws, 'r_chic2_chic1'),
-        #                                       get_var(ws, 'Nchic1')))
+        #                                       get_var(ws, self.nevent_vars[1])))
         # ws_import(ws, Nchic2)
 
 
         Nsignal = r.RooFormulaVar('Nsignal', '@0 + @1 + @2',
-                                  r.RooArgList(get_var(ws, 'Nchic1'),
-                                               get_var(ws, 'Nchic2'),
-                                               get_var(ws, 'Nchic0')))
+                                  r.RooArgList(get_var(ws, self.nevent_vars[1]),
+                                               get_var(ws, self.nevent_vars[2]),
+                                               get_var(ws, self.nevent_vars[0])))
         ws_import(ws, Nsignal)
 
-        ws.factory('SUM::{}(Nchic1 * {}, Nchic2 * {}, Nchic0 * {})'
-                   .format(self.signal, self.chic1, self.chic2, self.chic0))
-        ws.factory('SUM::{}(Nsignal * {}, Nbkg *  {})'
-                   .format(self.full_model, self.signal, self.bkg_model))
+        ws.factory('SUM::{}({} * {}, {} * {}, {} * {})'
+                   .format(self.signal,
+                           self.nevent_vars[1], self.chic1,
+                           self.nevent_vars[2], self.chic2,
+                           self.nevent_vars[0], self.chic0))
+        ws.factory('SUM::{}(Nsignal * {}, {} *  {})'
+                   .format(self.full_model, self.signal,
+                           self.nevent_vars[-1], self.bkg_model))

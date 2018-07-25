@@ -52,6 +52,25 @@ def make_fit_res_plots(wsp, costh_bins, state, outdir, **kwargs):
             mass_model.plot_corr_matrix(wsp, 'fit_res_costh_bin_{}'.format(i),
                                         pdfname.replace('.pdf', '_corrmat.pdf'))
 
+        if kwargs.get('refit', False):
+            snapname = 'snap_refit_costh_bin_{}'.format(i)
+            pdfname = '/'.join([outdir, 'mass_fit_{}_costh_bin_{}_refit.pdf'
+                              .format(state, i)])
+
+            mass_model.plot(wsp, pdfname, snapname, costh_cut, **kwargs)
+            mass_model.plot_fit_params(wsp,
+                                       pdfname.replace('.pdf', '_fit_res.pdf'),
+                                       snapname)
+
+            if kwargs.get('ppars', False):
+                mass_model.print_fit_params(wsp, 'fit_res_refit_costh_bin_{}'
+                                            .format(i))
+
+            if kwargs.get('corr_matrix', False):
+                mass_model.plot_corr_matrix(wsp, 'fit_res_refit_costh_bin_{}'
+                                            .format(i),
+                                            pdfname.replace('.pdf', '_corrmat.pdf'))
+
 
 def main(args):
     """Main"""
@@ -68,7 +87,7 @@ def main(args):
     make_fit_res_plots(ws, bin_sel_info['costh_bins'],
                        args.state, outdir, logy=args.logy,
                        configfile=args.configfile, ppars=args.print_pars,
-                       corr_matrix=args.corr_matrix)
+                       corr_matrix=args.corr_matrix, refit=args.refit)
 
 
 if __name__ == '__main__':
@@ -91,6 +110,8 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--corr-matrix', help='Make a plot of the corr '
                         'matrix of all the free parameters', default=False,
                         action='store_true')
+    parser.add_argument('--refit', help='Plot the refitted results as well',
+                        default=False, action='store_true')
 
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--chic', action='store_const', dest='state',
