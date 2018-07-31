@@ -115,10 +115,6 @@ constexpr std::array<Mass, 3> MassSettings::MchiPDG;
 constexpr Mass MassSettings::MpsiPDG;
 constexpr double MassSettings::Mprot;
 
-// global state variables necessary to hold the chi and psi mass in a given event
-// NOTE: when refactoring make these parameters that get passed around
-double Mchi;
-double Mpsi;
 
 const double PIG = TMath::Pi();
 
@@ -139,14 +135,15 @@ double func_rap_gen(double* /*x*/, double* /*par*/)
   return   1.;
 }
 
-double func_pT_gen(double* x, double* /*par*/)
+double func_pT_gen(double* x, double* p)
 {
   // const double beta = 3.45;  //  CHECK HERE FUNCTION AND PARAMETER VALUES: USE THOSE OF GLOBAL FIT (considering that this is a pT distribution, not a pT/M distribution)
   const double beta = 3.39924;  // same as in MC generation from Alberto
   // const double gamma = 0.73;
   const double gamma = 0.635858; // same as in MC generation from Alberto
   double pT = x[0];
-  return pT * pow( 1. + 1./(beta - 2.) * pT/Mchi*pT/Mchi / gamma, -beta  );
+  const double mchi = p[0];
+  return pT * pow( 1. + 1./(beta - 2.) * pT/mchi*pT/mchi / gamma, -beta  );
 }
 
 
@@ -223,7 +220,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
   // jpsiMass = static_cast<TF1*>(modelFile->Get("jpsi_mass"));
 
 
-  TF1* pT_distr = new TF1("pT_distr",func_pT_gen,pT_min,pT_max,0);
+  TF1* pT_distr = new TF1("pT_distr",func_pT_gen,pT_min,pT_max,1);
   TF1* rap_distr = new TF1("rap_distr",func_rap_gen,y_min,y_max,0);
 
 
@@ -240,6 +237,8 @@ void chicpolgen(const gen_config& config = gen_config{}){
   double y_chi;         tr->Branch( "gen_chicRap",          &y_chi);
   double y;             tr->Branch( "gen_JpsiRap",              &y);
 
+  double Mchi;
+  double Mpsi;
   tr->Branch("gen_chicMass", &Mchi);
   tr->Branch("gen_JpsiMass", &Mpsi);
 
@@ -379,7 +378,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
     const double Phi_chi   = 2. * PIG * gRandom->Rndm(); // needed for any of the two cases
 
     // pT:
-
+    pT_distr->SetParameter(0, Mchi);
     pT_chi = pT_distr->GetRandom();
 
 #if GENRAPIDITY == 1
