@@ -437,11 +437,36 @@ def _set_ratio_properties(hist):
     hist.GetYaxis().SetLabelSize(0.08)
     hist.GetXaxis().SetLabelSize(0.08)
     hist.GetYaxis().SetTitleOffset(0.5)
+    hist.GetYaxis().SetNdivisions(505)
 
 
 def baseline_plot(baseline, compplots, **kwargs):
     """
-    Make a plot and compare the compplots with the baseline plots
+    Make a plot and compare the compplots with the baseline plots. Divides the
+    plot into an absolute value plot in the top and a ratio plot using the
+    baseline as denominator in the bottom.
+
+    Args:
+        baseline (plotable ROOT object): The baseline plotable that will be used
+            as comparison for all the compplots
+        compplots (plotable ROOT objects): The plotables that should be compared
+            to the baseline
+
+    Keyword Args:
+        basename (str): Legend entry to be used for the baseline
+        legEntries (list of str): legend entries to be used for the compplots
+        yRangeRatio (tuple of floats): The minimum and maximum y-value for the
+            ratio pad
+        compname (str): Name describing the whole of the compplots that will be
+            used in the y-axis of the ratio pad
+
+    Other Keyword Args are forwarded to mkplot.
+
+    Returns:
+        TCanvasWrapper: Transparent wrapper holding the plot and all its objects
+
+    See Also:
+        mkplot, plot_on_canvas
     """
     comp_attr = kwargs.pop('attr', None)
     if comp_attr is None:
