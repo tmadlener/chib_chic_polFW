@@ -440,6 +440,19 @@ def _set_ratio_properties(hist):
     hist.GetYaxis().SetNdivisions(505)
 
 
+def _get_ratio_lines(ratio_hist, vals):
+    """
+    Get the lines to put into the ratio pad at the given values
+    """
+    xmax, xmin = get_x_max(ratio_hist), get_x_min(ratio_hist)
+    lines = []
+    for val in make_iterable(vals):
+        lines.append(r.TLine(xmin, val, xmax, val))
+        set_attributes(lines[-1], width=2, line=2, color=12)
+
+    return lines
+
+
 def baseline_plot(baseline, compplots, **kwargs):
     """
     Make a plot and compare the compplots with the baseline plots. Divides the
@@ -459,6 +472,8 @@ def baseline_plot(baseline, compplots, **kwargs):
             ratio pad
         compname (str): Name describing the whole of the compplots that will be
             used in the y-axis of the ratio pad
+        putline (float or list of floats): Put horizontal lines into the ratio
+            pad at the given values
 
     Other Keyword Args are forwarded to mkplot.
 
@@ -527,6 +542,15 @@ def baseline_plot(baseline, compplots, **kwargs):
                   yLabel=' / '.join([kwargs.pop('compname', 'distribution(s)'),
                                      base_name]),
                   yRange=kwargs.pop('yRangeRatio', [None, None]), **kwargs)
+
+    putlines = kwargs.pop('putline', None)
+    if putlines is not None:
+        # Simply assume that all others follow the same as the first one
+        lines = _get_ratio_lines(rpad.pltables[0], putlines)
+        for line in lines:
+            line.Draw()
+
+        rpad.add_pltables(lines)
 
     # attach all plots to the returned canvas
     if not isinstance(can, TCanvasWrapper):
