@@ -5,6 +5,7 @@
 
 #include <utility>
 #include <string>
+#include <chrono>
 
 #include "TF1.h"
 #include "TRotation.h"
@@ -16,7 +17,7 @@
 class TTree;
 
 #define GENRAPIDITY 1
-//#define DONT_WRITE_LORENTZ // for 10000 events same time (about 20 seconds) with and without writing TLorentz
+#define DONT_WRITE_LORENTZ // to reduce size of files, but for 10000 events same time (about 20 seconds) with and without writing TLorentz
 
 struct Mass {
   double central = 0;
@@ -201,6 +202,21 @@ private:
   //
   // END BRANCHES
 
+  // Performance
+  std::chrono::nanoseconds total_time_chigen{};
+  ULong64_t total_number_chigen = 0;
+  std::chrono::nanoseconds total_time_dimuongen{};
+  ULong64_t total_number_dimuongen = 0;
+  std::chrono::nanoseconds total_time_anglesgen{};
+  ULong64_t total_number_anglesgen = 0;
+  std::chrono::nanoseconds total_time_smearing{};
+  ULong64_t total_number_smearing = 0;
+  std::chrono::nanoseconds total_time_fillbranches{};
+  ULong64_t total_number_fillbranches = 0;
+
+  void print_performance();
+
+
 public:
   ChiPolarizationGenerator(const std::string &filename) :
     outfilename(filename),
@@ -235,7 +251,9 @@ public:
     photonCrystalBall->FixParameter(3, 1.9); // N
   }
 
-  ~ChiPolarizationGenerator() {}
+  ~ChiPolarizationGenerator() {
+    print_performance();
+  }
 
   void generate(ULong64_t n = 1000000);
   void setChiHelicityFractions(double R_1, double R_2 = 0)

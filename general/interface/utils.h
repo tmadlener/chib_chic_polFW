@@ -55,6 +55,22 @@ private:
   std::mutex *mtx;
 };
 
+
+struct addTime {
+  explicit addTime(std::chrono::nanoseconds &duration):
+    total_time(duration),
+    start(std::chrono::system_clock::now()) { }
+  ~addTime() {
+    auto end = std::chrono::system_clock::now();
+    std::chrono::nanoseconds duration_ms = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start);
+    total_time += duration_ms;
+    //std::cout << "ADDED " << duration_ms.count() << " ns" << std::endl;
+  }
+private:
+  std::chrono::system_clock::time_point start;
+  std::chrono::nanoseconds &total_time;
+};
+
 struct scopeLog {
   explicit scopeLog(const std::string &description) :
     desc(description)

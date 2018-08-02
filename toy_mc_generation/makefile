@@ -25,5 +25,5 @@ chibgen: generate_chibpol.o ChiPolarizationGenerator.o
 	$(CXX) $^ -o $@ $(INCS) $(ROOTLIBS) $(ROOTCXXFLAGS) $(CXXFLAGS) $(ROOFITLIBS)
 generate_chibpol.o: generate_chibpol.cc ChiPolarizationGenerator.h  $(GENINCDIR)/ArgParser.h $(GENINCDIR)/utils.h
 	$(CXX) $< -o $@ $(INCS) $(ROOTLIBS) $(ROOTCXXFLAGS) $(CXXFLAGS) $(ROOFITLIBS) -c
-ChiPolarizationGenerator.o: ChiPolarizationGenerator.cc ChiPolarizationGenerator.h $(DEPENDENCIES)
+ChiPolarizationGenerator.o: ChiPolarizationGenerator.cc ChiPolarizationGenerator.h $(DEPENDENCIES) $(GENINCDIR)/utils.h
 	$(CXX) $< -o $@ $(INCS) $(ROOTLIBS) $(ROOTCXXFLAGS) $(CXXFLAGS) $(ROOFITLIBS) -c

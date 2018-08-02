@@ -1,7 +1,9 @@
 #include "ChiPolarizationGenerator.h"
 
-#include "smearing.h"
-#include "efficiencies.h"
+#include <iostream>
+#include <iomanip>
+#include <string>
+#include <sstream>
 
 #include "Riostream.h"
 #include "TSystem.h"
@@ -12,11 +14,12 @@
 #include "TRandom3.h"
 #include "TFile.h"
 
-#include <iostream>
-#include <string>
-#include <sstream>
-
+#include "smearing.h"
+#include "efficiencies.h"
 #include "calcAngles.h"
+#include "utils.h"
+
+
 
 const double PI = TMath::Pi();
 const double PIover180 = PI / 180.;
@@ -26,6 +29,8 @@ template <typename T> int sgn(T val) {
 
 TLorentzVector* ChiPolarizationGenerator::generate_chi()
 {
+  addTime time(total_time_chigen);
+  ++total_number_chigen;
   // Generation of chi in the CMS of the proton-proton event
 
   // M:
@@ -34,32 +39,47 @@ TLorentzVector* ChiPolarizationGenerator::generate_chi()
   // 2) in data the chi mass is actually the mass from the KVF but we assume that we can treat it as a Q-value
   //    (M_mumugamma - M_mumu + M_pdg_dimuon), so we reverse it to get to the chic mass we actually want to generate
 
-  double tmp_chi_mass = (chi_width_is_zero) ? chi_mass.central : gRandom->Gaus(chi_mass.central, chi_mass.width);
-  tmp_dimuon_M = (dimuon_width_is_zero) ? dimuon_mass.central : gRandom->Gaus(dimuon_mass.central, dimuon_mass.width);
+  double tmp_chi_mass;
+  {
+    //stopwatch s("random mass");
+    tmp_chi_mass = (chi_width_is_zero) ? chi_mass.central : gRandom->Gaus(chi_mass.central, chi_mass.width);
+    tmp_dimuon_M = (dimuon_width_is_zero) ? dimuon_mass.central : gRandom->Gaus(dimuon_mass.central, dimuon_mass.width);
+  }
+
   //The following line is for compatibility reasons:
   Mchic = tmp_chi_mass;
+  //
 
   tmp_chi_M = tmp_chi_mass - dimuon_mass_pdg + tmp_dimuon_M;
 
-  // pT
-  pT_distr->SetParameter(0, tmp_chi_M);
-  double chi_pT = pT_distr->GetRandom();
+  // pT 
+  double chi_pT;
+  {
+    //stopwatch s("random pT");
+    pT_distr->SetParameter(0, tmp_chi_M);
+    chi_pT = pT_distr->GetRandom();
+  }
 
   // Phi
-  double chi_phi = 2. * PI * gRandom->Rndm();
-
+  double chi_phi;
+  {
+    //stopwatch s("random chi");
+    chi_phi = 2. * PI * gRandom->Rndm();
+  }
   TLorentzVector* chi = new TLorentzVector();
 
+  double rnd_rap;
+  {
+    //stopwatch s("random rap");
+    const int rnd_sign = sgn<>(gRandom->Uniform(-1., 1.));
+    rnd_rap = rap_distr->GetRandom() * rnd_sign; // this value is also used as random eta
+  }
 #if GENRAPIDITY == 1
   // pL
-  int rap_sign = sgn<>(gRandom->Uniform(-1., 1.));
-  double chi_y = rap_distr->GetRandom() * rap_sign;
-  double chi_pL = 0.5 * sqrt(tmp_chi_M*tmp_chi_M + chi_pT*chi_pT) * (exp(chi_y) - exp(-chi_y));
+  double chi_pL = 0.5 * sqrt(tmp_chi_M*tmp_chi_M + chi_pT*chi_pT) * (exp(rnd_rap) - exp(-rnd_rap));
   chi->SetXYZM(chi_pT * cos(chi_phi), chi_pT * sin(chi_phi), chi_pL, tmp_chi_M);
 #else
-  const int eta_sign = sgn<>(gRandom->Uniform(-1., 1.));
-  const double genEta = rap_distr->GetRandom() * eta_sign;
-  chi->SetPtEtaPhiM(chi_pT, genEta, chi_phi, tmp_chi_M);
+  chi->SetPtEtaPhiM(chi_pT, rnd_rap, chi_phi, tmp_chi_M);
 #endif
 
 #ifdef TESTING
@@ -71,6 +91,9 @@ TLorentzVector* ChiPolarizationGenerator::generate_chi()
 
 std::pair< Angles, Angles > ChiPolarizationGenerator::generate_dimuon_angles()
 {
+  addTime time(total_time_anglesgen);
+  ++total_number_anglesgen;
+
   // Generation of full angular distribution
   const double angdistr_max = 0.02;
   double angdistr_rnd;
@@ -221,6 +244,8 @@ std::pair< Angles, Angles > ChiPolarizationGenerator::generate_dimuon_angles()
 
 TLorentzVector* ChiPolarizationGenerator::generate_dimuon(TRotation *rot2xyz, TVector3* boost2cm, double cosTh, double phi)
 {
+  addTime time(total_time_dimuongen);
+  ++total_number_dimuongen;
   // Dimuon 4-momentum in the chi rest frame, wrt the chosen chi polarization axes
   double p_dimuon_chi = 0.5 * (tmp_chi_M*tmp_chi_M - tmp_dimuon_M*tmp_dimuon_M) / tmp_chi_M;
   double sinTh = sqrt(1 - cosTh*cosTh);
@@ -393,16 +418,19 @@ void ChiPolarizationGenerator::generate(const ULong64_t nevents)
       << " CS:" << costh_CS << "/" << phi_CS << std::endl;
 #endif
 
-    // obtaining smeared four-momenta for the muons and photons and 
-    // calculating the smeared variables for the chi and dimuon from there
-    smearedLepP = new TLorentzVector(smearParticleGaus(*muPos, 0, 0.03));
-    smearedLepN = new TLorentzVector(smearParticleGaus(*muNeg, 0, 0.03));
-    smearedGamma = new TLorentzVector(smearParticleTF1(*gamma, photonCrystalBall));
+    {
+      addTime time(total_time_smearing);
+      ++total_number_smearing;
+      // obtaining smeared four-momenta for the muons and photons and 
+      // calculating the smeared variables for the chi and dimuon from there
+      smearedLepP = new TLorentzVector(smearParticleGaus(*muPos, 0, 0.03));
+      smearedLepN = new TLorentzVector(smearParticleGaus(*muNeg, 0, 0.03));
+      smearedGamma = new TLorentzVector(smearParticleTF1(*gamma, photonCrystalBall));
 
-    smearedJpsi = new TLorentzVector((*smearedLepP) + (*smearedLepN));
-    smearedChi = new TLorentzVector((*smearedJpsi) + (*smearedGamma));
-    halfSmearedChi = new TLorentzVector((*smearedJpsi) + (*gamma));
-
+      smearedJpsi = new TLorentzVector((*smearedLepP) + (*smearedLepN));
+      smearedChi = new TLorentzVector((*smearedJpsi) + (*smearedGamma));
+      halfSmearedChi = new TLorentzVector((*smearedJpsi) + (*gamma));
+    }
 
     // TODO: efficiencies
         //// add the desired efficiencies
@@ -441,6 +469,9 @@ void ChiPolarizationGenerator::generate(const ULong64_t nevents)
 
 void ChiPolarizationGenerator::fill_branches()
 {
+
+  addTime time(total_time_fillbranches);
+  ++total_number_fillbranches;
 
   auto angles_HX = calcAnglesInFrame(*muNeg, *muPos, RefFrame::HX);
   costh_HX = angles_HX.costh;
@@ -642,4 +673,43 @@ void ChiPolarizationGenerator::print_settings()
     << std::string(50, '-');
 
   std::cout << ss.rdbuf() << std::endl;
+
+  print_performance();
+
+}
+
+
+void ChiPolarizationGenerator::print_performance()
+{
+  const int b = 25;
+  auto format = [b](std::string what, std::chrono::nanoseconds time, ULong64_t count) {
+    std::stringstream ss;
+    std::stringstream stime;
+    auto duration_ms = time.count() / 1.e6;
+    unsigned long long mins = duration_ms / 1000. / 60.;
+    unsigned long long secs = (duration_ms - mins * 1000 * 60) / 1000.;
+    unsigned long long ms = (duration_ms - secs * 1000 - mins * 1000 * 60);
+    stime << mins << ":" << std::setw(2) << std::setfill('0') << secs << ',' << std::setw(3) << std::setfill('0') << ms;
+    ss << std::setw(b) << what << std::setw(b) << stime.str()
+      << std::setw(b) << count << std::setw(b) << duration_ms / double(count) << "\n";
+    return ss.str();
+  };
+
+  auto total_time = total_time_chigen +
+    total_time_dimuongen +
+    total_time_anglesgen +
+    total_time_smearing +
+    total_time_fillbranches;
+
+  std::cout << "\nPerformance:\n"
+    << std::setw(b) << "what" << std::setw(b) << "total time [mm:ss,ms]" << std::setw(b) << "how often" << std::setw(b) << "time per event [ms]\n"
+    << std::string(b * 4, '-') << "\n"
+    << format("chi", total_time_chigen, total_number_chigen)
+    << format("dimuon", total_time_dimuongen, total_number_dimuongen)
+    << format("angles", total_time_anglesgen, total_number_anglesgen)
+    << format("smearing", total_time_smearing, total_number_smearing)
+    << format("fillbranches", total_time_fillbranches, total_number_fillbranches)
+    << std::string(b * 4, '-') << "\n"
+    << format("total time", total_time, event_id)
+    << "\n\n" << std::flush;
 }
