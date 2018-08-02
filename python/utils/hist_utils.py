@@ -186,7 +186,7 @@ def get_binning(hist, axis='X'):
         return get_vals_from_rwbuffer(edges, n_bins + 1)
     except IndexError:
         pass
-    return np.linspace(get_x_min(hist), get_x_max(hist), n_bins + 1)
+    return np.linspace(_get_x_min_hist(hist), _get_x_max_hist(hist), n_bins + 1)
 
 
 def set_range_hist(hist, x_range=None, y_range=None):
