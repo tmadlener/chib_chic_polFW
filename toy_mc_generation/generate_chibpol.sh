@@ -1,7 +1,8 @@
 #!/bin/bash
 #SBATCH -J chib_toymc
-#SBATCH -D /afs/hephy.at/work/j/jnecker/data/chib_results/masterthesis/toymc
-#SBATCH -o /afs/hephy.at/work/j/jnecker/data/chib_results/masterthesis/toymc/log/log_%A.out
+#SBATCH -D /scratch/jnecker/toymc
+#SBATCH -o /scratch/jnecker/toymc/log/log_%A.out
+#/afs/hephy.at/work/j/jnecker/data/chib_results/masterthesis/toymc
 
 # Parameter:
 # $1 outfile

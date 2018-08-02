@@ -1,8 +1,9 @@
 #!/bin/bash
 timestamp=`date +"%Y%m%d_%H%M%S"`
 code_base_dir="/afs/hephy.at/user/j/jnecker/code/chib_chic_polFW/toy_mc_generation"
-out_base_dir="/afs/hephy.at/work/j/jnecker/data/chib_results/masterthesis/toymc"
-n_events=25000000
+#out_base_dir="/afs/hephy.at/work/j/jnecker/data/chib_results/masterthesis/toymc"
+out_base_dir="/scratch/jnecker/toymc"
+n_events=10000000
 
 echo "Generating chi1"
 for CHI_R in "0" "1" "0.666"; do

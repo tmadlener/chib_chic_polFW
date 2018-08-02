@@ -17,7 +17,7 @@
 class TTree;
 
 #define GENRAPIDITY 1
-#define DONT_WRITE_LORENTZ // to reduce size of files, but for 10000 events same time (about 20 seconds) with and without writing TLorentz
+#define DONT_WRITE_LORENTZ // to reduce size of files
 
 struct Mass {
   double central = 0;
@@ -104,6 +104,10 @@ private:
   TF1* pT_distr = nullptr;
   TF1* rap_distr = nullptr;
   TF1* photonCrystalBall = nullptr; // smearing function for photons (fit to MC + some tuning)
+
+  const int pT_distr_npx = 30; //The integral of the function is computed at fNpx points.
+  //  If the function has sharp peaks, you should increase the number of points(SetNpx) 
+  //  such that the peak is correctly tabulated at several points.) from ROOT TF1::GetRandom() Documentation
 
   ////////////
   void print_settings();
@@ -216,7 +220,6 @@ private:
 
   void print_performance();
 
-
 public:
   ChiPolarizationGenerator(const std::string &filename) :
     outfilename(filename),
@@ -228,20 +231,22 @@ public:
     chi_mass = PdgMassChic[chi_state];
     dimuon_mass = PdgMassPsi;
 
-    rap_distr = new TF1("pT_distr", [](double* x, double* p) { return 1; }, min_rap, max_rap, 0);
+    rap_distr = new TF1("rap_distr", [](double* x, double* p) { return 1; }, min_rap, max_rap, 0);
     //rap_distr->Npx(5000);
-    pT_distr = new TF1("rap_distr", [](double* x, double* p) {
-      double chimass = p[0];
-      double pT = x[0];
 
-      // const double beta = 3.45;  //  CHECK HERE FUNCTION AND PARAMETER VALUES: USE THOSE OF GLOBAL FIT (considering that this is a pT distribution, not a pT/M distribution)
-      const double beta = 3.39924;  // same as in MC generation from Alberto
-      // const double gamma = 0.73;
-      const double gamma = 0.635858; // same as in MC generation from Alberto        
+    pT_distr = new TF1("pT_distr", [/*&mass=chi_mass.central*/](double* x, double* p) {
+      // The time consuming part is the SetParameter, that forces the integral to be updated for EACH event:
+      // https://root-forum.cern.ch/t/faster-update-for-tf1/20991
 
-      return pT * pow(1. + 1. / (beta - 2.) * pT / chimass*pT / chimass / gamma, -beta);
+      // beta: CHECK HERE FUNCTION AND PARAMETER VALUES: USE THOSE OF GLOBAL FIT (considering that this is a pT distribution, not a pT/M distribution)
+      constexpr double beta = 3.39924; // same as in MC generation from Alberto, (was 3.45)
+      constexpr double gamma = 0.635858; // same as in MC generation from Alberto, (was 0.73)
+      constexpr double A = 1. / (beta - 2.) / gamma;
+      const double pT_over_chimass = x[0]/p[0]; // pT = x[0], chimass = p[0]
+
+      return x[0] * pow(1. + A * pT_over_chimass*pT_over_chimass, -beta);
     }, min_pT, max_pT, 1);
-    //pT_distr->Npx(5000);
+    pT_distr->SetNpx(pT_distr_npx); // for performance reasons
 
     // smearing function for photons (fit to MC + some tuning)
     photonCrystalBall = new TF1("photonCrystalBall", "ROOT::Math::crystalball_pdf(x[0], [2], [3], [1], [0])", -1.5, 1.5);
@@ -255,7 +260,7 @@ public:
     print_performance();
   }
 
-  void generate(ULong64_t n = 1000000);
+  void generate(ULong64_t n = 123456);
   void setChiHelicityFractions(double R_1, double R_2 = 0)
   {
     if (R_1 > 1 || R_1 < 0 || (chi_state > 1 && (R_1 + R_2 > 1 || R_2 > 1 || R_2 < 0))) {

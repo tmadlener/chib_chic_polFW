@@ -45,19 +45,19 @@ TLorentzVector* ChiPolarizationGenerator::generate_chi()
     tmp_chi_mass = (chi_width_is_zero) ? chi_mass.central : gRandom->Gaus(chi_mass.central, chi_mass.width);
     tmp_dimuon_M = (dimuon_width_is_zero) ? dimuon_mass.central : gRandom->Gaus(dimuon_mass.central, dimuon_mass.width);
   }
+  tmp_chi_M = tmp_chi_mass - dimuon_mass_pdg + tmp_dimuon_M;
 
   //The following line is for compatibility reasons:
   Mchic = tmp_chi_mass;
   //
 
-  tmp_chi_M = tmp_chi_mass - dimuon_mass_pdg + tmp_dimuon_M;
-
-  // pT 
+  // pT
   double chi_pT;
   {
     //stopwatch s("random pT");
     pT_distr->SetParameter(0, tmp_chi_M);
     chi_pT = pT_distr->GetRandom();
+
   }
 
   // Phi
@@ -113,12 +113,12 @@ std::pair< Angles, Angles > ChiPolarizationGenerator::generate_dimuon_angles()
   double phi_chihe = 100.;
 
   do {
-    cosTH_dimuon = -1. + 2. * gRandom->Rndm();
+    cosTH_dimuon = gRandom->Uniform(-1, 1);// -1. + 2. * gRandom->Rndm();
     // direction of the PSI in the CHI rest frame (wrt to a reference frame, HE or CS, chosen afterwards)
     // PHI_psi is the second coordinate, generated outside the loop
     // because the global angular decay distribution does not depend on it.
 
-    costh_chihx = -1. + 2. * gRandom->Rndm();  // direction of the lepton in the PSI rest frame
+    costh_chihx = gRandom->Uniform(-1, 1); //-1. + 2. * gRandom->Rndm();  // direction of the lepton in the PSI rest frame
     phi_chihe = 360. * gRandom->Rndm();      // (wrt the PSI direction seen from the CHI rest frame)
 
     double cosTH2_psi = cosTH_dimuon*cosTH_dimuon;
@@ -669,12 +669,11 @@ void ChiPolarizationGenerator::print_settings()
     "mass(dimuon) = " << dimuon_mass.central << "\n"
     "width(dimuon) = " << dimuon_mass.width << "\n"
     "pdg_mass(dimuon) = " << dimuon_mass_pdg << "\n"
+    "Npx of pT_distr = " << pT_distr->GetNpx() << "\n"
     "output file: " << outfilename << " (will be overwritten)\n"
     << std::string(50, '-');
 
   std::cout << ss.rdbuf() << std::endl;
-
-  print_performance();
 
 }
 
@@ -682,18 +681,6 @@ void ChiPolarizationGenerator::print_settings()
 void ChiPolarizationGenerator::print_performance()
 {
   const int b = 25;
-  auto format = [b](std::string what, std::chrono::nanoseconds time, ULong64_t count) {
-    std::stringstream ss;
-    std::stringstream stime;
-    auto duration_ms = time.count() / 1.e6;
-    unsigned long long mins = duration_ms / 1000. / 60.;
-    unsigned long long secs = (duration_ms - mins * 1000 * 60) / 1000.;
-    unsigned long long ms = (duration_ms - secs * 1000 - mins * 1000 * 60);
-    stime << mins << ":" << std::setw(2) << std::setfill('0') << secs << ',' << std::setw(3) << std::setfill('0') << ms;
-    ss << std::setw(b) << what << std::setw(b) << stime.str()
-      << std::setw(b) << count << std::setw(b) << duration_ms / double(count) << "\n";
-    return ss.str();
-  };
 
   auto total_time = total_time_chigen +
     total_time_dimuongen +
@@ -701,15 +688,31 @@ void ChiPolarizationGenerator::print_performance()
     total_time_smearing +
     total_time_fillbranches;
 
+  auto format = [b, total_time](std::string what, std::chrono::nanoseconds time, ULong64_t count) {
+    std::stringstream ss;
+    std::stringstream stime;
+    auto duration_ms = time.count() / 1.e6;
+    auto percentoftotaltime = double(total_time.count()) / time.count() * 100.;
+    unsigned long long mins = duration_ms / 1000. / 60.;
+    unsigned long long secs = (duration_ms - mins * 1000 * 60) / 1000.;
+    unsigned long long ms = (duration_ms - secs * 1000 - mins * 1000 * 60);
+    stime << mins << ":" << std::setw(2) << std::setfill('0') << secs << ',' << std::setw(3) << std::setfill('0') << ms;
+    ss << std::setw(b) << what << std::setw(b) << stime.str()
+      << std::setw(b) << count << std::setw(b) << duration_ms / double(count)
+      << std::setw(b) << std::setprecision(2) << percentoftotaltime;
+    return ss.str();
+  };
+
+
   std::cout << "\nPerformance:\n"
-    << std::setw(b) << "what" << std::setw(b) << "total time [mm:ss,ms]" << std::setw(b) << "how often" << std::setw(b) << "time per event [ms]\n"
-    << std::string(b * 4, '-') << "\n"
-    << format("chi", total_time_chigen, total_number_chigen)
-    << format("dimuon", total_time_dimuongen, total_number_dimuongen)
-    << format("angles", total_time_anglesgen, total_number_anglesgen)
-    << format("smearing", total_time_smearing, total_number_smearing)
-    << format("fillbranches", total_time_fillbranches, total_number_fillbranches)
-    << std::string(b * 4, '-') << "\n"
-    << format("total time", total_time, event_id)
-    << "\n\n" << std::flush;
+    << std::setw(b) << "what" << std::setw(b) << "total time [mm:ss,ms]" << std::setw(b) << "how often" << std::setw(b) << "time per event [ms]" << std::setw(b) << "% of total time\n"
+    << std::string(b * 5, '-') << "\n"
+    << format("chi", total_time_chigen, total_number_chigen) << "\n"
+    << format("dimuon", total_time_dimuongen, total_number_dimuongen) << "\n"
+    << format("angles", total_time_anglesgen, total_number_anglesgen) << "\n"
+    << format("smearing", total_time_smearing, total_number_smearing) << "\n"
+    << format("fillbranches", total_time_fillbranches, total_number_fillbranches) << "\n"
+    << std::string(b * 5, '-') << "\n"
+    << format("total time", total_time, event_id) << "\n\n\n"
+    << std::flush;
 }
