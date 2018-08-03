@@ -567,17 +567,19 @@ def baseline_plot(baseline, compplots, **kwargs):
 
 # Store them globally so they are not created every time the extremal function
 # is called
-EXTREMAL_GRAPH_FUNCS = {
-    'x': {'min': _get_x_min_graph, 'max': _get_x_max_graph},
-    'y': {'min': _get_y_min_graph, 'max': _get_y_max_graph},
-}
-EXTREMAL_HIST_FUNCS = {
-    'x': {'min': _get_x_min_hist, 'max': _get_x_max_hist},
-    'y': {'min': _get_y_min_hist, 'max': _get_y_max_hist},
-}
-EXTREMAL_FUNC_FUNCS = {
-    'x': {'min': _get_x_min_func, 'max': _get_x_max_func},
-    'y': {'min': _get_y_min_func, 'max': _get_y_max_func},
+EXTREMAL_FUNCS = {
+    'TGraph': {
+        'x': {'min': _get_x_min_graph, 'max': _get_x_max_graph},
+        'y': {'min': _get_y_min_graph, 'max': _get_y_max_graph},
+    },
+    'TF1': {
+        'x': {'min': _get_x_min_func, 'max': _get_x_max_func},
+        'y': {'min': _get_y_min_func, 'max': _get_y_max_func},
+    },
+    'TH1': {
+        'x': {'min': _get_x_min_hist, 'max': _get_x_max_hist},
+        'y': {'min': _get_y_min_hist, 'max': _get_y_max_hist},
+    }
 }
 
 
@@ -587,13 +589,10 @@ def _get_extremal_value(pltable, axis, value):
     """
     vals = []
     for plt in make_iterable(pltable):
-        if plt.InheritsFrom('TGraph'):
-            vals.append(EXTREMAL_GRAPH_FUNCS[axis][value](plt))
-        elif plt.InheritsFrom('TH1'):
-            vals.append(EXTREMAL_HIST_FUNCS[axis][value](plt))
-        elif plt.InheritsFrom('TF1'):
-            vals.append(EXTREMAL_FUNC_FUNCS[axis][value](plt))
-        # Do nothing if we can't handle it (TODO: introduce logging)
+        for plttype in EXTREMAL_FUNCS:
+            if plt.InheritsFrom(plttype):
+                vals.append(EXTREMAL_FUNCS[plttype][axis][value](plt))
+                # Do nothing if we can't handle it (TODO: introduce logging)
 
     # somewhat hacky way to get either min or max depending on the desired value
     return __builtin__.__dict__[value](vals)

@@ -315,7 +315,7 @@ def _get_x_max_graph(graph):
     Get the maximum x value (discarding uncertainties) of a graph (or graphs)
     """
     max_vals = [np.max(np.array(g.GetX())) for g in make_iterable(graph)]
-    np.max(max_vals)
+    return np.max(max_vals)
 
 
 def _get_x_min_graph(graph):

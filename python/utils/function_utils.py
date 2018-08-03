@@ -26,11 +26,11 @@ def _get_x_max_func(func):
     """
     Get the maximum x value of the passed function(s)
     """
-    return max(f.GetXmax() for f in make_iterabel(func))
+    return max(f.GetXmax() for f in make_iterable(func))
 
 
 def _get_x_min_func(func):
     """
     Get the minimum x value of the passed function(s)
     """
-    return min(f.GetXmin() for f in make_iterabel(func))
+    return min(f.GetXmin() for f in make_iterable(func))
