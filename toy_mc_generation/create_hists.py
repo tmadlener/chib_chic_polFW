@@ -138,6 +138,9 @@ def main(args):
     comb_effs = lambda df: df.gamma_eff_sm * 0.01 * \
                 df.lepP_eff_sm * df.lepN_eff_sm
 
+    gen_effs = lambda df: df.gamma_eff * 0.01 * \
+               df.lepP_eff * df.lepN_eff
+
     ## store gen level vars
     store_all_plots(outfile, toy_data, SELECTION_SETS['gen'], GEN_VARS,
                     'gen', True)
@@ -159,6 +162,12 @@ def main(args):
             ## ... and once with efficiencies
             store_all_plots(outfile, toy_data, SELECTION_SETS[sel], var_set,
                             store_base + '_eff', False, comb_effs)
+
+        # store gen level selected and efficiency weighted histograms
+        store_all_plots(outfile, toy_data, SELECTION_SETS[sel], SM_VARS,
+                        'gen_' + store_base, True)
+        store_all_plots(outfile, toy_data, SELECTION_SETS[sel], SM_VARS,
+                        'gen_' + store_base + '_eff', True, gen_effs)
 
     outfile.Write()
 
