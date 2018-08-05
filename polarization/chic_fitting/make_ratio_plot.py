@@ -287,7 +287,8 @@ def do_chib_ratio(args):
         'range': [0, 0, 1, 0.75],
         'xtitle': '|cos#theta^{HX}|', 'ytitle': '#chi_{b2} / #chi_{b1}'
     }
-    ptmin, ptmax = get_pt_range(bin_sel_info['basic_sel'])
+    ptmin = args.ptmin
+    ptmax = args.ptmax
 
     plot_name = '{}/chib2_chib1_pt{}_{}_nbins{}_costh_HX.pdf'.format(outdir, ptmin, ptmax, len(costh_bins))
     make_plot(graph, {}, plot_name, plot_sett)
@@ -438,6 +439,8 @@ def add_chib_parser(parsers, baseparser):
                                default='config.json')
     chib_r_parser.add_argument('--graphoutfile', help='file to store produced TGraph',
                                default='')
+    chib_r_parser.add_argument('--ptmin', type=float, help='file to store produced TGraph')
+    chib_r_parser.add_argument('--ptmax', type=float, help='file to store produced TGraph')
     #chib_r_parser.add_argument('mcfile', help='mc file containing flat tuple '
     #                           'and all weights for the desired polarization '
     #                           'scenarios')
