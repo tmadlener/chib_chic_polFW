@@ -37,7 +37,7 @@ def get_ws_vars(state, massmodel=None):
             'JpsiMass[2.9, 3.25]', 'costh_HX[-1, 1]'
         ],
         'chib' : [
-            'chi_mass_rf1S[9.6,10.15]', 'costh_HX[-1, 1]'
+            'chi_mass_rf1S[9.7,10.15]', 'costh_HX[-1, 1]'
         ],
     }
     if state == 'chib' and massmodel:
@@ -110,7 +110,8 @@ def do_binned_fits(mass_model, wsp, costh_bins, refit=False):
             mass_model.release_params(wsp, shape_par)
 
 
-def create_bin_info_json(state, nbins, datafile, fitfile, bininfo_file=None):
+def create_bin_info_json(state, nbins, datafile, fitfile, bininfo_file=None,
+                         fixedbinning=[]):
     """
     Determine the costh binning and store the information into a json
     """
@@ -120,7 +121,7 @@ def create_bin_info_json(state, nbins, datafile, fitfile, bininfo_file=None):
     treename = 'chic_tuple' if state == 'chic' else 'data'
     dfr = get_dataframe(datafile, treename, columns=['costh_HX'])
 
-    costh_bins = get_costh_binning(dfr, nbins)
+    costh_bins = get_costh_binning(dfr, nbins) if not fixedbinning else fixedbinning
     costh_means = get_bin_means(dfr, lambda d: d.costh_HX.abs(), costh_bins)
 
     bin_sel_info = {
@@ -187,8 +188,11 @@ def run_chib_fit(args):
     logging.info('Running chib fits')
     cond_mkdir_file(args.outfile)
     model = ChibMassModel(args.configfile)
+    fixedbinning=[]
+    if args.fixedbinning != '': 
+        fixedbinning = [float(i) for i in args.fixedbinning.split(',')]    
     costh_binning = create_bin_info_json('chib', args.nbins, args.datafile,
-                                         args.outfile, args.bin_info)
+                                         args.outfile, args.bin_info, fixedbinning)
 
     dvars = get_ws_vars('chib', model)
     dataf = r.TFile.Open(args.datafile)
@@ -249,6 +253,9 @@ if __name__ == '__main__':
                                      parents=[global_parser])
     chib_parser.add_argument('configfile', help='Config file in json format '
                              'for chib model.')
+    chib_parser.add_argument('--fixedbinning', help='Use fixed binning defined here '
+                             '(separated by commas, e.g. 0.1,0.2,0.4,1)',
+                             type=str, default='')
     chib_parser.set_defaults(func=run_chib_fit)
 
     # Add the jpsi parser
