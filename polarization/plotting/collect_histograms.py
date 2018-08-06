@@ -194,7 +194,22 @@ def main(args):
     if args.state == 'chib':
         states = ['chib1', 'chib2']
 
-    binning = np.array(args.binning).astype(np.float) if args.binning else None
+    binning=None
+    if args.binning:
+        binning = np.array(args.binning.split(',')).astype(np.float)
+        if binning[-1]==-1:
+            from utils.data_handling import get_dataframe
+            dfr = get_dataframe(args.inputfile, args.treename, columns=['costh_HX'])
+            binning[-1]=dfr['costh_HX'].abs().max()
+    if args.jsonbinning:
+        import json
+        with open(args.jsonbinning, 'r') as jsonf:
+            tmpbins = json.load(jsonf)['costh_bins']
+            binning = [b[0] for b in tmpbins]
+            binning.append(tmpbins[-1][-1])
+            binning = np.array(binning).astype(np.float)
+    print(binning)
+        
     file_hists = get_hists_from_file(infile, args.treename, frames,
                                      args.cutsigma, states, args.nbins,
                                      binning)
@@ -239,9 +254,13 @@ if __name__ == '__main__':
                         'used in the directory structure created in the output '
                         'file. If not empty, overrides \'mc\' or \'data\' which'
                         ' are the default', default='', type=str)
-    parser.add_argument('-bins','--binning', default=None, nargs='+',
-                         help='Set variable bin widths, '
-                        'separeted by space, e.g -bins 0 0.2 0.6 1')
+    parser.add_argument('--jsonbinning', help='json file containing bin information'
+                       ' as produced by create_bin_info_json in costh_binned_massfit.py',
+                       type=str, default='')    
+    parser.add_argument('--binning', help='Use fixed binning defined here '
+                        '(separated by commas, e.g. 0.1,0.2,0.4,-1), '
+                        'if last bin equals -1, then the maximum costh value is taken',
+                        type=str, default='')
 
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--chic', action='store_const', dest='state',

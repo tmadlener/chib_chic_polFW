@@ -439,8 +439,8 @@ def add_chib_parser(parsers, baseparser):
                                default='config.json')
     chib_r_parser.add_argument('--graphoutfile', help='file to store produced TGraph',
                                default='')
-    chib_r_parser.add_argument('--ptmin', type=float, help='file to store produced TGraph')
-    chib_r_parser.add_argument('--ptmax', type=float, help='file to store produced TGraph')
+    chib_r_parser.add_argument('--ptmin', type=float)
+    chib_r_parser.add_argument('--ptmax', type=float)
     #chib_r_parser.add_argument('mcfile', help='mc file containing flat tuple '
     #                           'and all weights for the desired polarization '
     #                           'scenarios')

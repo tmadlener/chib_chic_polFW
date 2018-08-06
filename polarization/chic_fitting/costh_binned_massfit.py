@@ -120,7 +120,8 @@ def create_bin_info_json(state, nbins, datafile, fitfile, bininfo_file=None,
 
     treename = 'chic_tuple' if state == 'chic' else 'data'
     dfr = get_dataframe(datafile, treename, columns=['costh_HX'])
-
+    dfr['costh_HX'].max()
+    if fixedbinning and fixedbinning[-1]==-1: fixedbinning[-1]=dfr['costh_HX'].abs().max()
     costh_bins = get_costh_binning(dfr, nbins) if not fixedbinning else fixedbinning
     costh_means = get_bin_means(dfr, lambda d: d.costh_HX.abs(), costh_bins)
 
@@ -188,9 +189,7 @@ def run_chib_fit(args):
     logging.info('Running chib fits')
     cond_mkdir_file(args.outfile)
     model = ChibMassModel(args.configfile)
-    fixedbinning=[]
-    if args.fixedbinning != '': 
-        fixedbinning = [float(i) for i in args.fixedbinning.split(',')]    
+    fixedbinning=[] if not fixedbinning else [float(i) for i in args.fixedbinning.split(',')]
     costh_binning = create_bin_info_json('chib', args.nbins, args.datafile,
                                          args.outfile, args.bin_info, fixedbinning)
 
@@ -254,7 +253,8 @@ if __name__ == '__main__':
     chib_parser.add_argument('configfile', help='Config file in json format '
                              'for chib model.')
     chib_parser.add_argument('--fixedbinning', help='Use fixed binning defined here '
-                             '(separated by commas, e.g. 0.1,0.2,0.4,1)',
+                             '(separated by commas, e.g. 0.1,0.2,0.4,-1), '
+                             'if last bin equals -1, then the maximum costh value is taken',
                              type=str, default='')
     chib_parser.set_defaults(func=run_chib_fit)
 
