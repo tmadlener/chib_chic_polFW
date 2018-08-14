@@ -19,8 +19,7 @@ import ROOT as r
 from itertools import product
 from utils.misc_helpers import create_random_str, make_iterable
 from utils.hist_utils import (
-    set_common_range, set_labels, divide,
-    _get_y_min_hist, _get_y_max_hist, _get_x_min_hist, _get_x_max_hist
+    divide, _get_y_min_hist, _get_y_max_hist, _get_x_min_hist, _get_x_max_hist
 )
 from utils.graph_utils import (
     _get_y_min_graph, _get_y_max_graph, _get_x_min_graph, _get_x_max_graph
@@ -312,6 +311,92 @@ def plot_on_canvas(can, plots, **kwargs):
     return can
 
 
+def _setup_canvas(can, **kwargs):
+    """
+    Setup a TCanvas (resp. a TCanvasWrapper) to plot on
+
+    Returns:
+        TCanvasWrapper
+    """
+    if can is None:
+        can_name = create_random_str()
+        size = kwargs.get('size', (600, 600))
+        can = r.TCanvas(can_name, '', 50, 50, *size)
+
+    if not isinstance(can, TCanvasWrapper):
+        can = TCanvasWrapper(can)
+
+    if kwargs.get('logy', False):
+        can.SetLogy()
+    if kwargs.get('logx', False):
+        can.SetLogx()
+    if kwargs.get('logz', False):
+        can.SetLogz()
+    if kwargs.get('grid', False):
+        can.SetGrid()
+
+    return can
+
+
+def _setup_plot_hist(can, pltables, **kwargs):
+    """
+    Setup the plot hist (necessary to have ranges etc work with all sorts of
+    objects that can be plotted in ROOT)
+
+    Returns:
+       TH1D (from ROOT.TCanvas.DrawFrame)
+    """
+    x_range, x_label = kwargs.pop('xRange', None), kwargs.pop('xLabel', '')
+    y_range, y_label = kwargs.pop('yRange', None), kwargs.pop('yLabel', '')
+
+
+    # Check if we need a frame for drawing anyways (i.e. no histograms
+    # in pltables) or if a user-defined range is desired
+    hist_in_plots = any(p.InheritsFrom('TH1') for p in pltables)
+    if x_range is None and y_range is None \
+       and not x_label and not y_label \
+       and hist_in_plots:
+        # No frame needed
+        return None
+
+    x_plot = (get_x_min(pltables), get_x_max(pltables))
+    y_plot = (get_y_min(pltables), get_y_max(pltables))
+
+    def get_ax_range(plot_range, ax_range):
+        """Get the axis default range or the plot range"""
+        # depending on the sign of the min and maximum values it is necessary
+        # to either add or subtract from the values to have the widening in
+        # range go into the right direction
+        dscale = 0.1
+        dmin = lambda val: dscale * val if val < 0 else -dscale * val
+        dmax = lambda val: dscale * val if val > 0 else -dscale * val
+
+        # use either the default value that is provided (third argument) or the
+        # value determined from the min/max values (second argument, function)
+        oval = lambda val, dval, defv: val + dval(val) if defv is None else defv
+
+        return (oval(plot_range[0], dmin, ax_range[0]),
+                oval(plot_range[1], dmax, ax_range[1]))
+
+    # "normalize" axis range
+    if x_range is None:
+        x_range = [None, None]
+    if y_range is None:
+        y_range = [None, None]
+
+    x_range = get_ax_range(x_plot, x_range)
+    y_range = get_ax_range(y_plot, y_range)
+
+    plot_hist = can.DrawFrame(x_range[0], y_range[0], x_range[1], y_range[1])
+
+    if x_label:
+        plot_hist.SetXTitle(x_label)
+    if y_label:
+        plot_hist.SetYTitle(y_label)
+
+    return plot_hist
+
+
 def mkplot(pltables, **kwargs):
     """
     Plot all pltables onto a canvas and return the canvas
@@ -348,13 +433,9 @@ def mkplot(pltables, **kwargs):
     # allow single plots to be handled the same as a list of plots
     pltables = make_iterable(pltables)
 
-    can = kwargs.pop('can', None)
-    if can is None:
-        can_name = create_random_str()
-        can = r.TCanvas(can_name, '', 50, 50, 600, 600)
-
-    if not isinstance(can, TCanvasWrapper):
-        can = TCanvasWrapper(can)
+    # Need to pop the can kwarg here otherwise plot_on_canvas will receive it
+    # twice and complain
+    can = _setup_canvas(kwargs.pop('can', None), **kwargs)
 
     # Check if at least one pltable has been passed and return the canvas if not
     # NOTE: Can't return earlier with None, since a canvas is expected to be
@@ -362,20 +443,13 @@ def mkplot(pltables, **kwargs):
     if len(pltables) < 1:
         return can
 
-    only_hists = all(p.InheritsFrom('TH1') for p in pltables)
-
-    x_range = kwargs.pop('xRange', None)
-    if x_range is not None and only_hists:
-        set_common_range(pltables, axis='x', dscale=0.05, drange=x_range)
-    y_range = kwargs.pop('yRange', None)
-    if y_range is not None and only_hists:
-        set_common_range(pltables, axis='y', dscale=0.05, drange=y_range)
-
-    y_label = kwargs.pop('yLabel', '')
-    x_label = kwargs.pop('xLabel', '')
-    if (y_label or x_label) and only_hists:
-        for h in pltables:
-            set_labels(h, x_label, y_label)
+    # Handle the plot frame
+    if not 'same' in kwargs.get('drawOpt', ''):
+        plot_hist = _setup_plot_hist(can, pltables, **kwargs)
+        if plot_hist is not None:
+            # Force the usage of the plot hist if it is created
+            drawOpt = kwargs.pop('drawOpt', '')
+            kwargs['drawOpt'] = 'same' + drawOpt
 
     leg = kwargs.pop('leg', None)
     if leg is None:
@@ -389,12 +463,6 @@ def mkplot(pltables, **kwargs):
     if leg is not None:
         can.add_tobject(leg)
 
-    if kwargs.pop('logy', False):
-        can.SetLogy()
-    if kwargs.pop('logx', False):
-        can.SetLogx()
-    if kwargs.pop('logz', False):
-        can.SetLogz()
 
     return can
 
