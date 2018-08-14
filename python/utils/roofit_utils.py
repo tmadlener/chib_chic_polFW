@@ -5,10 +5,11 @@ Module to facilitate some handling of RooFit objects
 import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
-
+import ROOT as r
+import numpy as np
 import pandas as pd
 
-from utils.misc_helpers import get_np_from_tmatrix
+from utils.misc_helpers import get_np_from_tmatrix, get_bin_centers
 
 
 def ws_import(wsp, *args):
@@ -139,3 +140,46 @@ def get_corr_matrix(fit_result):
     float_pars = [p.GetName() for p in get_args(fit_result.floatParsFinal())]
 
     return pd.DataFrame(corr_matrix, index=float_pars, columns=float_pars)
+
+
+def _get_var_vals(wsp, var, snapshots):
+    """
+    Get the variable (and its uncertainties for all snapshots)
+    """
+    central = []
+    err_low = []
+    err_high = []
+    for snap in snapshots:
+        wsp.loadSnapshot(snap)
+        wvar = get_var(wsp, var)
+
+        central.append(wvar.getVal())
+        err_low.append(-wvar.getErrorLo())
+        err_high.append(wvar.getErrorHi())
+
+    return np.array(central), np.array(err_low), np.array(err_high)
+
+
+def get_var_graph(wsp, snap_base, var, n_bins, binning=None, bin_means=None):
+    """
+    Get the graph of a variable for all snapshots results matching fit_res_base
+    """
+    snapshots = [snap_base.format(i) for i in xrange(n_bins)]
+    vals, err_lo, err_hi = _get_var_vals(wsp, var, snapshots)
+
+    # bin_means are necessary and are either determined from the binning or
+    # simply chosen as the indices
+    if bin_means is None:
+        if binning is not None:
+            bin_means = get_bin_centers(binning)
+        else:
+            bin_means = np.linspace(0, n_bins - 1, n_bins)
+
+    if binning is not None:
+        x_lo = np.array([bin_means[i] - binning[i] for i in xrange(n_bins)])
+        x_hi = np.array([binning[i+1] - bin_means[i] for i in xrange(n_bins)])
+    else:
+        x_lo, x_hi = np.zeros(n_bins), np.zeros(n_bins)
+
+    return r.TGraphAsymmErrors(n_bins, bin_means, vals, x_lo, x_hi,
+                               err_lo, err_hi)

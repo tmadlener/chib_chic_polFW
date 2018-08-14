@@ -501,6 +501,15 @@ def get_bin_edges(bins):
     return np.array(uniq_bin_bord)
 
 
+def get_bin_centers(binning):
+    """
+    Get the centers of the passed binning
+    """
+    n_bins = len(binning) - 1
+    centers = [0.5 * (binning[i] + binning[i + 1]) for i in xrange(n_bins)]
+    return np.array(centers)
+
+
 def longest_match(string, poss_strings):
     """
     Find the longest match of a string in a set of possibly matching strings

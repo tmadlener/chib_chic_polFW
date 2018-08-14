@@ -6,6 +6,7 @@ Make the plots of the fit results for each costh bin
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
+import numpy as np
 
 from os.path import dirname
 
@@ -16,8 +17,8 @@ logging.basicConfig(level=logging.INFO,
 from utils.chic_fitting import ChicMassModel
 from utils.jpsi_fitting import JpsiMassModel
 from utils.chib_fitting import ChibMassModel
-from utils.hist_utils import combine_cuts
-from utils.misc_helpers import cond_mkdir, get_bin_cut_root
+from utils.misc_helpers import cond_mkdir, get_bin_cut_root, get_bin_edges
+from utils.roofit_utils import get_var_graph, get_args
 
 from common_func import get_bin_sel_info
 
@@ -72,6 +73,37 @@ def make_fit_res_plots(wsp, costh_bins, state, outdir, **kwargs):
                                             pdfname.replace('.pdf', '_corrmat.pdf'))
 
 
+def get_free_params(wsp):
+    """
+    Get the names of the free parameters
+    """
+    # NOTE: simply assuming here that all the bins have the same amount of free
+    # parameters
+    fit_res = wsp.genobj('fit_res_costh_bin_0')
+    return [v.GetName() for v in get_args(fit_res.floatParsFinal())]
+
+
+def store_graphs(wsp, outfile, bin_info):
+    """
+    Create and store the graphs for all the free parameters and store them
+    into the (newly created) outfile
+    """
+    costh_binning = get_bin_edges(bin_info['costh_bins'])
+    n_bins = len(costh_binning) - 1
+    costh_means = np.array(bin_info['costh_means'])
+    params = get_free_params(wsp)
+
+    outf = r.TFile.Open(outfile, 'recreate')
+    for param in params:
+        graph = get_var_graph(wsp, 'snap_costh_bin_{}', param, n_bins,
+                              costh_binning, costh_means)
+        graph.SetName('_'.join([param, 'v', 'costh']))
+        graph.Write('', r.TObject.kWriteDelete)
+
+    outf.Write('', r.TObject.kWriteDelete)
+    outf.Close()
+
+
 def main(args):
     """Main"""
     ffile = r.TFile.Open(args.fitfile)
@@ -88,6 +120,10 @@ def main(args):
                        args.state, outdir, logy=args.logy,
                        configfile=args.configfile, ppars=args.print_pars,
                        corr_matrix=args.corr_matrix, refit=args.refit)
+
+    if args.graphs:
+        outfile = '/'.join([outdir, 'free_fit_param_graphs.root'])
+        store_graphs(ws, outfile, bin_sel_info)
 
 
 if __name__ == '__main__':
@@ -112,6 +148,10 @@ if __name__ == '__main__':
                         action='store_true')
     parser.add_argument('--refit', help='Plot the refitted results as well',
                         default=False, action='store_true')
+    parser.add_argument('-g', '--graphs', help='Create graphs of the free fit '
+                        'parameters vs costh and store them into a root file in'
+                        'the output directory', action='store_true',
+                        default=False)
 
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--chic', action='store_const', dest='state',

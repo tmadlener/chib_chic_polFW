@@ -277,5 +277,19 @@ class TestGetNpFromTMatrix(unittest.TestCase):
         self.assertTrue(np.allclose(np_matrix, m_matrix, atol=1e-6, rtol=0))
 
 
+class TestGetBinCenters(unittest.TestCase):
+    def test_even_binning(self):
+        binning = np.linspace(0, 10, 11)
+        exp_centers = np.array([i + 0.5 for i in xrange(10)])
+        bcenters = mh.get_bin_centers(binning)
+
+        self.assertTrue(np.allclose(exp_centers, bcenters))
+
+
+    # def test_arb_binning(self):
+    #     # TODO
+    #     pass
+
+
 if __name__ == '__main__':
     unittest.main()
