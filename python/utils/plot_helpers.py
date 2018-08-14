@@ -450,6 +450,7 @@ def mkplot(pltables, **kwargs):
             # Force the usage of the plot hist if it is created
             drawOpt = kwargs.pop('drawOpt', '')
             kwargs['drawOpt'] = 'same' + drawOpt
+        can.add_pltables(plot_hist)
 
     leg = kwargs.pop('leg', None)
     if leg is None:
@@ -482,7 +483,7 @@ def setup_latex():
     return latex
 
 
-def put_on_latex(latex, text_info):
+def put_on_latex(latex, text_info, ndc=False):
     """
     Put all the text onto the passed latex
 
@@ -490,9 +491,13 @@ def put_on_latex(latex, text_info):
         latex (ROOT.TLatex): The TLatex that will be used for drawing
         text_info (list of tuples): List containing the position and the
             text to put onto the plot in the format (leftpos, toppos, text)
+        ndc (boolean): Use NDC coordinates to draw this TLatex
     """
     for left, top, text in text_info:
-        latex.DrawLatex(left, top, text)
+        if ndc:
+            latex.DrawLatexNDC(left, top, text)
+        else:
+            latex.DrawLatex(left, top, text)
 
 
 def _set_ratio_properties(hist):
