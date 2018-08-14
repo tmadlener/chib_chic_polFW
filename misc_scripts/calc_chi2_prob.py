@@ -125,6 +125,8 @@ def main(args):
         h_chi2 = histfile.Get(chi2_hist)
         h_chi2.Scale(1 / h_chi2.Integral())
         ratio = divide(h_chi2, h_chi1)
+        ratio.SetBinContent(ratio.GetNbinsX() + 1, 0)
+        ratio.SetBinError(ratio.GetNbinsX() + 1, 0)
 
         chisqu, fit_norm = calc_chi2(ratio, fit_graph)
         ratios.append((get_delta_lambda(chi1_hist, chi2_hist),
@@ -149,13 +151,13 @@ def main(args):
 
     can = mkplot([rr[1] for rr in ratios if rr[0] in plot_toy],
                  yRange=[0, 0.65], yLabel='#chi_{c2} / #chi_{c1}',
-                 leg=leg,
+                 leg=leg, xRange=[0.0, 1.0], drawOpt='L',
                  legEntries=['#Delta#lambda_{#theta} = ' + str(rr[0])
                              for rr in ratios if rr[0] in plot_toy])
 
     can = mkplot(fit_graph, can=can, leg=can.attached_tobjects[0],
                  legEntries=['data'],
-                 attr=[{'color': 1, 'marker': 20, 'size': 1.5}], drawOpt='PE')
+                 attr=[{'color': 1, 'marker': 20, 'size': 1.5}], drawOpt='samePE')
 
     can.SaveAs('simple_chi2_overview_toy_data_comp_5bins.pdf')
 
