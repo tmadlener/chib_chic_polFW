@@ -35,6 +35,19 @@ def make_fit_res_plots(wsp, costh_bins, state, outdir, **kwargs):
     else:
         mass_model = JpsiMassModel('JpsiMass')
 
+    if kwargs.pop('fix_shape', False):
+        snapname = 'snap_costh_integrated'
+        pdfname = '/'.join([outdir, 'mass_fit_{}_costh_integrated.pdf'
+                            .format(state)])
+        mass_model.plot(wsp, pdfname, snapname, **kwargs)
+        mass_model.plot_fit_params(wsp, pdfname.replace('.pdf', '_fit_res.pdf'),
+                                   snapname)
+        if kwargs.get('ppars', False):
+            mass_model.print_fit_params(wsp, 'fit_res_costh_integrated')
+        if kwargs.get('corr_matrix', False):
+            mass_model.plot_corr_matrix(wsp, 'fit_res_costh_integrated',
+                                        pdfname.replace('.pdf', '_corrmat.pdf'))
+
     for i, ctbin in enumerate(costh_bins):
         costh_cut = get_bin_cut_root('TMath::Abs(costh_HX)', *ctbin)
         snapname = 'snap_costh_bin_{}'.format(i)
@@ -119,7 +132,8 @@ def main(args):
     make_fit_res_plots(ws, bin_sel_info['costh_bins'],
                        args.state, outdir, logy=args.logy,
                        configfile=args.configfile, ppars=args.print_pars,
-                       corr_matrix=args.corr_matrix, refit=args.refit)
+                       corr_matrix=args.corr_matrix, refit=args.refit,
+                       fix_shape=args.fix_shape)
 
     if args.graphs:
         outfile = '/'.join([outdir, 'free_fit_param_graphs.root'])
@@ -148,6 +162,9 @@ if __name__ == '__main__':
                         action='store_true')
     parser.add_argument('--refit', help='Plot the refitted results as well',
                         default=False, action='store_true')
+    parser.add_argument('-s', '--fix-shape', help='Plot the results of the '
+                        'costh integrated fit that was used to fix the shape '
+                        'parameters', action='store_true', default=False)
     parser.add_argument('-g', '--graphs', help='Create graphs of the free fit '
                         'parameters vs costh and store them into a root file in'
                         'the output directory', action='store_true',

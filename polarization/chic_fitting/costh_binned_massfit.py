@@ -156,12 +156,20 @@ def rw_bin_sel_json(bininfo_file, datafile, updated_name=None):
     return costh_bins
 
 
-def run_fit(model, tree, costh_bins, datavars, outfile, refit=False):
+def run_fit(model, tree, costh_bins, datavars, outfile, refit=False,
+            fix_shape=False):
     """Import data, run fits and store the results"""
     wsp = r.RooWorkspace('ws_mass_fit')
     import_data(wsp, tree, datavars)
     model.define_model(wsp)
     wsp.Print()
+
+    if fix_shape:
+        # Refitting doesn't make sense if we already fixed the shapes beforehand
+        refit = False
+        model.fit(wsp, 'costh_integrated')
+        shape_pars = get_shape_params(wsp, 'costh_integrated', model)
+        model.fix_params(wsp, [(sp, None) for sp in shape_pars])
 
     do_binned_fits(model, wsp, costh_bins, refit)
     wsp.writeToFile(outfile)
@@ -179,7 +187,8 @@ def run_chic_fit(args):
     dvars = get_ws_vars('chic')
     dataf = r.TFile.Open(args.datafile)
     tree = dataf.Get('chic_tuple')
-    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit)
+    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit,
+            args.fix_shape)
 
 
 def run_chib_fit(args):
@@ -193,7 +202,8 @@ def run_chib_fit(args):
     dvars = get_ws_vars('chib', model)
     dataf = r.TFile.Open(args.datafile)
     tree = dataf.Get('data')
-    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit)
+    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit,
+            args.fix_shape)
 
 
 def run_jpsi_fit(args):
@@ -207,7 +217,8 @@ def run_jpsi_fit(args):
     dvars = get_ws_vars('jpsi')
     dataf = r.TFile.Open(args.datafile)
     tree = dataf.Get('jpsi_tuple')
-    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit)
+    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit,
+            args.fix_shape)
 
 
 if __name__ == '__main__':
@@ -235,6 +246,10 @@ if __name__ == '__main__':
     global_parser.add_argument('--refit', help='Fit the shape parameters and '
                                'the number of events and then rerun the fit '
                                'after fixing the shape parameters',
+                               default=False, action='store_true')
+    global_parser.add_argument('-s', '--fix-shape', help='fix the shape by doing'
+                               ' a costh integrated fit first and fixing all '
+                               'shape parameters to the ones obtained there',
                                default=False, action='store_true')
 
     # Add the chic parser
