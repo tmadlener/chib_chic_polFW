@@ -60,7 +60,9 @@ class FitModel(object):
                 before fitting. NOTE: all used variables have to be present in
                 the dataset.
         """
-        fit_data = wsp.data('full_data').reduce(add_cut)
+        fit_data = wsp.data('full_data')
+        if add_cut:
+            fit_data = fit_data.reduce(add_cut)
 
         fit_results = wsp.pdf(self.full_model).fitTo(fit_data,
                                                      rf.Minos(True),
@@ -105,7 +107,9 @@ class FitModel(object):
         r.TGaxis.SetMaxDigits(3)
 
         mvar = get_var(wsp, self.mname)
-        plot_data = wsp.data('full_data').reduce(add_cut)
+        plot_data = wsp.data('full_data')
+        if add_cut:
+            plot_data = plot_data.reduce(add_cut)
         frame = mvar.frame(rf.Bins(80))
         frame.SetTitle("")
         frame.GetYaxis().SetTitleOffset(1.3)
