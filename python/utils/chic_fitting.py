@@ -115,9 +115,10 @@ class ChicMassModel(FitModel):
 
         ws_import(ws, M_background)
 
-        # ws.var('BK_p2').setVal(1e-10)
-        # ws.var('BK_p2').setConstant(True)
-        self.fix_params(ws, [('CBn', 2.75)])
+        self.fix_params(ws, [
+            ('CBn', 2.75),
+            ('BK_p2', 1e-10),
+        ])
         ws.var('CBmass1').setVal(3.510)
         # ws.var('alpha1').setConstant(True)
         # ws.var('q01S').setConstant(True)
