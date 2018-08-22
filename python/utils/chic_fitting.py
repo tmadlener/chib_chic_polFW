@@ -110,14 +110,18 @@ class ChicMassModel(FitModel):
         # polynomial background
         ws.factory('BK_p1[0, -1, 1]')
         ws.factory('BK_p2[0, -1, 1]')
-        M_background = r.RooPolynomial('M_background', 'M_background', ws.var('chicMass'),
+        M_background = r.RooPolynomial(self.bkg_model, self.bkg_model, ws.var('chicMass'),
                                       r.RooArgList(ws.var('BK_p1'), ws.var('BK_p2')))
+
+        # M_background = r.RooExponential(self.bkg_model, self.bkg_model, ws.var('chicMass'), ws.var('BK_p1'))
+
 
         ws_import(ws, M_background)
 
         self.fix_params(ws, [
             ('CBn', 2.75),
             ('BK_p2', 1e-10),
+            # ('q01S', 3.1)
         ])
         ws.var('CBmass1').setVal(3.510)
         # ws.var('alpha1').setConstant(True)
