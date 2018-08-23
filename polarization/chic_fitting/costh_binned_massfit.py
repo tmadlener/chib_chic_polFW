@@ -22,7 +22,7 @@ from utils.roofit_utils import get_var, ws_import, get_args
 from utils.chic_fitting import ChicMassModel
 from utils.jpsi_fitting import JpsiMassModel
 from utils.chib_fitting import ChibMassModel
-
+from utils.config_fitting import ConfigFitModel
 
 def get_ws_vars(state, massmodel=None):
     """
@@ -221,6 +221,23 @@ def run_jpsi_fit(args):
             args.fix_shape)
 
 
+def run_config_fit(args):
+    """Setup everything and run the config file fits
+    NOTE: currently assuming chic or chib input for this
+    """
+    logging.info('Running fits with model from config file')
+    cond_mkdir_file(args.outfile)
+    model = ConfigFitModel(args.configfile)
+    costh_binning = create_bin_info_json('chic', args.nbins, args.datafile,
+                                         args.outfile, args.bin_info)
+
+    dvars = get_ws_vars('chic')
+    dataf = r.TFile.Open(args.datafile)
+    tree = dataf.Get('chic_tuple')
+    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit,
+            args.fix_shape)
+
+
 if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='script for running costh '
@@ -273,6 +290,13 @@ if __name__ == '__main__':
     jpsi_parser.add_argument('costh_bin_file', help='json file containing the '
                              'costh binning information')
     jpsi_parser.set_defaults(func=run_jpsi_fit)
+
+    # Add the config parser
+    config_parser = subparsers.add_parser('config', description='Run the fits '
+                                          'using a model specified in a json '
+                                          'file', parents=[global_parser])
+    config_parser.add_argument('configfile', help='Config file in json format')
+    config_parser.set_defaults(func=run_config_fit)
 
     clargs = parser.parse_args()
     clargs.func(clargs)

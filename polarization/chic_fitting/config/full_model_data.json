@@ -1,0 +1,66 @@
+{
+  "fit_variable": "chicMass",
+  "full_model": {
+    "name": "M_fullModel",
+    "type": "SUM"
+  },
+
+  "sub_models": [
+    {
+      "name": "M_chic0",
+      "event_yield": "Nchic0[300, 0, 10000]",
+      "expression": "RooVoigtian::{}({}, CBmass0, CBsigma0, CBwidth[0.0104])",
+      "plot_config": [7, 901, "#chi_{c0}"]
+    },
+    {
+      "name": "M_chic1",
+      "event_yield": "Nchic1[10000, 0, 200000]",
+      "expression": "RooCBShape::{}({}, CBmass1, CBsigma1, CBalpha1, CBn1)",
+      "plot_config": [7, 417, "#chi_{c1}"]
+    },
+    {
+      "name": "M_chic2",
+      "event_yield": "Nchic2[10000, 0, 200000]",
+      "expression": "RooCBShape::{}({}, CBmass2, CBsigma2, CBalpha2, CBn2)",
+      "plot_config": [7, 632, "#chi_{c2}"]
+    },
+    {
+      "name": "M_background",
+      "event_yield": "Nbkg[30000, 0, 300000]",
+      "expression": "RooPolynomial::{}({}, {{BK_p1, BK_p2}})",
+      "plot_config": [7, 1, "Bkg"]
+    }
+  ],
+
+  "expression_strings": [
+    "m_psiPDG[3.096916]",
+    "m_chic0PDG[3.41475]",
+    "m_chic1PDG[3.51066]",
+    "m_chic2PDG[3.55620]",
+
+    "CBmass1[3.51, 3.45, 3.54]",
+    "CBsigma1[0.008, 0.003, 0.02]",
+    "CBalpha1[0.6, 0.2, 1.1]",
+    "CBn1[2.5, 1.8, 5.0]",
+
+    "expr::CBn2('CBn1', CBn1)",
+    "expr::PES('(CBmass1 - m_psiPDG) / (m_chic1PDG - m_psiPDG)', CBmass1, m_psiPDG, m_chic1PDG)",
+    "expr::CBmass2('PES * (m_chic2PDG - m_psiPDG) + m_psiPDG', PES, m_chic2PDG, m_psiPDG)",
+    "expr::CBmass0('PES * (m_chic0PDG - m_psiPDG) + m_psiPDG', PES, m_chic0PDG, m_psiPDG)",
+    "expr::CBsigma2('CBsigma1 * (m_chic2PDG - m_psiPDG) / (m_chic1PDG - m_psiPDG)', CBsigma1, m_chic2PDG, m_chic1PDG, m_psiPDG)",
+    "expr::CBsigma0('CBsigma1 * (m_chic0PDG - m_psiPDG) / (m_chic1PDG - m_psiPDG)', CBsigma1, m_chic0PDG, m_chic1PDG, m_psiPDG)",
+
+    "CBalpha2[0.6, 0.2, 1.1]",
+    "BK_p1[0, -1, 1]",
+    "BK_p2[0, -1, 1]"
+  ],
+
+  "fix_vars": [
+    {"CBn1": 2.75},
+    {"BK_p2": 1e-10}
+  ],
+
+  "plot_config": {
+    "legpos": [0.18, 0.5, 0.38, 0.7]
+  }
+}

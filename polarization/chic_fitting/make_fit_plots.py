@@ -17,6 +17,7 @@ logging.basicConfig(level=logging.INFO,
 from utils.chic_fitting import ChicMassModel
 from utils.jpsi_fitting import JpsiMassModel
 from utils.chib_fitting import ChibMassModel
+from utils.config_fitting import ConfigFitModel
 from utils.misc_helpers import cond_mkdir, get_bin_cut_root, get_bin_edges
 from utils.roofit_utils import get_var_graph, get_args
 
@@ -32,6 +33,8 @@ def make_fit_res_plots(wsp, costh_bins, state, outdir, **kwargs):
         mass_model = ChicMassModel('chicMass')
     elif state == 'chib':
         mass_model = ChibMassModel(kwargs.pop("configfile"))
+    elif state == 'config':
+        mass_model = ConfigFitModel(kwargs.pop('configfile'))
     else:
         mass_model = JpsiMassModel('JpsiMass')
 
@@ -177,6 +180,9 @@ if __name__ == '__main__':
                            const='jpsi', help='Do mass fits for jpsi data')
     state_sel.add_argument('--chib', action='store_const', dest='state',
                            const='chib', help='Do mass fits for chib data')
+    state_sel.add_argument('--config', help='Do mass fit plots for a model '
+                           'defined via a config file',
+                           const='config', action='store_const', dest='state')
     parser.set_defaults(state='chic')
 
     parser.add_argument('--configfile', help='Config file in json format for chib model.',
