@@ -59,3 +59,8 @@ general/interface/json.hpp
 
 # toy mc generation executable
 toy_mc_generation/run_chicpolgen
+
+# ROOT dict and pcm files
+*rdict.pcm
+# NOTE: assumes a certain naming convention!
+dict*.cxx

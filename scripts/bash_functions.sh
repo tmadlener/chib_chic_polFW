@@ -191,3 +191,22 @@ function run_sandboxed() {
     # return the sandbox id in order to be able to identify which files have been created inside this sandbox
     echo "${sandboxid}"
 }
+
+## Function that calls make in the RooDoubleCB directory so that the shared object is present
+function build_double_sided_CB() {
+    cmpfile=$(mktemp ${CHIB_CHIC_POLFW_DIR}/general/RooDoubleCB/compile.XXXXXXXX)
+    make -C ${CHIB_CHIC_POLFW_DIR}/general/RooDoubleCB/ > ${cmpfile} 2>&1
+    compile_status=$?
+
+    if [[ ${compile_status} -ne 0 ]]; then
+        echo "Problem building RooDoubleCB:"
+        echo "================================================================================"
+        cat ${cmpfile}
+        echo "================================================================================"
+        echo "Check output of compilation in: "${cmpfile}
+    else
+        rm ${cmpfile}
+    fi
+
+    return ${compile_status}
+}

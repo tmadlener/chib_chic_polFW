@@ -24,6 +24,8 @@ if [[ -z "${CHIB_CHIC_POLFW_DIR+x}" ]] || $(check_args_flag "--force" ${@}); the
 
     fetch_json_header ${@}
 
+    build_double_sided_CB
+
     if $(check_args_flag "--run-tests" ${@}); then
         run_tests
     fi
