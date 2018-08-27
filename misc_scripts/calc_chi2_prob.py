@@ -135,8 +135,9 @@ def main(args):
 
     ratios.sort(key=lambda rr: sp.N(rr[0]))
     # print before removing "duplicates"
+    print ('# Delta lambda, N, chi2, p, sigma')
     for ratio in ratios:
-        print('Delta lambda = {}, N = {:.3f}, chi2 = {:.2f}, p = {:.3e}, sigma = {:.1f}'
+        print('{}, {:.3f}, {:.2f}, {:.3e}, {:.1f}'
               .format(ratio[0], ratio[3], ratio[2],
                       chi2.sf(ratio[2], fit_graph.GetN() - 1),
                       norm.isf(chi2.sf(ratio[2], fit_graph.GetN() - 1))))
@@ -159,7 +160,7 @@ def main(args):
                  legEntries=['data'],
                  attr=[{'color': 1, 'marker': 20, 'size': 1.5}], drawOpt='samePE')
 
-    can.SaveAs('simple_chi2_overview_toy_data_comp_5bins.pdf')
+    can.SaveAs(args.output)
 
 
 if __name__ == '__main__':
@@ -173,6 +174,8 @@ if __name__ == '__main__':
                         'efficiency weighted costh histograms from Toy MC')
     parser.add_argument('bininfo', help='File containing the costh binning info '
                         '(as produced e.g. by the costh binnned mass fits)')
+    parser.add_argument('-o', '--output', help='Filename of the generated plot',
+                        default='data_template_comparison.pdf')
 
     clargs = parser.parse_args()
     main(clargs)
