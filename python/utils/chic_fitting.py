@@ -29,7 +29,8 @@ class ChicMassModel(FitModel):
         self.signal = 'M_signal'
         self.bkg_model = 'M_background'
         self.legpos = (0.18, 0.5, 0.38, 0.7)
-        self.nevent_vars = ['Nchic0', 'Nchic1', 'Nchic2', 'Nbkg']
+        self.nevent_yields = ['Nchic0', 'Nchic1', 'Nchic2', 'Nbkg']
+        self.floating_costh = []
 
         self.components = (
             (self.chic0, 7, 901, '#chi_{c0}'),

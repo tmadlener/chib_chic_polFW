@@ -11,23 +11,20 @@ logging.basicConfig(level=logging.INFO,
                     format='%(levelname) - %(funcName)s: %(message)s')
 
 from utils.FitModel import FitModel
+import utils.RooDoubleCB # Make the double sided CB available via the factory
 
 def _full_model_expr(model_type, name, sub_models, event_yields):
     """
     Construct the full model expression
 
-    NOTE: Currently only handles type 'SUM'
+    NOTE: Might fail at runtime when this string is used as factory expression
     """
-    if model_type == 'SUM':
-        sub_expr = ', '.join([
-            ' * '.join(['{}'.format(y), '{}'.format(sub_models[i])])
-            for i, y in enumerate(event_yields)
-        ])
-        return 'SUM::{}({})'.format(name, sub_expr)
+    sub_expr = ', '.join([
+        ' * '.join(['{}'.format(y), '{}'.format(sub_models[i])])
+        for i, y in enumerate(event_yields)
+    ])
 
-    logging.error('Cannot handle type \'{}\' to construct the full model'
-                  .format(model_type))
-    return ''
+    return '{}::{}({})'.format(model_type, name, sub_expr)
 
 
 class ConfigFitModel(FitModel):
@@ -71,11 +68,17 @@ class ConfigFitModel(FitModel):
                                                 [c[0] for c in self.components],
                                                 self.nevent_yields)
 
-        self.expression_strings += config['expression_strings']
+        if 'expression_strings' in config:
+            self.expression_strings += config['expression_strings']
 
         self.fix_vars = []
-        for var in config['fix_vars']:
-            self.fix_vars.append((var.keys()[0], var.values()[0]))
+        if 'fix_vars' in config:
+            for var in config['fix_vars']:
+                self.fix_vars.append((var.keys()[0], var.values()[0]))
+
+        self.floating_costh = []
+        if 'floating_costh' in config:
+            self.floating_costh = config['floating_costh']
 
         self.legpos = config['plot_config']['legpos']
 
@@ -97,5 +100,5 @@ class ConfigFitModel(FitModel):
             wsp.factory(model)
         wsp.factory(self.full_model_expr)
 
-        self.fix_params(wsp, self.fix_vars) 
+        self.fix_params(wsp, self.fix_vars)
         wsp.Print()

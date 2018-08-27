@@ -5,6 +5,7 @@ Script for running costh binned mass fits
 
 import re
 import json
+import os
 
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
@@ -12,6 +13,8 @@ r.PyConfig.IgnoreCommandLineOptions = True
 import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
+
+from shutil import copy2
 
 from utils.data_handling import get_dataframe
 from utils.misc_helpers import (
@@ -56,10 +59,18 @@ def get_shape_params(wsp, savename, mass_model):
     """
     fit_res = wsp.genobj('fit_res_{}'.format(savename))
     all_params = [p.GetName() for p in get_args(fit_res.floatParsFinal())]
-    event_params = mass_model.nevent_vars
+    event_params = mass_model.nevent_yields
 
     for evpar in event_params:
         all_params.remove(evpar)
+
+    for float_par in mass_model.floating_costh:
+        if not float_par in all_params:
+            logging.warn('{} is not in the list of parameters for the model.'
+                         'It is not possible to leave it floating'
+                         .format(float_par))
+        else:
+            all_params.remove(float_par)
 
     return all_params
 
@@ -127,6 +138,7 @@ def create_bin_info_json(state, nbins, datafile, fitfile, bininfo_file=None):
         'costh_bins': costh_bins,
         'costh_means': costh_means,
     }
+    bin_sel_info['datafile'] = datafile
     with open(bininfo_file, 'w') as info_file:
         json.dump(bin_sel_info, info_file, sort_keys=True, indent=2)
 
@@ -227,6 +239,8 @@ def run_config_fit(args):
     """
     logging.info('Running fits with model from config file')
     cond_mkdir_file(args.outfile)
+    copy2(args.configfile,
+          os.path.join(os.path.split(args.outfile)[0], 'fit_model.json'))
     model = ConfigFitModel(args.configfile)
     costh_binning = create_bin_info_json('chic', args.nbins, args.datafile,
                                          args.outfile, args.bin_info)

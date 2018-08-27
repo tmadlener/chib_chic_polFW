@@ -30,8 +30,10 @@ class FitModel(object):
         self.components = None
         self.mname = None
         self.legpos = None
-        self.nevent_vars = None
+        self.nevent_yields = None
+        self.floating_costh = []
         raise NotImplementedError('__init__ has to be defined by derived class')
+
 
     def define_model(self, wsp):
         """
@@ -43,6 +45,7 @@ class FitModel(object):
         """
         raise NotImplementedError('_define_model has to be defined by derived '
                                   'class')
+
 
     def fit(self, wsp, savename, add_cut=''):
         """

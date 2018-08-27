@@ -1,0 +1,36 @@
+{
+  "fit_variable": "chicMass",
+  "full_model": {
+    "name": "M_chic2Model",
+    "type": "SUM"
+  },
+
+  "sub_models": [
+    {
+      "name": "M_chic2",
+      "event_yield": "Nchic2[10000, 0, 200000]",
+      "expression": "RooDoubleCB::{}({}, CBmass2, CBsigma2, CBalpha2_1, CBn2_1, CBalpha2_2, CBn2_2)",
+      "plot_config": [7, 632, "#chi_{c2}"]
+    }
+  ],
+
+  "expression_strings": [
+    "CBmass2[3.54, 3.49, 3.58]",
+    "CBsigma2[0.008, 0.003, 0.02]",
+    "CBalpha2_1[0.6, 0.2, 5.0]",
+    "CBn2_1[2.5, 1.8, 5.0]",
+    "CBalpha2_2[0.6, 0.2, 5.0]",
+    "CBn2_2[2.5, 1.8, 5.0]"
+  ],
+
+  "fix_vars": [
+    {"CBn2_2": 2.5},
+    {"CBn2_1": 3.5}
+  ],
+
+  "floating_costh": ["CBsigma2", "CBn2_2"],
+
+  "plot_config": {
+    "legpos": [0.18, 0.5, 0.38, 0.7]
+  }
+}
