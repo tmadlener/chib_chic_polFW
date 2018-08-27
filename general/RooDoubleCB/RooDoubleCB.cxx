@@ -42,15 +42,29 @@ RooDoubleCB::RooDoubleCB(const char *name,  const char *title,
 
 Double_t RooDoubleCB::evaluate() const
 {
-  double u   = (x-mu)/sig;
-  double A1  = TMath::Power(n1/TMath::Abs(a1), n1)*TMath::Exp(-a1*a1/2);
-  double A2  = TMath::Power(n2/TMath::Abs(a2), n2)*TMath::Exp(-a2*a2/2);
-  double B1  = n1/TMath::Abs(a1) - TMath::Abs(a1);
-  double B2  = n2/TMath::Abs(a2) - TMath::Abs(a2);
+  const double u   = (x - mu) / sig;
 
-  double result(1);
-  if      (u<-a1) result *= A1*TMath::Power(B1-u, -n1);
-  else if (u<a2)  result *= TMath::Exp(-u*u/2);
-  else            result *= A2*TMath::Power(B2+u, -n2);
-  return result;
+  if (u > -a1 && u < a2) {
+    return TMath::Exp(-0.5 * u*u);
+  }
+
+  if (u < -a1) {
+    const double absAlpha1 = std::abs(a1);
+    const double n1OverA1 = n1 / absAlpha1;
+    const double A1 = TMath::Power(n1OverA1, n1) * TMath::Exp(-0.5 * a1*a1);
+    const double B1 = n1OverA1 - absAlpha1;
+
+    return A1 * TMath::Power(B1 - u, -n1);
+  }
+
+  if (u > a2) {
+    const double absAlpha2 = std::abs(a2);
+    const double n2OverA2 = n2 / absAlpha2;
+    const double A2 = TMath::Power(n2OverA2, n2) * TMath::Exp(-0.5 * a2*a2);
+    const double B2 = n2OverA2 - absAlpha2;
+
+    return A2 * TMath::Power(B2 + u, -n2);
+  }
+
+  return 0;
 }
