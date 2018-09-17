@@ -22,6 +22,8 @@
 #include <memory>
 
 #define GENRAPIDITY 1 // set to zero to generate the chic eta instead of the chic rapidity
+#define GENPTM 1 // set to zero to generate the pT/M distribution instead of pT
+#define ACCEPTALL 1 // accept all events (i.e. do not apply pre-selections (defined below))
 
 /** * Configuration and settings for the generation
  *
@@ -146,6 +148,16 @@ double func_pT_gen(double* x, double* p)
   return pT * pow( 1. + 1./(beta - 2.) * pT/mchi*pT/mchi / gamma, -beta  );
 }
 
+double func_pTM_gen(double* x, double*)
+{
+  // const double beta = 3.45;  //  CHECK HERE FUNCTION AND PARAMETER VALUES: USE THOSE OF GLOBAL FIT (considering that this is a pT distribution, not a pT/M distribution)
+  const double beta = 3.39924;  // same as in MC generation from Alberto
+  // const double gamma = 0.73;
+  const double gamma = 0.635858; // same as in MC generation from Alberto
+  double pTM = x[0];
+  return pTM * pow( 1. + 1./(beta - 2.) * pTM*pTM / gamma, -beta  );
+}
+
 
 void chicpolgen(const gen_config& config = gen_config{}){
   gROOT->SetBatch();
@@ -186,15 +198,17 @@ void chicpolgen(const gen_config& config = gen_config{}){
   }
 
   // Selectors to act on the smeared variables
-  // TODO: Make this configurable in some way
+  // TODO: Make this configurable at run-time in some way
+#if ACCEPTALL == 0
   const auto jpsiSelector = std::make_unique<PtRangeAbsRapiditySelector>(Range{8, 20}, 1.20);
   const auto muonSelector = std::make_unique<LooseMuonSelector>();
   const auto photonSelector = std::make_unique<MinPtMaxEtaSelector>(0.41, 1.5);
-
+#else
   // To accept all events without filters
-  // const auto jpsiSelector = std::make_unique<AllSelector>();
-  // const auto muonSelector = std::make_unique<AllSelector>();
-  // const auto photonSelector = std::make_unique<AllSelector>();
+  const auto jpsiSelector = std::make_unique<AllSelector>();
+  const auto muonSelector = std::make_unique<AllSelector>();
+  const auto photonSelector = std::make_unique<AllSelector>();
+#endif
 
   delete gRandom;
   gRandom = new TRandom3(0);
@@ -219,10 +233,18 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
   // jpsiMass = static_cast<TF1*>(modelFile->Get("jpsi_mass"));
 
-
+#if GENPTM == 0
+  // generate pT
   TF1* pT_distr = new TF1("pT_distr",func_pT_gen,pT_min,pT_max,1);
-  TF1* rap_distr = new TF1("rap_distr",func_rap_gen,y_min,y_max,0);
+  pT_distr->SetParameter(0, GenMassSettings.MchiPDG[config.chic_state].central);
+#else
+  // generate pT / M
+  TF1* pTM_distr = new TF1("pTM_distr", func_pTM_gen,
+                           pT_min / GenMassSettings.MchiPDG[config.chic_state].central,
+                           pT_max / GenMassSettings.MchiPDG[config.chic_state].central, 0);
+#endif
 
+  TF1* rap_distr = new TF1("rap_distr",func_rap_gen,y_min,y_max,0);
 
   TFile* hfile = new TFile( config.genfile.c_str(), "RECREATE", "chicpolgen");
 
@@ -378,8 +400,11 @@ void chicpolgen(const gen_config& config = gen_config{}){
     const double Phi_chi   = 2. * PIG * gRandom->Rndm(); // needed for any of the two cases
 
     // pT:
-    pT_distr->SetParameter(0, Mchi);
+#if GENPTM == 0
     pT_chi = pT_distr->GetRandom();
+#else
+    pT_chi = pTM_distr->GetRandom() * Mchi;
+#endif
 
 #if GENRAPIDITY == 1
     // pL:
