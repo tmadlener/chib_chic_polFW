@@ -349,7 +349,6 @@ def _setup_plot_hist(can, pltables, **kwargs):
     x_range, x_label = kwargs.pop('xRange', None), kwargs.pop('xLabel', '')
     y_range, y_label = kwargs.pop('yRange', None), kwargs.pop('yLabel', '')
 
-
     # Check if we need a frame for drawing anyways (i.e. no histograms
     # in pltables) or if a user-defined range is desired
     hist_in_plots = any(p.InheritsFrom('TH1') for p in pltables)
@@ -436,6 +435,7 @@ def mkplot(pltables, **kwargs):
     # Need to pop the can kwarg here otherwise plot_on_canvas will receive it
     # twice and complain
     can = _setup_canvas(kwargs.pop('can', None), **kwargs)
+    can.cd() # To make TCanvas.DrawFrame work in any case
 
     # Check if at least one pltable has been passed and return the canvas if not
     # NOTE: Can't return earlier with None, since a canvas is expected to be
@@ -606,8 +606,6 @@ def baseline_plot(baseline, compplots, **kwargs):
         kwargs.pop(kwarg, None)
 
     ratios = [divide(p, baseline) for p in make_iterable(compplots)]
-    for ratio in ratios:
-        _set_ratio_properties(ratio)
 
     # determine the ratios and plot them
     rpad = mkplot(ratios,
@@ -615,6 +613,9 @@ def baseline_plot(baseline, compplots, **kwargs):
                   yLabel=' / '.join([kwargs.pop('compname', 'distribution(s)'),
                                      base_name]),
                   yRange=kwargs.pop('yRangeRatio', [None, None]), **kwargs)
+
+    for hist in rpad.pltables:
+        _set_ratio_properties(hist)
 
     putlines = kwargs.pop('putline', None)
     if putlines is not None:
