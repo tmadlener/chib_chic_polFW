@@ -27,6 +27,16 @@ def _full_model_expr(model_type, name, sub_models, event_yields):
     return '{}::{}({})'.format(model_type, name, sub_expr)
 
 
+def _try_factory(wsp, expr):
+    """Try to run the expression through the RooWorkspace.factory"""
+    obj = wsp.factory(expr)
+    if not obj:
+        logging.error('\'{}\' failed to create the an object in the workspace'
+                      .format(expr))
+        return False
+    return True
+
+
 class ConfigFitModel(FitModel):
     """
     Fit model initialized and constructed using a json config file
@@ -94,11 +104,17 @@ class ConfigFitModel(FitModel):
         # first make sure to define all variables in the expression strings,
         # since the models might depend on them. Afterwards build the submodels
         # and finally construct the fullmodel from there
+        success = []
         for expr in self.expression_strings:
-            wsp.factory(expr)
+            success.append(_try_factory(wsp, expr))
+
         for model in self.model_expressions:
-            wsp.factory(model)
-        wsp.factory(self.full_model_expr)
+            success.append(_try_factory(wsp, model))
+        success.append(_try_factory(wsp, self.full_model_expr))
 
         self.fix_params(wsp, self.fix_vars)
         wsp.Print()
+
+        if not all(success):
+            logging.error('Could not succesfully define the model in the '
+                          'workspace')
