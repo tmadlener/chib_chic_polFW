@@ -160,12 +160,27 @@ def _get_var_vals(wsp, var, snapshots):
     return np.array(central), np.array(err_low), np.array(err_high)
 
 
-def get_var_graph(wsp, snap_base, var, n_bins, binning=None, bin_means=None):
+def get_var_graph(wsp, snap_base, var, n_bins, binning=None, bin_means=None,
+                  fit_res_base=''):
     """
     Get the graph of a variable for all snapshots results matching fit_res_base
     """
     snapshots = [snap_base.format(i) for i in xrange(n_bins)]
-    vals, err_lo, err_hi = _get_var_vals(wsp, var, snapshots)
+    if fit_res_base:
+        fitresults = [fit_res_base.format(i) for i in xrange(n_bins)]
+        vals = []
+        errs = []
+        for ibin, fitres in enumerate(fitresults):
+            wsp.loadSnapshot(snapshots[ibin])
+            val_err = get_var_err(wsp, var, wsp.genobj(fitres))
+            vals.append(val_err[0])
+            errs.append(val_err[1])
+
+        vals = np.array(vals)
+        err_lo = np.array(errs)
+        err_hi = np.array(errs)
+    else:
+        vals, err_lo, err_hi = _get_var_vals(wsp, var, snapshots)
 
     # bin_means are necessary and are either determined from the binning or
     # simply chosen as the indices

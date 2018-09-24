@@ -14,7 +14,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
-from shutil import copy2
+import shutil
 
 from utils.data_handling import get_dataframe
 from utils.misc_helpers import (
@@ -107,6 +107,8 @@ def do_binned_fits(mass_model, wsp, costh_bins, refit=False):
     Do the fits in all costh bins
     """
     for ibin, ctbin in enumerate(costh_bins):
+        logging.info('Running fit for bin {}: {:.3f} < |costh| < {:.3f}'
+                     .format(ibin, *ctbin))
         bin_sel = get_bin_cut_root('TMath::Abs(costh_HX)', *ctbin)
         savename = 'costh_bin_{}'.format(ibin)
         mass_model.fit(wsp, savename, bin_sel)
@@ -239,8 +241,14 @@ def run_config_fit(args):
     """
     logging.info('Running fits with model from config file')
     cond_mkdir_file(args.outfile)
-    copy2(args.configfile,
-          os.path.join(os.path.split(args.outfile)[0], 'fit_model.json'))
+    try:
+        shutil.copy2(args.configfile,
+                     os.path.join(os.path.split(args.outfile)[0],
+                                  'fit_model.json'))
+    except shutil.Error as err:
+        logging.warn(str(err))
+        pass
+
     model = ConfigFitModel(args.configfile)
     costh_binning = create_bin_info_json('chic', args.nbins, args.datafile,
                                          args.outfile, args.bin_info)
