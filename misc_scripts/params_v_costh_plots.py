@@ -18,7 +18,10 @@ from utils.misc_helpers import cond_mkdir
 # fix the plotting ranges for some of the parameters for more meaningful plots
 FIX_RANGES = {
     'BK_p2': [-0.004, 0.004],
-    'CBmass1': [3.505, 3.5075]
+    'CBmass1': [3.505, 3.5075],
+    'beta1': [-5, -3],
+    'alpha1': [0.4, 1.2],
+    'CBmass2': [3.546, 3.556],
 }
 
 def make_comp_plot(graph, intgraph, fit=False):

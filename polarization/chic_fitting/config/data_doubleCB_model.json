@@ -45,6 +45,7 @@
     "CBalpha1_2[0.6, 0.2, 5.0]",
     "CBn1_2[2.5, 1.8, 5.0]",
 
+
     "expr::CBn2_1('CBn1_1', CBn1_1)",
     "expr::CBn2_2('CBn1_2', CBn1_2)",
     "expr::CBalpha2_1('CBalpha1_1', CBalpha1_1)",
@@ -53,8 +54,8 @@
     "expr::PES('(CBmass1 - m_psiPDG) / (m_chic1PDG - m_psiPDG)', CBmass1, m_psiPDG, m_chic1PDG)",
     "expr::CBmass2('PES * (m_chic2PDG - m_psiPDG) + m_psiPDG', PES, m_chic2PDG, m_psiPDG)",
     "expr::CBmass0('PES * (m_chic0PDG - m_psiPDG) + m_psiPDG', PES, m_chic0PDG, m_psiPDG)",
-    "expr::CBsigma2('CBsigma1 * (m_chic2PDG - m_psiPDG) / (m_chic1PDG - m_psiPDG)', CBsigma1, m_chic2PDG, m_chic1PDG, m_psiPDG)",
     "expr::CBsigma0('CBsigma1 * (m_chic0PDG - m_psiPDG) / (m_chic1PDG - m_psiPDG)', CBsigma1, m_chic0PDG, m_chic1PDG, m_psiPDG)",
+    "expr::CBsigma2('CBsigma1 * r_sigma1_sigma2', CBsigma1, r_sigma1_sigma2[1.2, 0.8, 2.3])",
 
     "Bkg_lambda[0, -15, 15]"
   ],
@@ -66,6 +67,7 @@
     {"CBalpha1_2": 2}
   ],
 
+  "floating_costh": ["CBsigma1", "Bkg_lambda"],
 
   "plot_config": {
     "legpos": [0.18, 0.5, 0.38, 0.7]
