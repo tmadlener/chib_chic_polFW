@@ -176,3 +176,31 @@ def apply_selections(dataframe, selections, negate=False):
     # NOTE: since this indexing uses an array of bools this will always return a
     # copy
     return dataframe[sum_selection]
+
+
+def get_treename(filename):
+    """
+    Try to get the ONLY tree in the passed root file
+
+    Args:
+        filename (str): Filename of the root file
+
+    Returns:
+        treename (str) or None: If there is only one tree in the root file, than
+            the name of that tree will be returned, if there is more than one
+            or no TTree at all, then None will be returned
+    """
+    rfl = r.TFile.Open(filename)
+    contents = {k.GetName(): rfl.Get(k.GetName()) for k in rfl.GetListOfKeys()}
+    trees = [n for n, o in contents.iteritems() if o.InheritsFrom('TTree')]
+
+    if len(trees) == 1:
+        return trees[0]
+
+    if len(trees) > 1:
+        logging.warning('Found more than one TTrees in {}: {}'
+                        .format(filename, trees))
+    if len(trees) == 0:
+        logging.warning('Found no TTrees in {}'.format(filename))
+
+    return None

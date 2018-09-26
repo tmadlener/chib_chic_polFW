@@ -3,6 +3,7 @@
 Tests for the data_handling module
 """
 
+import os
 import unittest
 
 import numpy as np
@@ -11,7 +12,7 @@ import pandas as pd
 import logging
 logging.basicConfig(level=logging.FATAL) # disable the error messages from logging
 
-from utils.data_handling import apply_selections
+from utils.data_handling import apply_selections, get_treename
 
 class TestApplySelection(unittest.TestCase):
     def setUp(self):
@@ -79,6 +80,47 @@ class TestApplySelection(unittest.TestCase):
         # check basic shape
         self.assertEqual(dfr1.shape, dfr2.shape)
         self.assertTrue(np.all(dfr1 == dfr2))
+
+
+class TestGetTreename(unittest.TestCase):
+    def setUp(self):
+        self.test_data_dir = os.path.join(
+            os.environ['CHIB_CHIC_POLFW_DIR'], 'python', 'test', 'test_data'
+        )
+
+
+    def test_return_none_mult_trees(self):
+        """Test if None is returned on multiple TTrees"""
+        mult_tree_files = [
+            'multiple_trees.root',
+            'multiple_trees_plus_others.root'
+        ]
+        for filen in mult_tree_files:
+            full_path = os.path.join(self.test_data_dir, filen)
+            self.assertTrue(get_treename(full_path) is None)
+
+
+    def test_return_none_no_trees(self):
+        """Test if None is returned on no found TTrees"""
+        no_tree_files = [
+            'no_tree.root',
+            'no_tree_plus_others.root'
+        ]
+        for filen in no_tree_files:
+            full_path = os.path.join(self.test_data_dir, filen)
+            self.assertTrue(get_treename(full_path) is None)
+
+
+    def test_return_tree_name(self):
+        """Test if the returned treename is the expected one for one TTree"""
+        one_tree_files = [
+            'one_tree.root',
+            'one_tree_plus_others.root'
+        ]
+        for filen in one_tree_files:
+            full_path = os.path.join(self.test_data_dir, filen)
+            # NOTE: 'tree' is hardcoded here as it is in the creation scrip:t
+            self.assertEqual(get_treename(full_path), 'tree')
 
 
 if __name__ == '__main__':

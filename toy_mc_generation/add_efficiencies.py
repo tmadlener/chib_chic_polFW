@@ -14,7 +14,7 @@ import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
-from utils.data_handling import get_dataframe, add_branch
+from utils.data_handling import get_dataframe, add_branch, get_treename
 from utils.EfficiencyProvider import MuonEfficiencies, PhotonEfficiencies
 
 # names of the branches
@@ -45,17 +45,6 @@ def calc_effs(data, effs, branch):
 
     logging.info('Calculating efficiencies for {}'.format(branch))
     return map(effs.eval, data.loc[:, pt_branch], data.loc[:, eta_branch])
-
-
-def get_treename(filename):
-    """
-    Get the name of the ONLY tree in the rootfile
-
-    NOTE: this does not do any checks at the moment!
-    """
-    rfile = r.TFile.Open(filename)
-    keys = [k.GetName() for k in rfile.GetListOfKeys()]
-    return keys[0]
 
 
 def main(args):

@@ -9,8 +9,10 @@ logging.basicConfig(level=logging.DEBUG,
 
 import numpy as np
 
-from utils.data_handling import store_dataframe, get_dataframe
+from itertools import product
 
+from utils.data_handling import get_dataframe, add_branch, get_treename
+from utils.misc_helpers import flatten
 
 def calc_folded_vars(costh, phi):
     """
@@ -51,7 +53,7 @@ def calc_folded_vars(costh, phi):
     return costh_fold, phi_fold
 
 
-def add_folded_frame(df, frame, costhn='costh', phin='phi'):
+def get_folded_frame(df, frame, costhn='costh', phin='phi'):
     """
     Add the folded variables to the dataframe for the passed frame
 
@@ -64,36 +66,46 @@ def add_folded_frame(df, frame, costhn='costh', phin='phi'):
             variables in the DataFrame (Default to 'costh' and 'phi' so that
             e.g. the complete column names for the HX frame are generated to be
             'costh_HX' and 'phi_HX')
+
+    Returns:
+        (costh_f, phi_f): tuple of numpy.arrays containing the folded
+        values
     """
     logging.debug('Adding folded variables for frame {}'.format(frame))
-    try:
-        # get the values from the dataframe as np.arrays
-        phi = df['_'.join([phin, frame])].values
-        costh = df['_'.join([costhn, frame])].values
-        costh_f, phi_f = calc_folded_vars(costh, phi)
-
-        df['_'.join([phin, frame, 'fold'])] = phi_f
-        df['_'.join([costhn, frame, 'fold'])] = costh_f
-    except KeyError:
-        logging.warning('Could not add folded variables for frame {}, because '
-                        'unfolded angular variables were not available'
-                        .format(frame))
+    # get the values from the dataframe as np.arrays
+    phi = df['_'.join([phin, frame])].values
+    costh = df['_'.join([costhn, frame])].values
+    return calc_folded_vars(costh, phi)
 
 
 def main(args):
     """Main"""
+    # In order to not have to load the whole file first determine the names of
+    # the branches that are necessary
+    var_names = [('costh', 'phi')]
+    if args.genlevel:
+        logging.info('Also adding generator level folding')
+        var_names.append(('gen_costh', 'gen_phi'))
+    frames = args.frames.split(',')
+
+    load_variables = ['_'.join(p) for p in product(flatten(var_names), frames)]
+
     for infile in args.inputfiles:
         logging.info('Processing file {}'.format(infile))
-        var_names = [('costh', 'phi')]
-        if args.genlevel:
-            logging.info('Also adding generator level folding')
-            var_names.append(('gen_costh', 'gen_phi'))
-        df = get_dataframe(infile, args.treename)
-        for var_pair in var_names:
-            for frame in args.frames.split(','):
-                add_folded_frame(df, frame, *var_pair)
+        if not args.treename:
+            treename = get_treename(infile)
+        else:
+            treename = args.treename
 
-        store_dataframe(df, infile, args.treename)
+        df = get_dataframe(infile, treename, columns=load_variables)
+
+        for var_pair in var_names:
+            for frame in frames:
+                costh_f, phi_f = get_folded_frame(df, frame, *var_pair)
+                add_branch(costh_f, '_'.join([var_pair[0], frame, 'fold']),
+                           infile, treename)
+                add_branch(phi_f, '_'.join([var_pair[1], frame, 'fold']),
+                           infile, treename)
 
 
 if __name__ == '__main__':
@@ -102,9 +114,10 @@ if __name__ == '__main__':
                                      'angular distribuion variables to the root'
                                      ' file in a separate branch')
     parser.add_argument('inputfiles', nargs='+', help='Files to process')
-    parser.add_argument('-t', '--treename', default='chic_tuple', type=str,
+    parser.add_argument('-t', '--treename', default='', type=str,
                         help='name of the tree in which the original variables are '
-                        '(used for storing output file).')
+                        'stored. (Only necessary if more than one TTree is in '
+                        ' the input file')
     parser.add_argument('-f', '--frames', type=str, default='HX,PX,CS',
                         help='reference frames for which to add the folded variables'
                         ' (comma separated list of two char abbreviations)')
