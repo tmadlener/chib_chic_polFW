@@ -9,10 +9,11 @@ import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 import pandas as pd
 import numpy as np
+import numpy.testing as npt
 
 import utils.misc_helpers as mh
 
-def same_binning(test_class, bin1, bin2):
+def same_binning(bin1, bin2):
     """
     Check if binnings are same taking into account floating point things
     """
@@ -20,8 +21,7 @@ def same_binning(test_class, bin1, bin2):
         # NOTE: this does not need to bu super accurate, thus if the borders
         # are within 0.005 we are happy enough (also because otherwise it
         # gets harder to setup the tests)
-        test_class.assertTrue(np.all(np.isclose(borders, bin2[ibin],
-                                                rtol=0, atol=5e-3)))
+        npt.assert_allclose(borders, bin2[ibin], rtol=0, atol=5e-3)
 
 
 def equal_bin_contents(test_class, sel_dfr, binning, var):
@@ -111,7 +111,7 @@ class TestGetCosthBinning(unittest.TestCase):
         self.dfr['costh_HX'] = self.dfr.costh_lin
         lin_bins = mh.get_costh_binning(self.dfr, n_bins)
         self.assertEqual(len(lin_bins), n_bins)
-        same_binning(self, lin_bins, [(i*w_bin, (i+1)*w_bin) for i in xrange(n_bins)])
+        same_binning(lin_bins, [(i*w_bin, (i+1)*w_bin) for i in xrange(n_bins)])
         equal_bin_contents(self, self.dfr, lin_bins, lambda d: d.costh_lin.abs())
 
 
@@ -119,7 +119,7 @@ class TestGetCosthBinning(unittest.TestCase):
         squ_bins = mh.get_costh_binning(self.dfr, n_bins)
         self.assertEqual(len(squ_bins), n_bins)
 
-        same_binning(self, squ_bins, [((i*w_bin)**2, ((i+1)*w_bin)**2) for i in xrange(n_bins)])
+        same_binning(squ_bins, [((i*w_bin)**2, ((i+1)*w_bin)**2) for i in xrange(n_bins)])
         equal_bin_contents(self, self.dfr, squ_bins, lambda d: d.costh_squ.abs())
 
 
@@ -131,14 +131,14 @@ class TestGetCosthBinning(unittest.TestCase):
         self.dfr['costh_HX'] = self.dfr.costh_lin
         lin_bins = mh.get_costh_binning(self.dfr, n_bins, selection=sel)
         self.assertEqual(len(lin_bins), n_bins)
-        same_binning(self, lin_bins, [(i*w_bin, (i+1)*w_bin) for i in xrange(n_bins)])
+        same_binning(lin_bins, [(i*w_bin, (i+1)*w_bin) for i in xrange(n_bins)])
 
         equal_bin_contents(self, self.dfr[sel], lin_bins, lambda d: d.costh_lin.abs())
 
         self.dfr['costh_HX'] = self.dfr.costh_squ
         squ_bins = mh.get_costh_binning(self.dfr, n_bins, selection=sel)
         self.assertEqual(len(squ_bins), n_bins)
-        same_binning(self, squ_bins, [((i*w_bin)**2, ((i+1)*w_bin)**2) for i in xrange(n_bins)])
+        same_binning(squ_bins, [((i*w_bin)**2, ((i+1)*w_bin)**2) for i in xrange(n_bins)])
         equal_bin_contents(self, self.dfr[sel], squ_bins, lambda d: d.costh_squ.abs())
 
 
@@ -157,14 +157,14 @@ class TestGetEquiPopBins(unittest.TestCase):
 
         bins = mh.get_equi_pop_bins(self.dfr, lambda df: df.y, n_bins)
         self.assertEqual(len(bins), n_bins)
-        same_binning(self, bins, [(i*w_bin, (i+1)*w_bin) for i in xrange(n_bins)])
+        same_binning(bins, [(i*w_bin, (i+1)*w_bin) for i in xrange(n_bins)])
         equal_bin_contents(self, self.dfr, bins, lambda d: d.y)
 
         w_bin = (self.dfr.x.max() - self.dfr.x.min()) / n_bins
         min_bin = self.dfr.x.min()
         bins = mh.get_equi_pop_bins(self.dfr, lambda df: df.x, n_bins)
         self.assertEqual(len(bins), n_bins)
-        same_binning(self, bins, [(min_bin + i*w_bin,
+        same_binning(bins, [(min_bin + i*w_bin,
                                    min_bin + (i+1)*w_bin) for i in xrange(n_bins)])
         equal_bin_contents(self, self.dfr, bins, lambda d: d.x)
 
@@ -175,7 +175,7 @@ class TestGetEquiPopBins(unittest.TestCase):
 
         bins = mh.get_equi_pop_bins(self.dfr, lambda df: df.x.abs(), n_bins)
         self.assertEqual(len(bins), n_bins)
-        same_binning(self, bins, [(i*w_bin, (i+1)*w_bin) for i in xrange(n_bins)])
+        same_binning(bins, [(i*w_bin, (i+1)*w_bin) for i in xrange(n_bins)])
         equal_bin_contents(self, self.dfr, bins, lambda d: d.x.abs())
 
 
@@ -185,7 +185,7 @@ class TestGetEquiPopBins(unittest.TestCase):
 
         bins = mh.get_equi_pop_bins(self.dfr, lambda d: d.y, n_bins)
         self.assertEqual(len(bins), n_bins)
-        same_binning(self, bins, [(i*w_bin, (i+1)*w_bin) for i in xrange(n_bins)])
+        same_binning(bins, [(i*w_bin, (i+1)*w_bin) for i in xrange(n_bins)])
         equal_bin_contents(self, self.dfr, bins, lambda d: d.y)
 
 
@@ -205,7 +205,7 @@ class TestGetBinMeans(unittest.TestCase):
         means = mh.get_bin_means(self.dfr, lambda d: d.x, bins)
 
         # if we get to the half percent level we are satisfied
-        self.assertTrue(np.all(np.isclose(bin_centers, means, atol=5e-3, rtol=0)))
+        npt.assert_allclose(means, bin_centers, atol=5e-3, rtol=0)
 
 
     def test_get_bin_means_selection(self):
@@ -216,7 +216,7 @@ class TestGetBinMeans(unittest.TestCase):
 
         bins = mh.get_equi_pop_bins(self.dfr[sel], lambda d: d.x, n_bins)
         means = mh.get_bin_means(self.dfr, lambda d: d.x, bins, sel)
-        self.assertTrue(np.all(np.isclose(bin_centers, means, atol=5e-3, rtol=0)))
+        npt.assert_allclose(means, bin_centers, atol=5e-3, rtol=0)
 
 
 class TestUniqueWKey(unittest.TestCase):
@@ -255,7 +255,7 @@ class TestGetNpFromTMatrix(unittest.TestCase):
         np_matrix = mh.get_np_from_tmatrix(matrix)
 
         self.assertEqual(m_matrix.shape, np_matrix.shape)
-        self.assertTrue(np.allclose(np_matrix, m_matrix, atol=1e-6, rtol=0))
+        npt.assert_allclose(np_matrix, m_matrix, atol=1e-6, rtol=0)
 
 
     def test_arbitrary_matrix(self):
@@ -274,7 +274,7 @@ class TestGetNpFromTMatrix(unittest.TestCase):
 
         np_matrix = mh.get_np_from_tmatrix(matrix)
         self.assertEqual(m_matrix.shape, np_matrix.shape)
-        self.assertTrue(np.allclose(np_matrix, m_matrix, atol=1e-6, rtol=0))
+        npt.assert_allclose(np_matrix, m_matrix, atol=1e-6, rtol=0)
 
 
 class TestGetBinCenters(unittest.TestCase):
@@ -283,8 +283,7 @@ class TestGetBinCenters(unittest.TestCase):
         exp_centers = np.array([i + 0.5 for i in xrange(10)])
         bcenters = mh.get_bin_centers(binning)
 
-        self.assertTrue(np.allclose(exp_centers, bcenters))
-
+        npt.assert_allclose(bcenters, exp_centers)
 
     # def test_arb_binning(self):
     #     # TODO
