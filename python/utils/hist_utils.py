@@ -11,6 +11,7 @@ import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(levelname) - %(funcName)s: %(message)s')
 
+from collections import OrderedDict
 from root_numpy import fill_hist
 
 from utils.misc_helpers import (
@@ -480,3 +481,88 @@ def hist2d(varx, vary, **kwargs):
         kwargs['y_axis'] = vary.name
 
     return create_histogram(np.array([varx, vary]).T, hist_sett, **kwargs)
+
+
+OTHER_AXIS = {'X': 'Y', 'Y': 'X'} # to get the 'other' direction
+
+def _get_slice(hist, direction, ilow, ihigh):
+    """
+    Get the slice between index ilow and ihigh
+    """
+    # TH2.GetProjection[X|Y] includes both passed bins, so we have to take care
+    # that we do not "double count" bins
+    # since 0 is the underflow bin, it is enough to bump the lower index by 1
+    axis = getattr(hist, 'Get' + OTHER_AXIS[direction] + 'axis')()
+    vlow = axis.GetBinLowEdge(ilow + 1)
+    vhigh = axis.GetBinUpEdge(ihigh)
+    proj_f = getattr(hist, 'Projection' + direction)
+
+    proj = proj_f('_'.join([create_random_str(4),
+                            direction, str(vlow), str(vhigh)]),
+                  ilow + 1, ihigh)
+    set_hist_opts(proj)
+
+    return proj, (vlow, vhigh)
+
+
+def get_n_slices(hist, direction, n_slices):
+    """
+    Get slice histograms from the 2 dimensional histogram
+
+    Args:
+        hist (ROOT.TH2D): 2d histogram from which the slices are taken
+        direction (char): 'X' or 'Y' to indicate into which direction the slices
+            should be projected
+        n_slices (int): Number of slices
+
+    Returns:
+        OrderedDict: The keys are tuples of the lower and upper value of the
+            second direction from which the slice has been taken, the values are
+            the histograms
+    """
+    hists = OrderedDict()
+    n_bins = getattr(hist, 'GetNbins' + OTHER_AXIS[direction])()
+    dslice = n_bins / n_slices
+    if n_bins % n_slices:
+        logging.warning('Cannot evenly cut {} bins into {} slices'
+                        .format(n_bins, n_slices))
+
+    for islice in xrange(n_slices):
+        ilow, ihigh = dslice * islice, dslice * (islice + 1)
+        proj, bounds = _get_slice(hist, direction, ilow, ihigh)
+        hists[bounds] = proj
+
+    return hists
+
+
+def get_slices(hist, direction, binning):
+    """
+    Get slice histograms from the 2 dimensional histogram
+
+    Args:
+        hist (ROOT.TH2D): 2d histogram from which the slices are taken
+        direction (char): 'X' or 'Y' to indicate into which direction the slices
+            should be projected
+        slices (list): list of numbers that indicate the bin edges for the
+            slices. Depending on the actual binning of the passed histogram
+            these values must not be matched automatically but are only used to
+            get the actual bin borders of the histograms
+
+    Returns:
+        OrderedDict: The keys are tuples of the lower and upper value of the
+            second direction from which the slice has been taken, the values are
+            the histograms
+    """
+    hists = OrderedDict()
+    n_bins = len(binning) - 1
+    slice_axis = getattr(hist, 'Get' + OTHER_AXIS[direction] + 'axis')()
+    # get the corresponding bin indices and clean them of duplicates
+    bin_idcs = list(set([slice_axis.FindBin(b) for b in binning]))
+    bin_idcs.sort() # just in case
+
+    bins = zip(bin_idcs[:-1], bin_idcs[1:])
+    for ilow, ihigh in bins:
+        proj, bounds = _get_slice(hist, direction, ilow, ihigh)
+        hists[bounds] = proj
+
+    return hists
