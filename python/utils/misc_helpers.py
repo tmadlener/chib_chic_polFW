@@ -208,6 +208,20 @@ def get_storable_name(name, reverse=False):
     return replace_all(name, repl_pairs, reverse)
 
 
+def _get_var(dfr, get_var):
+    """
+    Get the variable from the dataframe depending on if is a one argument
+    function, a string or already a numpy array
+    """
+    if hasattr(get_var, '__call__'):
+        return get_var(dfr)
+    if isinstance(get_var, basestring) or \
+       (isinstance(get_var, list) and
+        all(isinstance(v, basestring) for v in get_var)):
+        return dfr.loc[:, get_var]
+    return get_var
+
+
 def get_equi_pop_bins(dfr, get_var, n_bins):
     """
     Get equi-populated bins for the data
@@ -224,7 +238,7 @@ def get_equi_pop_bins(dfr, get_var, n_bins):
         list: List of tuples with two elements, where the [0] element is the
             lower bound of the bin and [1] the upper bound of the bin
     """
-    bin_var = np.sort(get_var(dfr))
+    bin_var = np.sort(_get_var(dfr, get_var))
     dbin = bin_var.shape[0] / n_bins # number of events per bin
     n_overflow = bin_var.shape[0] % n_bins
 
@@ -298,7 +312,7 @@ def get_bin_means(dfr, get_var, bins, selection=None):
     from utils.data_handling import apply_selections
     sel_dfr = apply_selections(dfr, selection)
 
-    var = get_var(sel_dfr)
+    var = _get_var(sel_dfr, get_var)
     means = []
     for low, high in bins:
         var_bin = var[(var > low) & (var < high)]

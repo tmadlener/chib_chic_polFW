@@ -10,6 +10,7 @@ r.PyConfig.IgnoreCommandLineOptions = True
 import pandas as pd
 import numpy as np
 import numpy.testing as npt
+import pandas.util.testing as pdt
 
 import utils.misc_helpers as mh
 
@@ -288,6 +289,38 @@ class TestGetBinCenters(unittest.TestCase):
     # def test_arb_binning(self):
     #     # TODO
     #     pass
+
+
+class Test_GetVar(unittest.TestCase):
+    def setUp(self):
+        self.test_df = pd.DataFrame({
+            'col1': np.random.uniform(10000, -1, 1),
+            'col2': np.random.uniform(10000, 0, 1)
+        })
+
+
+    def test_get_var_func(self):
+        """Test if using a function works correctly"""
+        var = mh._get_var(self.test_df, lambda d: d.col2)
+        pdt.assert_series_equal(var, self.test_df.col2)
+
+        var = mh._get_var(self.test_df, lambda d: d.col1**2)
+        pdt.assert_series_equal(var, self.test_df.col1**2)
+
+
+    def test_get_var_string(self):
+        """Test that a string or a list of string gets handled correctly"""
+        var = mh._get_var(self.test_df, 'col2')
+        pdt.assert_series_equal(var, self.test_df.col2)
+
+        var = mh._get_var(self.test_df, ['col1', 'col2'])
+        pdt.assert_frame_equal(var, self.test_df)
+
+
+    def test_get_var_var(self):
+        """Test that when already passed a variable the same is returned"""
+        var = mh._get_var(self.test_df, self.test_df.col1)
+        pdt.assert_series_equal(var, self.test_df.col1)
 
 
 if __name__ == '__main__':
