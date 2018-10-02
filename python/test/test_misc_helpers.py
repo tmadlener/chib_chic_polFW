@@ -4,6 +4,7 @@ Tests for misc_helpers functions
 """
 
 import unittest
+from mock import patch
 
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
@@ -321,6 +322,51 @@ class Test_GetVar(unittest.TestCase):
         """Test that when already passed a variable the same is returned"""
         var = mh._get_var(self.test_df, self.test_df.col1)
         pdt.assert_series_equal(var, self.test_df.col1)
+
+
+
+class TestParseBinning(unittest.TestCase):
+    """
+    Some tests to illustrate the parse binning function and to check if the
+    regexes used to parse are working properly
+    """
+    def test_parse_list_of_floats(self):
+        binning = mh.parse_binning('1,2,3,4,5,6')
+        npt.assert_allclose(binning, np.arange(1, 7))
+
+        binning = mh.parse_binning('1.2, 3.4, 5.6,7.8')
+        npt.assert_allclose(binning, np.array([1.2, 3.4, 5.6, 7.8]))
+
+
+    def test_parse_linspace(self):
+        binning = mh.parse_binning('1:10,25')
+        npt.assert_allclose(binning, np.linspace(1, 10, 25))
+
+        binning = mh.parse_binning('-3.8:4.,30')
+        npt.assert_allclose(binning, np.linspace(-3.8, 4.0, 30))
+
+
+    def test_parse_arange(self):
+        binning = mh.parse_binning('1:10:2')
+        npt.assert_allclose(binning, np.arange(1, 10, 2))
+
+        binning = mh.parse_binning('-3.1:4.2:0.2')
+        npt.assert_allclose(binning, np.arange(-3.1, 4.2, 0.2))
+
+
+    @patch('utils.misc_helpers.logging')
+    def test_parse_fail(self, mock_logger):
+        exp_err = 'Cannot handle \'3,4:2\' in trying to parse a binning'
+        binning = mh.parse_binning('3,4:2')
+        mock_logger.error.assert_called_with(exp_err)
+        npt.assert_equal(binning, np.array([]))
+
+
+        exp_err = 'Could not parse binning from \'3.a, 3.3\' because '\
+                  '\'invalid literal for float(): 3.a\''
+        binning = mh.parse_binning('3.a, 3.3')
+        mock_logger.error.assert_called_with(exp_err)
+        npt.assert_equal(binning, np.array([]))
 
 
 if __name__ == '__main__':

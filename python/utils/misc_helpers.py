@@ -563,3 +563,58 @@ def unique_w_key(elements, key):
     # comprehension, but only if it is not already in seen
     # see: https://stackoverflow.com/a/10024750
     return [seen.add(key(e)) or e for e in elements if key(e) not in seen]
+
+
+def parse_binning(binning_str):
+    """
+    Parse the variable binning and return the desired binning.
+
+    Args:
+        binning_str (str): The string that should be parsed
+
+    Returns:
+         numpy.array: The bin edge values that were obtained from parsing the
+             string
+
+    Valid strings are:
+    * comma separated list of floating point numbers
+    * 'BEGIN:END:DELTA', where the interval from BEGIN to END will be
+      divided into intervals of length DELTA. END is not necessarily included
+      as it uses numpy.arange
+    * 'BEGIN:END,NSTEPS', where the interval from BEGIN to END will be
+      divided into NSTEPS intervals of equal length. This will include END as a
+      bin edge as it uses numpy.linspace
+
+    See also:
+        numpy.linspace, numpy.arange
+    """
+    # check if one of the two special strings is present and handle them
+    # appropriately
+    flt_rgx = r'(-?\d+(?:\.\d*)?)' # match a floating point number
+
+    # Match the linspace case
+    rmatch =  re.match(flt_rgx + ':' + flt_rgx + r',(\d+)$', binning_str)
+    if rmatch:
+        return np.linspace(float(rmatch.group(1)), float(rmatch.group(2)),
+                           float(rmatch.group(3)))
+
+    # match the arange case
+    rmatch = re.match(r':'.join([flt_rgx]*3), binning_str)
+    if rmatch:
+        return np.arange(float(rmatch.group(1)), float(rmatch.group(2)),
+                         float(rmatch.group(3)))
+
+    # check if we have a comma separated list of values
+    if ',' in binning_str and not ':' in binning_str:
+        try:
+            return np.array([float(v) for v in binning_str.split(',')])
+        except ValueError as parse_err:
+            logging.error('Could not parse binning from \'{}\' because \'{}\''
+                          .format(binning_str, parse_err.message))
+            return np.array([])
+
+    # if we fall through here then we got a case that we don't handle
+    logging.error('Cannot handle \'{}\' in trying to parse a binning'
+                  .format(binning_str))
+
+    return np.array([])

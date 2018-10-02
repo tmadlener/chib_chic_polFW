@@ -6,6 +6,7 @@ Script for running costh binned mass fits
 import re
 import json
 import os
+import sys
 
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
@@ -19,13 +20,14 @@ import shutil
 from utils.data_handling import get_dataframe
 from utils.misc_helpers import (
     get_costh_binning, get_bin_means, cond_mkdir_file, get_bin_cut_root,
-    chunks
+    chunks, parse_binning
 )
 from utils.roofit_utils import get_var, ws_import, get_args
 from utils.chic_fitting import ChicMassModel
 from utils.jpsi_fitting import JpsiMassModel
 from utils.chib_fitting import ChibMassModel
 from utils.config_fitting import ConfigFitModel
+
 
 def get_ws_vars(state, massmodel=None):
     """
@@ -123,7 +125,7 @@ def do_binned_fits(mass_model, wsp, costh_bins, refit=False):
             mass_model.release_params(wsp, shape_par)
 
 
-def create_bin_info_json(state, nbins, datafile, fitfile, bininfo_file=None):
+def create_bin_info_json(state, bin_str, datafile, fitfile, bininfo_file=None):
     """
     Determine the costh binning and store the information into a json
     """
@@ -133,7 +135,15 @@ def create_bin_info_json(state, nbins, datafile, fitfile, bininfo_file=None):
     treename = 'chic_tuple' if state == 'chic' else 'data'
     dfr = get_dataframe(datafile, treename, columns=['costh_HX'])
 
-    costh_bins = get_costh_binning(dfr, nbins)
+    auto_match = re.match(r'auto:(\d+)$', bin_str)
+    if auto_match:
+        costh_bins = get_costh_binning(dfr, int(auto_match.group(1)))
+    else:
+        binning = parse_binning(bin_str)
+        if len(binning) == 0:
+           sys.exit(1) # bail out, there is nothing we can do here
+        costh_bins = zip(binning[:-1], binning[1:])
+
     costh_means = get_bin_means(dfr, lambda d: d.costh_HX.abs(), costh_bins)
 
     bin_sel_info = {
@@ -191,11 +201,13 @@ def run_fit(model, tree, costh_bins, datavars, outfile, refit=False,
 
 def run_chic_fit(args):
     """Setup everything and run the chic fits"""
+    logging.warn('The \'chic\' mode of costh_binned_massfits.py is deprecated.'
+                 ' You should switch to using a configfile for the fitmodel')
     logging.info('Running chic fits')
     cond_mkdir_file(args.outfile)
 
     model = ChicMassModel('chicMass')
-    costh_binning = create_bin_info_json('chic', args.nbins, args.datafile,
+    costh_binning = create_bin_info_json('chic', args.binning, args.datafile,
                                          args.outfile, args.bin_info)
 
     dvars = get_ws_vars('chic')
@@ -207,10 +219,12 @@ def run_chic_fit(args):
 
 def run_chib_fit(args):
     """Setup everything and run the chic fits"""
+    logging.warn('The \'chib\' mode of costh_binned_massfits.py is deprecated.'
+                 ' You should switch to using a configfile for the fitmodel')
     logging.info('Running chib fits')
     cond_mkdir_file(args.outfile)
     model = ChibMassModel(args.configfile)
-    costh_binning = create_bin_info_json('chib', args.nbins, args.datafile,
+    costh_binning = create_bin_info_json('chib', args.binning, args.datafile,
                                          args.outfile, args.bin_info)
 
     dvars = get_ws_vars('chib', model)
@@ -222,6 +236,8 @@ def run_chib_fit(args):
 
 def run_jpsi_fit(args):
     """Setup everything and run the chic fits"""
+    logging.warn('The \'jpsi\' mode of costh_binned_massfits.py is deprecated.'
+                 ' You should switch to using a configfile for the fitmodel')
     logging.info('Running jpsi fits')
     cond_mkdir_file(args.outfile)
     model = JpsiMassModel('JpsiMass')
@@ -250,7 +266,7 @@ def run_config_fit(args):
         pass
 
     model = ConfigFitModel(args.configfile)
-    costh_binning = create_bin_info_json('chic', args.nbins, args.datafile,
+    costh_binning = create_bin_info_json('chic', args.binning, args.datafile,
                                          args.outfile, args.bin_info)
 
     dvars = get_ws_vars('chic')
@@ -276,9 +292,7 @@ if __name__ == '__main__':
                                'only contain what is needed')
     global_parser.add_argument('outfile', help='Output file containing all the '
                                'fit results in a workspace')
-    global_parser.add_argument('-n', '--nbins', type=int, default=4,
-                               help='number of costh bins')
-    global_parser.add_argument('-b', '--bin-info', help='json file containing '
+    global_parser.add_argument('--bin-info', help='json file containing '
                                'the costh binning information (output). If not '
                                'provided a default name will be used',
                                default=None)
@@ -290,6 +304,14 @@ if __name__ == '__main__':
                                ' a costh integrated fit first and fixing all '
                                'shape parameters to the ones obtained there',
                                default=False, action='store_true')
+    global_parser.add_argument('-b', '--binning', help='Determine how the '
+                               'variable should be binned. Either provide '
+                               'a (comma separated) list of values that should '
+                               ' be used as bin edges, a valid format for a '
+                               'linear binning: (\'BEGIN:END:DELTA\' or '
+                               '\'BEGIN:END,NSTEPS\'), or \'auto:N\' (default '
+                               'N=4) which will bin the data into N equally '
+                               'populated bins', default='auto:4')
 
     # Add the chic parser
     chic_parser = subparsers.add_parser('chic', description='Run the fits using'
