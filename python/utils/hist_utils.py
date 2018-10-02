@@ -485,7 +485,7 @@ def hist2d(varx, vary, **kwargs):
 
 OTHER_AXIS = {'X': 'Y', 'Y': 'X'} # to get the 'other' direction
 
-def _get_slice(hist, direction, ilow, ihigh):
+def _get_slice(hist, direction, ilow, ihigh, name=None):
     """
     Get the slice between index ilow and ihigh
     """
@@ -497,7 +497,7 @@ def _get_slice(hist, direction, ilow, ihigh):
     vhigh = axis.GetBinUpEdge(ihigh)
     proj_f = getattr(hist, 'Projection' + direction)
 
-    proj = proj_f('_'.join([create_random_str(4),
+    proj = proj_f('_'.join([name if name is not None else create_random_str(4),
                             direction, str(vlow), str(vhigh)]),
                   ilow + 1, ihigh)
     set_hist_opts(proj)
@@ -505,7 +505,7 @@ def _get_slice(hist, direction, ilow, ihigh):
     return proj, (vlow, vhigh)
 
 
-def get_n_slices(hist, direction, n_slices):
+def get_n_slices(hist, direction, n_slices, basename=None):
     """
     Get slice histograms from the 2 dimensional histogram
 
@@ -514,6 +514,9 @@ def get_n_slices(hist, direction, n_slices):
         direction (char): 'X' or 'Y' to indicate into which direction the slices
             should be projected
         n_slices (int): Number of slices
+        basename (str, optional): base name to give to the histograms instead of
+            a random sequence of characters (names need to be unique since ROOT
+            uses them to identify duplicates)
 
     Returns:
         OrderedDict: The keys are tuples of the lower and upper value of the
@@ -529,13 +532,13 @@ def get_n_slices(hist, direction, n_slices):
 
     for islice in xrange(n_slices):
         ilow, ihigh = dslice * islice, dslice * (islice + 1)
-        proj, bounds = _get_slice(hist, direction, ilow, ihigh)
+        proj, bounds = _get_slice(hist, direction, ilow, ihigh, basename)
         hists[bounds] = proj
 
     return hists
 
 
-def get_slices(hist, direction, binning):
+def get_slices(hist, direction, binning, basename=None):
     """
     Get slice histograms from the 2 dimensional histogram
 
@@ -547,6 +550,9 @@ def get_slices(hist, direction, binning):
             slices. Depending on the actual binning of the passed histogram
             these values must not be matched automatically but are only used to
             get the actual bin borders of the histograms
+        basename (str, optional): base name to give to the histograms instead of
+            a random sequence of characters (names need to be unique since ROOT
+            uses them to identify duplicates)
 
     Returns:
         OrderedDict: The keys are tuples of the lower and upper value of the
@@ -562,7 +568,7 @@ def get_slices(hist, direction, binning):
 
     bins = zip(bin_idcs[:-1], bin_idcs[1:])
     for ilow, ihigh in bins:
-        proj, bounds = _get_slice(hist, direction, ilow, ihigh)
+        proj, bounds = _get_slice(hist, direction, ilow, ihigh, basename)
         hists[bounds] = proj
 
     return hists
