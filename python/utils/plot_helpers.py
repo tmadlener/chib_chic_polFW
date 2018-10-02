@@ -10,13 +10,17 @@ Attributes:
     default_colors method should be used
 """
 
+import logging
+import logging
+logging.basicConfig(level=logging.WARNING,
+                    format='%(levelname)s - %(funcName)s: %(message)s')
+
 import __builtin__
 
 import numpy as np
 
 import ROOT as r
 
-from itertools import product
 from utils.misc_helpers import create_random_str, make_iterable
 from utils.hist_utils import (
     divide, _get_y_min_hist, _get_y_max_hist, _get_x_min_hist, _get_x_max_hist
@@ -119,7 +123,7 @@ def default_colors():
 
 
 def default_attributes(diff_markers=True, size=2, linewidth=2,
-                       open_markers=False, unique_colors=True):
+                       open_markers=False, **kwargs):
     """
     Get a list of some sensible default attributes
 
@@ -129,13 +133,14 @@ def default_attributes(diff_markers=True, size=2, linewidth=2,
         linewidth (int, optional): Linewidth of TLines (2)
         open_markers (bool, optional): Use open markers instead of filled ones
             (False)
-        unique_colors (bool): Match each marker with an individual color instead
-            of using all available combinations of color and marker (True)
 
     Returns:
         list: List containing a list of dictionaries as taken by the 'attr'
             argument of plot_on_canvas
     """
+    if kwargs.pop('unique_colors', None) is not None:
+        logging.warn('\'unique_colors \' is a keyword arg without effect')
+
     dcols = default_colors()
     if diff_markers:
         if open_markers:
@@ -145,11 +150,12 @@ def default_attributes(diff_markers=True, size=2, linewidth=2,
     else:
         markers = [6]
 
-    # first combine different colors with different markers
-    if unique_colors: # each marker gets its own color
-        mark_col = zip(markers, dcols)
-    else: # make all possible combinations, iterating colors first
-        mark_col = product(markers, dcols)
+    # Interleaving the markers and colors until all combinations are
+    # exhausted, without having to exhaust one of the two before switching
+    # elements in the other
+    # NOTE: This only works because the two lists have unequal lengths!
+    # As soon as they have the same length, itertools.product is necessary
+    mark_col = zip(markers * len(dcols), dcols * len(markers))
 
     attributes = []
     for marker, color in mark_col:
