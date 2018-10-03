@@ -8,6 +8,7 @@ import unittest
 
 import numpy as np
 import pandas as pd
+import pandas.testing as pdt
 
 import logging
 logging.basicConfig(level=logging.FATAL) # disable the error messages from logging
@@ -34,11 +35,7 @@ class TestApplySelection(unittest.TestCase):
         sel_array[2] = False
 
         sel_dfr = apply_selections(self.dfr, sel_array)
-
-        # check shape
-        self.assertEqual(sel_dfr.shape[0], np.sum(sel_array))
-        # ... and contents
-        self._compare_dfrs(self.dfr[sel_array], sel_dfr)
+        pdt.assert_frame_equal(sel_dfr, self.dfr[sel_array])
 
 
     def test_single_func_selection(self):
@@ -48,8 +45,7 @@ class TestApplySelection(unittest.TestCase):
                        if self.dummy_list[i] == 'a']
 
         sel_dfr = apply_selections(self.dfr, sel_a)
-        self.assertEqual(sel_dfr.shape[0], self.dummy_list.count('a'))
-        self._compare_dfrs(self.dfr.iloc[a_positions], sel_dfr)
+        pdt.assert_frame_equal(sel_dfr, self.dfr.iloc[a_positions])
 
 
     def test_list_func_selection(self):
@@ -69,17 +65,7 @@ class TestApplySelection(unittest.TestCase):
                                  and self.dummy_list2[i] == 'a')]
 
         sel_dfr = apply_selections(self.dfr, (sel_a, sel_b), negate=True)
-        self.assertEqual(sel_dfr.shape[0], len(nab_positions))
-        self._compare_dfrs(self.dfr.iloc[nab_positions], sel_dfr)
-
-
-    def _compare_dfrs(self, dfr1, dfr2):
-        """
-        Compare two dataframes
-        """
-        # check basic shape
-        self.assertEqual(dfr1.shape, dfr2.shape)
-        self.assertTrue(np.all(dfr1 == dfr2))
+        pdt.assert_frame_equal(sel_dfr, self.dfr.iloc[nab_positions])
 
 
 class TestGetTreename(unittest.TestCase):
