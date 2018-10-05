@@ -305,7 +305,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
   double pT_gamma_sm;     tr->Branch("photonPt", &pT_gamma_sm);
   double y_gamma_sm;     tr->Branch("photonEta", &y_gamma_sm);
-  double eta_gamma_sm;     tr->Branch("eta_gamma_sm", &eta_gamma_sm);
+  // double eta_gamma_sm;     tr->Branch("eta_gamma_sm", &eta_gamma_sm);
 
   double pT_jpsi_sm;     tr->Branch("JpsiPt", &pT_jpsi_sm);
   double y_jpsi_sm;     tr->Branch("JpsiRap", &y_jpsi_sm);
@@ -324,6 +324,9 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
   double costh_CS_sm; tr->Branch("costh_CS", &costh_CS_sm);
   double phi_CS_sm; tr->Branch("phi_CS", &phi_CS_sm);
+
+  double costh_PX_sm; tr->Branch("costh_PX", &costh_PX_sm);
+  double phi_PX_sm; tr->Branch("phi_PX", &phi_PX_sm);
 
   // double ca_gamma_jpsi;     tr->Branch("ca_gamma_jpsi", &ca_gamma_jpsi);
   // double ca_mu_mu;     tr->Branch("ca_mu_mu", &ca_mu_mu);
@@ -883,6 +886,11 @@ void chicpolgen(const gen_config& config = gen_config{}){
     const auto angles_CS = calcAnglesInFrame(smearedLepN, smearedLepP, RefFrame::CS);
     costh_CS_sm = angles_CS.costh;
     phi_CS_sm = angles_CS.phi;
+
+    const auto angles_PX = calcAnglesInFrame(smearedLepN, smearedLepP, RefFrame::PX);
+    costh_PX_sm = angles_PX.costh;
+    phi_PX_sm = angles_PX.phi;
+
 
     // add the desired efficiencies
     if (muonEffs) {
