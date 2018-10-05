@@ -338,12 +338,8 @@ def get_bin_cut_df(dfr, bin_var, bin_low, bin_up):
         pandas.Series: A series that can be used to index into the originally
             passed DataFrame to select only events fullfilling the binn criteria
     """
-    if hasattr(bin_var, '__call__'):
-        # if bin_Var is a function call it on the dataframe to decide the cut
-        cut = (bin_var(dfr) > bin_low) & (bin_var(dfr) < bin_up)
-    else:
-        cut = (dfr[bin_var] > bin_low) & (dfr[bin_var] < bin_up)
-    return cut
+    var = _get_var(dfr, bin_var)
+    return (var > bin_low) & (var < bin_up)
 
 
 def get_bin_cut_root(bin_var, bin_low, bin_up):

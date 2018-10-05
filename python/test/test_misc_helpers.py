@@ -369,5 +369,33 @@ class TestParseBinning(unittest.TestCase):
         npt.assert_equal(binning, np.array([]))
 
 
+class TestGetBinCutDf(unittest.TestCase):
+    """Tests to check the correct working of the GetBinCutDf function"""
+    def setUp(self):
+        self.dfr = pd.DataFrame({
+            'x': np.random.uniform(-1, 1, 500000)
+        })
+
+    def test_get_bin_cut_df(self):
+        """This mainly tests the correct handling of the used _get_var call"""
+        low, high = -0.5, 0.5
+        # test getting variable by function
+        sel_rows = mh.get_bin_cut_df(self.dfr, lambda d: d.x, low, high)
+        pdt.assert_frame_equal(self.dfr[sel_rows],
+                               self.dfr[(self.dfr.x > low) & (self.dfr.x < high)])
+
+        # retrieval by string
+        low, high = 0, 1
+        sel_rows = mh.get_bin_cut_df(self.dfr, 'x', low, high)
+        pdt.assert_frame_equal(self.dfr[sel_rows],
+                               self.dfr[(self.dfr.x > low) & (self.dfr.x < high)])
+
+        # when directly passing a series or an np.array
+        low, high = -1, 0
+        sel_rows = mh.get_bin_cut_df(None, self.dfr.x, low, high)
+        pdt.assert_frame_equal(self.dfr[sel_rows],
+                               self.dfr[(self.dfr.x > low) & (self.dfr.x < high)])
+
+
 if __name__ == '__main__':
     unittest.main()

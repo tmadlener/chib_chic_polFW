@@ -7,7 +7,7 @@ TODO: Make pylint happy (or at least happier) by cleaning up code
 
 import numpy as np
 
-from utils.misc_helpers import get_bin_cut_df, get_full_trigger
+from utils.misc_helpers import get_bin_cut_df, get_full_trigger, _get_var
 from utils.data_handling import apply_selections
 
 def get_cut_funcs(coords):
@@ -205,9 +205,8 @@ def get_n_events(data, selections=None, weight=None):
     sel_data = apply_selections(data, selections)
     if weight is None:
         return sel_data.shape[0]
-    if hasattr(weight, '__call__'):
-        return weight(sel_data).sum()
-    return sel_data[weight].sum()
+    weights = _get_var(data, weight)
+    return weights.sum()
 
 
 def toy_reco(df, eff_name='gamma_eff_sm'):
