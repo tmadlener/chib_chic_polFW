@@ -442,7 +442,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
 
     double sinTH_psi  = 100.;
-    double PHI_psi = 2. * PIG * gRandom->Rndm();
+    const double PHI_psi = 2. * PIG * gRandom->Rndm();
     double sinth_chihe = 100.;
     double cosphi_chihe = 100.;
 
@@ -457,19 +457,19 @@ void chicpolgen(const gen_config& config = gen_config{}){
          phi_chihe   = 360. * gRandom->Rndm();      // (wrt the PSI direction seen from the CHI rest frame)
 
 
-         double cosTH2_psi = cosTH_psi*cosTH_psi;
-         double cosTH4_psi = cosTH2_psi*cosTH2_psi;
-         double costh2_chihe = costh_chihe*costh_chihe;
-         double sinth2_chihe = 1 - costh2_chihe;
+         const double cosTH2_psi = cosTH_psi*cosTH_psi;
+         const double cosTH4_psi = cosTH2_psi*cosTH2_psi;
+         const double costh2_chihe = costh_chihe*costh_chihe;
+         const double sinth2_chihe = 1 - costh2_chihe;
 
          sinTH_psi   = sqrt( 1. -   cosTH2_psi );
          sinth_chihe = sqrt( sinth2_chihe );
 
-         double sin2TH_psi   = 2.*sinTH_psi*cosTH_psi;
-         double sin2th_chihe = 2.*sinth_chihe*costh_chihe;
+         const double sin2TH_psi   = 2.*sinTH_psi*cosTH_psi;
+         const double sin2th_chihe = 2.*sinth_chihe*costh_chihe;
 
          cosphi_chihe = cos( phi_chihe * PIG/180. );
-         double cos2phi_chihe = 2.*cosphi_chihe*cosphi_chihe -1.;
+         const double cos2phi_chihe = 2.*cosphi_chihe*cosphi_chihe -1.;
 
 
 
@@ -490,18 +490,18 @@ void chicpolgen(const gen_config& config = gen_config{}){
          if ( chic_state == 1 ) {
 
          //  double a2 = gRandom->Gaus( -0.006, 0.013 );  // from Crystal Ball and E835 measurements
-           double a2 = 0.;
+           const double a2 = 0.;
 
-           double a1 = sqrt( 1. - a2*a2 );   // (a1 taken to be positive)
+           const double a1 = sqrt( 1. - a2*a2 );   // (a1 taken to be positive)
 
-           double A0 = sqrt(1./2.) * ( a1 + a2 );
-           double A1 = sqrt(1./2.) * ( a1 - a2 );
+           const double A0 = sqrt(1./2.) * ( a1 + a2 );
+           const double A1 = sqrt(1./2.) * ( a1 - a2 );
 
-           double k1 = A1*A1 + 1./2.* R * ( A0*A0 - A1*A1 );
-           double k2 = ( 1. - 3./2.* R ) * ( A0*A0 - A1*A1 );
-           double k3 = -A1*A1 + 1./2.* R;
-           double k4 = 1. - 3./2.* R;
-           double k5 = 1./4.* A1*A0 * ( 3.* R - 2. );
+           const double k1 = A1*A1 + 1./2.* R * ( A0*A0 - A1*A1 );
+           const double k2 = ( 1. - 3./2.* R ) * ( A0*A0 - A1*A1 );
+           const double k3 = -A1*A1 + 1./2.* R;
+           const double k4 = 1. - 3./2.* R;
+           const double k5 = 1./4.* A1*A0 * ( 3.* R - 2. );
 
            angdistr = k1 + k2 * cosTH2_psi + ( k3 + k4 * cosTH2_psi ) * costh2_chihe
                          + k5 * sin2TH_psi * sin2th_chihe * cosphi_chihe ;
@@ -517,16 +517,16 @@ void chicpolgen(const gen_config& config = gen_config{}){
          else if ( chic_state == 2 ) {
 
         //   double a3 = gRandom->Gaus( 0.01, 0.04 );  // from E760 and E835 measurements
-           double a3 = 0.;
+           const double a3 = 0.;
 
         //   double a2 = gRandom->Gaus( -0.13, 0.04 );  // from Crystal Ball, E760 and E835 measurements
-           double a2 = 0.;
+           const double a2 = 0.;
 
-           double a1 = sqrt( 1. - a2*a2 - a3*a3 );  // (a1 taken to be positive)
+           const double a1 = sqrt( 1. - a2*a2 - a3*a3 );  // (a1 taken to be positive)
 
-           double A0 = sqrt(1./10.)*a1 + sqrt(1./2.)*a2 + sqrt(2./5.)*a3;
-           double A1 = sqrt(3./10.)*a1 + sqrt(1./6.)*a2 - sqrt(8./15.)*a3;
-           double A2 = sqrt(3./5.)*a1  - sqrt(1./3.)*a2 + sqrt(1./15.)*a3;
+           const double A0 = sqrt(1./10.)*a1 + sqrt(1./2.)*a2 + sqrt(2./5.)*a3;
+           const double A1 = sqrt(3./10.)*a1 + sqrt(1./6.)*a2 - sqrt(8./15.)*a3;
+           const double A2 = sqrt(3./5.)*a1  - sqrt(1./3.)*a2 + sqrt(1./15.)*a3;
 
 
 /*
@@ -543,53 +543,53 @@ void chicpolgen(const gen_config& config = gen_config{}){
            double k11 = 1./(4.*sqrt(3.))* ( 5.* R - 3. ) * ( 3.* A0*A1 + sqrt(3./2.)* A1*A2 );
 */
 
-           double k1_0 = 1./4.* A0*A0 + 3./8.* A2*A2;
-           double k1_1 = 1./2.* A1*A1 + 1./4.* A2*A2;
-           double k1_2 = 3./8.* A0*A0 + 1./2.* A1*A1 + 1./16.* A2*A2;
-           double k2_0 = -3./2.* A0*A0 + 3.* A1*A1 - 3./4.* A2*A2;
-           double k2_1 = 3./2.* A0*A0 - 3./2.* A1*A1;
-           double k2_2 = -3./4.* A0*A0 + 3./8.* A2*A2;
-           double k3_0 = 9./4.* A0*A0 - 3.* A1*A1 + 3./8.* A2*A2;
-           double k3_1 = -3./2.* A0*A0 + 2.* A1*A1 - 1./4.* A2*A2;
-           double k3_2 = 3./8.* A0*A0 - 1./2.* A1*A1 + 1./16.* A2*A2;
-           double k4_0 = 1./4.* A0*A0 + 3./8.* A2*A2;
-           double k4_1 = -1./2.* A1*A1 + 1./4.* A2*A2;
-           double k4_2 = 3./8.* A0*A0 - 1./2.* A1*A1 + 1./16.* A2*A2;
-           double k5_0 = -3./2.* A0*A0 - 3.*A1*A1 - 3./4.* A2*A2;
-           double k5_1 = 3./2.* A0*A0 + 3./2.* A1*A1;
-           double k5_2 = -3./4.* A0*A0 + 3./8.* A2*A2;
-           double k6_0 = 9./4.* A0*A0 + 3.* A1*A1 + 3./8.* A2*A2;
-           double k6_1 = -3./2.* A0*A0 - 2.*A1*A1 - 1./4.* A2*A2;
-           double k6_2 = 3./8.* A0*A0 + 1./2.* A1*A1 + 1./16.* A2*A2;
-           double k7_0 = -sqrt(6.)/4.* A0*A2;
-           double k7_1 = 0.;
-           double k7_2 = sqrt(6.)/8.* A0*A2;
-           double k8_0 = sqrt(6.)* A0*A2;
-           double k8_1 = -sqrt(6.)/2. *A0*A2;
-           double k8_2 = 0.;
-           double k9_0 = -3.* sqrt(6.)/4.* A0*A2;
-           double k9_1 = sqrt(6.)/2.* A0*A2;
-           double k9_2 = -sqrt(6.)/8.* A0*A2;
-           double k10_0 = sqrt(3.)/4.* A0*A1 + 3.*sqrt(2.)/8.* A1*A2;
-           double k10_1 = -sqrt(3.)/4.* A0*A1;
-           double k10_2 = sqrt(3.)/8.* A0*A1 - 3.*sqrt(2.)/16.* A1*A2;
-           double k11_0 = -3.*sqrt(3.)/4.* A0*A1 - 3.*sqrt(2.)/8.*A1*A2;
-           double k11_1 = sqrt(3.)/2.* A0*A1 + sqrt(2.)/4.* A1*A2;
-           double k11_2 = -sqrt(3.)/8.* A0*A1 - sqrt(2.)/16.* A1*A2;
+           const double k1_0 = 1./4.* A0*A0 + 3./8.* A2*A2;
+           const double k1_1 = 1./2.* A1*A1 + 1./4.* A2*A2;
+           const double k1_2 = 3./8.* A0*A0 + 1./2.* A1*A1 + 1./16.* A2*A2;
+           const double k2_0 = -3./2.* A0*A0 + 3.* A1*A1 - 3./4.* A2*A2;
+           const double k2_1 = 3./2.* A0*A0 - 3./2.* A1*A1;
+           const double k2_2 = -3./4.* A0*A0 + 3./8.* A2*A2;
+           const double k3_0 = 9./4.* A0*A0 - 3.* A1*A1 + 3./8.* A2*A2;
+           const double k3_1 = -3./2.* A0*A0 + 2.* A1*A1 - 1./4.* A2*A2;
+           const double k3_2 = 3./8.* A0*A0 - 1./2.* A1*A1 + 1./16.* A2*A2;
+           const double k4_0 = 1./4.* A0*A0 + 3./8.* A2*A2;
+           const double k4_1 = -1./2.* A1*A1 + 1./4.* A2*A2;
+           const double k4_2 = 3./8.* A0*A0 - 1./2.* A1*A1 + 1./16.* A2*A2;
+           const double k5_0 = -3./2.* A0*A0 - 3.*A1*A1 - 3./4.* A2*A2;
+           const double k5_1 = 3./2.* A0*A0 + 3./2.* A1*A1;
+           const double k5_2 = -3./4.* A0*A0 + 3./8.* A2*A2;
+           const double k6_0 = 9./4.* A0*A0 + 3.* A1*A1 + 3./8.* A2*A2;
+           const double k6_1 = -3./2.* A0*A0 - 2.*A1*A1 - 1./4.* A2*A2;
+           const double k6_2 = 3./8.* A0*A0 + 1./2.* A1*A1 + 1./16.* A2*A2;
+           const double k7_0 = -sqrt(6.)/4.* A0*A2;
+           const double k7_1 = 0.;
+           const double k7_2 = sqrt(6.)/8.* A0*A2;
+           const double k8_0 = sqrt(6.)* A0*A2;
+           const double k8_1 = -sqrt(6.)/2. *A0*A2;
+           const double k8_2 = 0.;
+           const double k9_0 = -3.* sqrt(6.)/4.* A0*A2;
+           const double k9_1 = sqrt(6.)/2.* A0*A2;
+           const double k9_2 = -sqrt(6.)/8.* A0*A2;
+           const double k10_0 = sqrt(3.)/4.* A0*A1 + 3.*sqrt(2.)/8.* A1*A2;
+           const double k10_1 = -sqrt(3.)/4.* A0*A1;
+           const double k10_2 = sqrt(3.)/8.* A0*A1 - 3.*sqrt(2.)/16.* A1*A2;
+           const double k11_0 = -3.*sqrt(3.)/4.* A0*A1 - 3.*sqrt(2.)/8.*A1*A2;
+           const double k11_1 = sqrt(3.)/2.* A0*A1 + sqrt(2.)/4.* A1*A2;
+           const double k11_2 = -sqrt(3.)/8.* A0*A1 - sqrt(2.)/16.* A1*A2;
 
-           double R1 = R; double R0=1.-R1-R2;
+           const double R1 = R; const double R0=1.-R1-R2;
 
-           double k1 = R0*k1_0 +R1*k1_1 +R2*k1_2;
-           double k2 = R0*k2_0 +R1*k2_1 +R2*k2_2;
-           double k3 = R0*k3_0 +R1*k3_1 +R2*k3_2;
-           double k4 = R0*k4_0 +R1*k4_1 +R2*k4_2;
-           double k5 = R0*k5_0 +R1*k5_1 +R2*k5_2;
-           double k6 = R0*k6_0 +R1*k6_1 +R2*k6_2;
-           double k7 = R0*k7_0 +R1*k7_1 +R2*k7_2;
-           double k8 = R0*k8_0 +R1*k8_1 +R2*k8_2;
-           double k9 = R0*k9_0 +R1*k9_1 +R2*k9_2;
-           double k10= R0*k10_0+R1*k10_1+R2*k10_2;
-           double k11= R0*k11_0+R1*k11_1+R2*k11_2;
+           const double k1 = R0*k1_0 +R1*k1_1 +R2*k1_2;
+           const double k2 = R0*k2_0 +R1*k2_1 +R2*k2_2;
+           const double k3 = R0*k3_0 +R1*k3_1 +R2*k3_2;
+           const double k4 = R0*k4_0 +R1*k4_1 +R2*k4_2;
+           const double k5 = R0*k5_0 +R1*k5_1 +R2*k5_2;
+           const double k6 = R0*k6_0 +R1*k6_1 +R2*k6_2;
+           const double k7 = R0*k7_0 +R1*k7_1 +R2*k7_2;
+           const double k8 = R0*k8_0 +R1*k8_1 +R2*k8_2;
+           const double k9 = R0*k9_0 +R1*k9_1 +R2*k9_2;
+           const double k10= R0*k10_0+R1*k10_1+R2*k10_2;
+           const double k11= R0*k11_0+R1*k11_1+R2*k11_2;
 
            angdistr = k1 + k2 * cosTH2_psi + k3 * cosTH4_psi + ( k4 + k5 * cosTH2_psi + k6 * cosTH4_psi ) * costh2_chihe
                          + ( k7 + k8 * cosTH2_psi + k9 * cosTH4_psi ) * sinth2_chihe * cos2phi_chihe
@@ -608,7 +608,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
  // psi 4-momentum in the chi rest frame, wrt the chosen chi_c polarization axes:
 
-    double p_psi_chi = 0.5 * ( Mchi*Mchi - Mpsi*Mpsi ) / Mchi;
+    const double p_psi_chi = 0.5 * ( Mchi*Mchi - Mpsi*Mpsi ) / Mchi;
 
     TLorentzVector psi_chi;
     psi_chi.SetXYZM( p_psi_chi * sinTH_psi * cos(PHI_psi),
@@ -619,12 +619,10 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
  // gamma 4-momentum in the chi rest frame, wrt the chosen chi_c polarization axes:
 
-    double p_gamma_chi = p_psi_chi;
-
     TLorentzVector gamma_chi;
-    gamma_chi.SetXYZM( -p_gamma_chi * sinTH_psi * cos(PHI_psi),
-                       -p_gamma_chi * sinTH_psi * sin(PHI_psi),
-                       -p_gamma_chi * cosTH_psi,
+    gamma_chi.SetXYZM( -p_psi_chi * sinTH_psi * cos(PHI_psi),
+                       -p_psi_chi * sinTH_psi * sin(PHI_psi),
+                       -p_psi_chi * cosTH_psi,
                        0. );
 
  // calculate psi 4-momentum in the chi rest frame, wrt the xyz axes:
@@ -704,11 +702,11 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
  // lepton 4-momentum in the psi rest frame, wrt the "natural" polarization axes (z = psi direction in the chic rest frame):
 
-    double p_lepton_psi = sqrt( 0.25*Mpsi*Mpsi - Mlepton*Mlepton );
+    const double p_lepton_psi = sqrt( 0.25*Mpsi*Mpsi - Mlepton*Mlepton );
 
     TLorentzVector lepton_psi;
 
-    double sinphi_chihe = sin( phi_chihe * PIG/180. );
+    const double sinphi_chihe = sin( phi_chihe * PIG/180. );
 
     lepton_psi.SetXYZM( p_lepton_psi * sinth_chihe * cosphi_chihe,
                         p_lepton_psi * sinth_chihe * sinphi_chihe,
