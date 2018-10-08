@@ -100,7 +100,7 @@ struct Mass {
 };
 
 const struct MassSettings {
-  static constexpr Mass MpsiPDG{3.097, 9.29e-5}; // J/psi mass and width
+  static constexpr Mass MdimuonPDG{3.097, 9.29e-5}; // J/psi mass and width
   static constexpr std::array<Mass, 3> MchiPDG{
     Mass{3.415, 0.0105}, // chic0
       Mass{3.511, 0.00088}, // chic1
@@ -114,7 +114,7 @@ const struct MassSettings {
 // need to define the array, so the linker can see it
 // declaration and initialization are handled by the definition of the class above
 constexpr std::array<Mass, 3> MassSettings::MchiPDG;
-constexpr Mass MassSettings::MpsiPDG;
+constexpr Mass MassSettings::MdimuonPDG;
 constexpr double MassSettings::Mprot;
 
 
@@ -176,7 +176,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
   const double pT_min = config.pT_min; const double pT_max = config.pT_max;
 
   const double Mlepton = GenMassSettings.Mlepton;
-  const double MpsiPDG = GenMassSettings.MpsiPDG.central;
+  const double MdimuonPDG = GenMassSettings.MdimuonPDG.central;
 
   const bool check_accept = config.n_accepted > 0;
 
@@ -219,8 +219,8 @@ void chicpolgen(const gen_config& config = gen_config{}){
                                       GenMassSettings.MchiPDG[config.chic_state].width);
 
   const auto jpsiMassDist = std::bind(&TRandom3::Gaus, std::ref(gRandom),
-                                      MpsiPDG,
-                                      GenMassSettings.MpsiPDG.width);
+                                      MdimuonPDG,
+                                      GenMassSettings.MdimuonPDG.width);
 
   // tmadlener 08.06.2018: For generating according to smeared distributions
   // auto *modelFile = TFile::Open("./mass_distributions_data.root");
@@ -394,7 +394,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
     //    (M_mumugamma - M_mumu + M_jpsi), so we reverse it to get to the chic mass we actually want to generate
     Mchic = getMass(chicMassDist);
     Mpsi = getMass(jpsiMassDist);
-    Mchi = Mchic - MpsiPDG + Mpsi;
+    Mchi = Mchic - MdimuonPDG + Mpsi;
 
     // Have to differentiate between generating the rapidity according to the rapidity distribution or
     // generating eta according to the rapidity distribution
@@ -856,7 +856,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
     y_jpsi_sm = smearedJpsi.Rapidity();
     M_jpsi_sm = smearedJpsi.M();
 
-    qM_chi_sm = M_chi_sm - M_jpsi_sm + MpsiPDG;
+    qM_chi_sm = M_chi_sm - M_jpsi_sm + MdimuonPDG;
 
     pT_gamma_sm = smearedGamma.Pt();
     y_gamma_sm = smearedGamma.Rapidity();
@@ -868,7 +868,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
     //  filling of the ntuple:
 
-    // qM_chi = chi.M() - psi.M() + MpsiPDG;
+    // qM_chi = chi.M() - psi.M() + MdimuonPDG;
     // M_gamma = gamma.M();
 
     // ca_gamma_jpsi = TMath::Cos(gamma.Angle(psi.Vect()));
