@@ -7,8 +7,36 @@ TODO: Make pylint happy (or at least happier) by cleaning up code
 
 import numpy as np
 
-from utils.misc_helpers import get_bin_cut_df, get_full_trigger, _get_var
+from decorator import decorator
+
+import logging
+logging.basicConfig(level=logging.WARNING,
+                    format='%(levelname)s - %(funcName)s: %(message)s')
+
+
+from utils.misc_helpers import (
+    get_bin_cut_df, get_full_trigger, _get_var, deprecated_soon, make_iterable
+)
 from utils.data_handling import apply_selections
+
+
+@decorator
+def deprecated_lambda_call(func, *args, **kwargs):
+    """
+    Decorator that prints out a warning when one of the methods that now return
+    a functor is called with the old "style" where they returned a lambda with
+    the reight interface directly.
+    """
+    functor = func(*args, **kwargs)
+    if len(args) > 0:
+        logging.warn('Using \'{}\' as lambda function will soon be deprecated. '
+                     'It is suggested to instead switch to instantiating it '
+                     'and use it as a functor.'.format(func.__name__))
+        # only pass the dataframe which should be the first arg
+        return functor(args[0])
+
+    return functor
+
 
 def get_cut_funcs(coords):
     """
@@ -26,11 +54,12 @@ def get_cut_funcs(coords):
     for c1, c2 in zip(coords[:-1], coords[1:]):
         pt1, eta1 = c1
         pt2, eta2 = c2
-        # sorting to not have to worry about the order in which the coordinates have been defined
-        # 3 cases
+        # sorting to not have to worry about the order in which the coordinates
+        # have been defined
+        # 3 cases:
         if pt1 == pt2:
-            # to capture the values of pt1, etc by "value" create a new scope in a function
-            # See, e.g.: https://stackoverflow.com/a/13355291
+            # to capture the values of pt1, etc by "value" create a new scope in
+            # a function. See, e.g.: https://stackoverflow.com/a/13355291
             def pt_cut(pt, eta, pt1=pt1, pt2=pt2, eta1=eta1, eta2=eta2):
                 return (pt > pt1) & cont(eta, eta1, eta2)
             cut_funcs.append(pt_cut)
@@ -73,20 +102,54 @@ def get_gen_name(name, gen=False):
         return name
 
 
-def single_muon_sel(df, cuts, gen=False):
+def single_muon_sel(cuts, gen=False):
     """Apply a single muon selection (using the AND of both single muons)"""
-    mu_name = get_gen_name('mu', gen)
-    mup_pt, mun_pt = [mu_name + charge + 'Pt' for charge in ['P', 'N']]
-    mup_eta, mun_eta = [mu_name + charge + 'Eta' for charge in ['P', 'N']]
+    class SingleMuonSel(object):
+        """Internal helper class to easier handle the requires case"""
+        def __init__(self, cuts, gen=False):
+            self.cuts = cuts
+            self.gen = gen
+            self.requires = [get_gen_name(v, gen) for v in ['muNPt', 'muPPt',
+                                                            'muNEta', 'muPEta']]
 
-    return pt_eta_sel(df[mup_pt], df[mup_eta].abs(), cuts) & \
-        pt_eta_sel(df[mun_pt], df[mun_eta].abs(), cuts)
+        def __call__(self, dfr):
+            mu_name = get_gen_name('mu', self.gen)
+            mup_pt, mun_pt = [mu_name + chg + 'Pt' for chg in ['P', 'N']]
+            mup_eta, mun_eta = [mu_name + chg + 'Eta' for chg in ['P', 'N']]
+
+            return pt_eta_sel(dfr[mup_pt], dfr[mup_eta].abs(), self.cuts) & \
+                pt_eta_sel(dfr[mun_pt], dfr[mun_eta].abs(), self.cuts)
+
+    return SingleMuonSel(cuts, gen)
 
 
+def photon_sel_(cuts, gen=False):
+    """Apply a photon selection
+    TODO: rename after deprecation
+    """
+    class PhotonSel(object):
+        """Internal helper class to easier handle the requires case"""
+        def __init__(self, cuts, gen=False):
+            self.cuts = cuts
+            self.gen = gen
+            self.requires = [get_gen_name(v, gen) for v in ['photonPt',
+                                                            'photonEta']]
+
+        def __call__(self, dfr):
+            phot_name = get_gen_name('photon', self.gen)
+            return pt_eta_sel(_get_var(dfr, phot_name + 'Pt'),
+                              _get_var(dfr, phot_name + 'Eta').abs(),
+                              self.cuts)
+
+    return PhotonSel(cuts, gen)
+
+
+@deprecated_soon
 def photon_sel(df, cuts, gen=False):
-    """Apply a photon selection"""
-    phot_name = get_gen_name('photon', gen)
-    return pt_eta_sel(df[phot_name + 'Pt'], df[phot_name + 'Eta'].abs(), cuts)
+    """TODO: switch to returning a functor after deprecation and deprecate
+    'photon_sel_' then
+    """
+    return photon_sel_(cuts, gen)(df)
 
 
 TRIGGER_BIT_MAP = {
@@ -101,13 +164,13 @@ TRIGGER_BIT_MAP = {
     'HLT_Dimuon25_Jpsi': 1 << 1,
 }
 
-
 def trigger_sel(df, trigger='HLT_Dimuon8_Jpsi'):
     """Apply the trigger selection (reco and data only)"""
     full_trigger = get_full_trigger(trigger)
     trigger_bit = TRIGGER_BIT_MAP[full_trigger]
     # NOTE: assuming that the trigger decision is stored in 'trigger' column
     return (df.trigger & trigger_bit) == trigger_bit
+trigger_sel.requires = ['trigger']
 
 
 def prompt_sel(dfr, ctau_sigma=2.5):
@@ -115,11 +178,13 @@ def prompt_sel(dfr, ctau_sigma=2.5):
     Select prompt events using a lifetime significance cut
     """
     return (dfr.Jpsict.abs() / dfr.JpsictErr) < ctau_sigma
+prompt_sel.requires = ['Jpsict', 'JpsictErr']
 
 
 def vtx_prob_sel(df, prob=0.01):
     """Select only the events with vtx probability larger than 0.01"""
     return df.vtxProb > prob
+vtx_prob_sel.requires = ['vtxProb']
 
 
 def deta_sel(df, deta_max=0.015):
@@ -127,24 +192,54 @@ def deta_sel(df, deta_max=0.015):
     Select only events for which the generated and reconstruced photon eta match
     """
     return (df.photonEta - df.gen_photonEta).abs() < deta_max
+deta_sel.requires = ['photonEta', 'gen_photonEta']
 
 
 def chic_mass_sel(df, min_mass=3.325, max_mass=3.725):
     """Select only those events with a chic mass between min_mass and max_mass"""
     return get_bin_cut_df(df, 'chicMass', min_mass, max_mass)
+chic_mass_sel.requires = ['chicMass']
 
 
-def jpsi_kin_sel(df, min_pt=8, max_pt=20, max_rap=1.2, gen=False):
-    """Kinematic selection of jpsi"""
-    jpsi_name = get_gen_name('Jpsi', gen)
-    return (get_bin_cut_df(df, jpsi_name + 'Pt', min_pt, max_pt)) & \
-        (df[jpsi_name + 'Rap'].abs() < max_rap)
+def jpsi_kin_sel_(min_pt=8, max_pt=20, max_rap=1.2, gen=False):
+    """Kinematic selection of jpsi
+    TODO: Rename after deprecation
+    """
+    class JpsiKinSel(object):
+        """Internal helper class to help with the """
+        def __init__(self, min_pt, max_pt, max_rap, gen):
+            self.min_pt = min_pt
+            self.max_pt = max_pt
+            self.max_rap = max_rap
+            self.gen = gen
+            self.requires = [get_gen_name(v, gen) for v in ['JpsiPt',
+                                                            'JpsiRap']]
+
+
+        def __call__(self, dfr):
+            jpsi_name = get_gen_name('Jpsi', self.gen)
+            return (get_bin_cut_df(dfr, jpsi_name + 'Pt',
+                                   self.min_pt, self.max_pt)) & \
+                                   (dfr[jpsi_name + 'Rap'].abs() < self.max_rap)
+
+
+    return JpsiKinSel(min_pt, max_pt, max_rap, gen)
+
+
+@deprecated_lambda_call
+def jpsi_kin_sel(*args, **kwargs):
+    """TODO: remove after deprecation"""
+    return jpsi_kin_sel_(min_pt=kwargs.pop('min_pt', 8),
+                         max_pt=kwargs.pop('max_pt', 20),
+                         max_rap=kwargs.pop('max_rap', 1.2),
+                         gen=kwargs.pop('gen', False))
 
 
 def chic_state_sel(df, state):
     """(On MC) select either chic1 or chic2 using the pdgId"""
     pdgId = {'chic1': 20443, 'chic2': 445}
     return df.pdgId == pdgId[state]
+chic_state_sel.requires = ['pdgId']
 
 
 def flat_pt(pt, eta):
@@ -177,21 +272,23 @@ def gen_filter_cuts():
     )
 
 
-def fiducial_muon_sel(df, gen=False):
+@deprecated_lambda_call
+def fiducial_muon_sel(*args, **kwargs):
     """
     The fiducial muon selection
     """
-    return single_muon_sel(df, fiducial_cuts(), gen)
+    return single_muon_sel(fiducial_cuts(), gen=kwargs.pop('gen', False))
 
 
-def loose_muon_sel(df, gen=False):
+@deprecated_lambda_call
+def loose_muon_sel(*args, **kwargs):
     """The loose muon selection"""
-    return single_muon_sel(df, loose_cuts(), gen)
+    return single_muon_sel(loose_cuts(), gen=kwargs.pop('gen', False))
 
 
-def gen_filter_sel(df, gen=True):
+def gen_filter_sel(gen=True):
     """The generation level filter muon selection"""
-    return single_muon_sel(df, gen_filter_cuts(), gen)
+    return single_muon_sel(gen_filter_cuts(), gen)
 
 
 def get_n_events(data, selections=None, weight=None):
@@ -205,7 +302,7 @@ def get_n_events(data, selections=None, weight=None):
     sel_data = apply_selections(data, selections)
     if weight is None:
         return sel_data.shape[0]
-    weights = _get_var(data, weight)
+    weights = _get_var(sel_data, weight)
     return weights.sum()
 
 
@@ -214,3 +311,20 @@ def toy_reco(df, eff_name='gamma_eff_sm'):
     Select only those events for which the efficiency is larger than 0
     """
     return df.loc[:, eff_name] > 0
+
+
+def collect_requirements(selections):
+    """Collect the list of variables that is needed for the selections"""
+    if selections is None:
+        return []
+    variables = set()
+    for selection in make_iterable(selections):
+        if hasattr(selection, 'requires'):
+            for req in selection.requires:
+                variables.add(req)
+        else:
+            logging.warning('\'{}\' does not have a requires field, possibly '
+                            'cannot get the necessary variables'
+                            .format(selection.__name__))
+
+    return list(variables)

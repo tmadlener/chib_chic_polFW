@@ -614,3 +614,12 @@ def parse_binning(binning_str):
                   .format(binning_str))
 
     return np.array([])
+
+
+@decorator
+def deprecated_soon(func, *args, **kwargs):
+    """
+    Inform the user that this function will soon be deprecated
+    """
+    logging.warn('\'{}\' will soon be deprecated.'.format(func.__name__))
+    return func(*args, **kwargs)

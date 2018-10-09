@@ -17,44 +17,52 @@ from collections import OrderedDict
 
 from utils.data_handling import apply_selections, get_dataframe
 from utils.hist_utils import hist2d
-from utils.misc_helpers import _get_var, get_bin_cut_df
+from utils.misc_helpers import _get_var, get_bin_cut_df, flatten
 
 import utils.selection_functions as sf
 
-# variables that will always be loaded
-LOAD_VARIABLES = [
-    'JpsiPt', 'JpsiRap',
-    'costh_HX', 'phi_HX',
-    'photonPt', 'photonEta',
-    'muNPt', 'muNEta', 'muPPt', 'muPEta',
-    'lepP_eff_sm', 'lepN_eff_sm', 'gamma_eff_sm',
-]
+def jpsi_pt_M_sel(dfr, min_ptM=2.3, max_ptM=5.2, gen=False):
+    """Kinematic J/psi selection using a Jpsi pT / chicMass selection"""
+    jpsi_pt = sf.get_gen_name('JpsiPt', gen)
+    chic_mass = sf.get_gen_name('chicMass', gen)
+    pt_M = lambda d: _get_var(d, jpsi_pt) / _get_var(d, chic_mass)
+    return get_bin_cut_df(dfr, pt_M, min_ptM, max_ptM)
+
 
 # some helper functions
-GAMMA_SEL = lambda d: sf.photon_sel(d, sf.flat_pt(0.41, 1.5))
+GAMMA_SEL = sf.photon_sel_(sf.flat_pt(0.41, 1.5))
 GAMMA_EFF = lambda d: d.gamma_eff_sm * 0.01 * (d.gamma_eff_sm > 0)
 MUON_EFF = lambda d: d.lepP_eff_sm * d.lepN_eff_sm
 FULL_EFF = lambda d: MUON_EFF(d) * GAMMA_EFF(d)
+MUON_SEL = sf.loose_muon_sel()
+JPSI_SEL = sf.jpsi_kin_sel()
 
 # some predefined selections
 SELECTIONS = OrderedDict()
 SELECTIONS['no_sel'] = (None, None)
-SELECTIONS['jpsi'] = (sf.jpsi_kin_sel, None)
-SELECTIONS['jpsi_muon_sel'] = ((sf.jpsi_kin_sel, sf.loose_muon_sel), None)
-SELECTIONS['jpsi_gamma_sel'] = ((sf.jpsi_kin_sel, GAMMA_SEL), None)
-SELECTIONS['jpsi_gamma_muon_sel'] = ((sf.jpsi_kin_sel, sf.loose_muon_sel,
-                                      GAMMA_SEL), None)
-SELECTIONS['jpsi_muon_eff'] = ((sf.jpsi_kin_sel, sf.loose_muon_sel), MUON_EFF)
-SELECTIONS['jpsi_gamma_eff'] = ((sf.jpsi_kin_sel, GAMMA_SEL), GAMMA_EFF)
-SELECTIONS['jpsi_gamma_muon_eff'] = ((sf.jpsi_kin_sel, sf.loose_muon_sel,
-                                      GAMMA_SEL), FULL_EFF)
+SELECTIONS['jpsi'] = (JPSI_SEL, None)
+SELECTIONS['jpsi_muon_sel'] = ((JPSI_SEL, MUON_SEL), None)
+SELECTIONS['jpsi_gamma_sel'] = ((JPSI_SEL, GAMMA_SEL), None)
+SELECTIONS['jpsi_gamma_muon_sel'] = ((JPSI_SEL, MUON_SEL, GAMMA_SEL), None)
+SELECTIONS['jpsi_muon_eff'] = ((JPSI_SEL, MUON_SEL), MUON_EFF)
+SELECTIONS['jpsi_gamma_eff'] = ((JPSI_SEL, GAMMA_SEL), GAMMA_EFF)
+SELECTIONS['jpsi_gamma_muon_eff'] = ((JPSI_SEL, MUON_SEL, GAMMA_SEL), FULL_EFF)
+SELECTIONS['jpsi_pt_M'] = (jpsi_pt_M_sel, None)
+SELECTIONS['jpsi_pt_M_muon_sel'] = ((jpsi_pt_M_sel, MUON_SEL), None)
+SELECTIONS['jpsi_pt_M_gamma_sel'] = ((jpsi_pt_M_sel, GAMMA_SEL), None)
+SELECTIONS['jpsi_pt_M_gamma_muon_sel'] = ((jpsi_pt_M_sel, MUON_SEL, GAMMA_SEL), None)
+SELECTIONS['jpsi_pt_M_muon_eff'] = ((jpsi_pt_M_sel, MUON_SEL), MUON_EFF)
+SELECTIONS['jpsi_pt_M_gamma_eff'] = ((jpsi_pt_M_sel, GAMMA_SEL), GAMMA_EFF)
+SELECTIONS['jpsi_pt_M_gamma_muon_eff'] = ((jpsi_pt_M_sel, MUON_SEL, GAMMA_SEL), FULL_EFF)
 
 # variables that need some functions to be obtained
-# NOTE: variables used here need to be present in the LOAD_VARIABLES
 FUNCVARS = {
     'lowMuPt': lambda d: d.muPPt * (d.muPPt < d.muNPt) + d.muNPt * (d.muNPt < d.muPPt),
     'highMuPt': lambda d: d.muPPt * (d.muPPt > d.muNPt) + d.muNPt * (d.muNPt > d.muPPt)
 }
+# Add a requires clause
+FUNCVARS['lowMuPt'].requires = ['muPPt', 'muNPt']
+FUNCVARS['highMuPt'].requires = ['muPPt', 'muNPt']
 
 
 def get_df_and_weights(dfr, selection=None, weight=None):
@@ -123,15 +131,29 @@ def create_costh_binned_hists(dfr, hist_func, selection_weights, binning):
     return flat_hists
 
 
+def compile_load_vars(selections, varx, vary):
+    """Compile the list of variables that has to be loaded"""
+    vars_to_load = [sf.collect_requirements(sel[0]) for sel in selections.values()]
+    if any(sel[1] is not None for sel in selections.values()):
+        # simply load all efficiencies in case they are needed
+        vars_to_load.append('*eff_sm')
+
+    vars_to_load.append('costh_HX') # needed to bin in costh_HX
+
+    if varx in FUNCVARS:
+        vars_to_load.append(FUNCVARS[varx].requires)
+    else:
+        vars_to_load.append(varx)
+    if vary in FUNCVARS:
+        vars_to_load.append(FUNCVARS[vary].requires)
+    else:
+        vars_to_load.append(vary)
+
+    return list(set(flatten(vars_to_load))) # remove duplicates
+
+
 def main(args):
     """Main"""
-    varx, vary = args.variablex, args.variabley
-    if varx not in LOAD_VARIABLES and varx not in FUNCVARS:
-        LOAD_VARIABLES.append(args.variablex)
-    if vary not in LOAD_VARIABLES and vary not in FUNCVARS:
-        LOAD_VARIABLES.append(args.variabley)
-
-
     selections = OrderedDict()
     for sel in args.selections.split(','):
         if sel not in SELECTIONS:
@@ -140,6 +162,8 @@ def main(args):
         else:
             selections[sel] = SELECTIONS[sel]
 
+    varx, vary = args.variablex, args.variabley
+    load_vars = compile_load_vars(selections, varx, vary)
 
     def histf(data, sel, weight):
         """Wrap the function to conform to interface"""
@@ -156,7 +180,7 @@ def main(args):
                             miny=args.miny, maxy=args.maxy)
 
 
-    data = get_dataframe(args.inputfile, columns=LOAD_VARIABLES)
+    data = get_dataframe(args.inputfile, columns=load_vars)
     outfile = r.TFile(args.outfile, 'recreate' if args.recreate else 'update')
 
     if args.costh_int:
@@ -198,7 +222,7 @@ if __name__ == '__main__':
     parser.add_argument('-nx', '--nbinsx', help='Number of bins in x direction',
                         default=80, type=int)
     parser.add_argument('-ny', '--nbinsy', help='Number of bins in y direction',
-                        default=80, type=int)
+                        default=100, type=int)
     parser.add_argument('--maxy', help='Max value in y direction', default=20,
                         type=float)
     parser.add_argument('--miny', help='Max value in y direction', default=0,
