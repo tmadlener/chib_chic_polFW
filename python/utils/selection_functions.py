@@ -144,7 +144,7 @@ def photon_sel_(cuts, gen=False):
     return PhotonSel(cuts, gen)
 
 
-@deprecated_soon
+@deprecated_soon('photon_sel_')
 def photon_sel(df, cuts, gen=False):
     """TODO: switch to returning a functor after deprecation and deprecate
     'photon_sel_' then

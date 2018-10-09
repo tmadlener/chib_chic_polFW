@@ -616,13 +616,24 @@ def parse_binning(binning_str):
     return np.array([])
 
 
-@decorator
-def deprecated_soon(func, *args, **kwargs):
+def deprecated_soon(replacement=None):
     """
-    Inform the user that this function will soon be deprecated
+    Decorator to inform the user that this function will soon be deprecated
+    offering the possibility to point out a replacement.
     """
-    logging.warn('\'{}\' will soon be deprecated.'.format(func.__name__))
-    return func(*args, **kwargs)
+    @decorator
+    def _deprecated(func, *args, **kwargs):
+        """
+        Inform the user that this function will soon be deprecated.
+        """
+        message = '\'{}\' will soon be deprecated.'.format(func.__name__)
+        if replacement is not None:
+            message += ' You should start to use the replacement \'{}\''.format(replacement)
+        logging.warn(message)
+
+        return func(*args, **kwargs)
+
+    return _deprecated
 
 
 def float_rgx(char_separated=False):
