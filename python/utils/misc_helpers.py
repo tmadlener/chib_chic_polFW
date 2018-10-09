@@ -623,3 +623,10 @@ def deprecated_soon(func, *args, **kwargs):
     """
     logging.warn('\'{}\' will soon be deprecated.'.format(func.__name__))
     return func(*args, **kwargs)
+
+
+def float_rgx(char_separated=False):
+    rgx = r'([-+]?\d*\.?\d+)'
+    if char_separated:
+        return rgx.replace(r'\.', 'p')
+    return rgx

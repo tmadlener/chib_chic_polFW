@@ -6,6 +6,8 @@ Tests for misc_helpers functions
 import unittest
 from mock import patch
 
+import re
+
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 import pandas as pd
@@ -324,7 +326,6 @@ class Test_GetVar(unittest.TestCase):
         pdt.assert_series_equal(var, self.test_df.col1)
 
 
-
 class TestParseBinning(unittest.TestCase):
     """
     Some tests to illustrate the parse binning function and to check if the
@@ -395,6 +396,43 @@ class TestGetBinCutDf(unittest.TestCase):
         sel_rows = mh.get_bin_cut_df(None, self.dfr.x, low, high)
         pdt.assert_frame_equal(self.dfr[sel_rows],
                                self.dfr[(self.dfr.x > low) & (self.dfr.x < high)])
+
+
+class TestFloatingPtRgx(unittest.TestCase):
+    def test_float_rgx(self):
+        match_cases = {
+            s: float(s) for s in ['1.', '-1.', '2.34', '-2.23', '.34', '-.12',
+                                  '0.12', '2', '-3', '+1.2', '+.3', '+2.', '+1']
+        }
+        flt_rgx = mh.float_rgx()
+        for string, value in match_cases.iteritems():
+            match = re.match(flt_rgx, string)
+            self.assertTrue(match)
+            self.assertAlmostEqual(value, float(match.group(1)))
+
+
+    def test_float_rgx_no_match(self):
+        nomatch_cases = ['.', '-.', '+.']
+        flt_rgx = mh.float_rgx()
+        for string in nomatch_cases:
+            self.assertFalse(re.match(flt_rgx, string))
+
+
+    def test_float_rgx_char_separated(self):
+        match_cases = ['1p', '2p0', '-3p0', 'p1', '-p2', '+3p1', '-3p4', '0p30']
+        flt_rgx = mh.float_rgx(True)
+        for string in match_cases:
+            match = re.match(flt_rgx, string)
+            self.assertTrue(match)
+            self.assertAlmostEqual(float(string.replace('p', '.')),
+                                   float(match.group(1).replace('p', '.')))
+
+
+    def test_float_rgx_char_separated_no_match(self):
+        nomatch_cases = ['p', '-p', '+p']
+        flt_rgx = mh.float_rgx(True)
+        for string in nomatch_cases:
+            self.assertFalse(re.match(flt_rgx, string))
 
 
 if __name__ == '__main__':
