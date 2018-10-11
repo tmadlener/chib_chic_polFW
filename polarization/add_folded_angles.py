@@ -40,15 +40,15 @@ def calc_folded_vars(costh, phi):
     costh_fold = np.copy(costh)
 
     quad_4 = (phi >= -90) & (phi < 0)
-    phi_fold[quad_4] = -phi_fold[quad_4]
+    phi_fold[quad_4] *= -1
 
     quad_2 = (phi >= 90) & (phi < 180)
     phi_fold[quad_2] = 180 - phi_fold[quad_2]
-    costh_fold[quad_2] = -costh_fold[quad_2]
+    costh_fold[quad_2] *= -1
 
     quad_3 = (phi >= -180) & (phi < -90)
-    phi_fold[quad_3] = 180 + phi_fold[quad_3]
-    costh_fold[quad_3] = -costh_fold[quad_3]
+    phi_fold[quad_3] += 180
+    costh_fold[quad_3] *= -1
 
     return costh_fold, phi_fold
 
