@@ -365,6 +365,8 @@ def get_vals_from_rwbuffer(rw_buffer, n_points):
     Thus it is necessary to read the points using the knowledge of how many
     values to read.
 
+    Throws and IndexError exception if the rw_buffer is empty (i.e. null-buffer)
+
     Args:
         rw_buffer (read-write buffer): read-write buffer returned by ROOT
             functions returning a Double_t* in C++
