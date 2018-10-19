@@ -182,12 +182,13 @@ def get_binning(hist, axis='X'):
     # first check if the histogram has non-uniform binning
     # TODO: Check if there is a direct way to check if the edges buffer is null
     # instead of going through the try-except machinery
-    edges = getattr(hist, 'Get' + axis + 'axis')().GetXbins().GetArray()
+    axis = getattr(hist, 'Get' + axis + 'axis')()
+    edges = axis.GetXbins().GetArray()
     try:
         return get_vals_from_rwbuffer(edges, n_bins + 1)
     except IndexError:
         pass
-    return np.linspace(_get_x_min_hist(hist), _get_x_max_hist(hist), n_bins + 1)
+    return np.linspace(axis.GetXmin(), axis.GetXmax(), n_bins + 1)
 
 
 def set_range_hist(hist, x_range=None, y_range=None):
