@@ -9,7 +9,7 @@ r.PyConfig.IgnoreCommandLineOptions = True
 
 import logging
 logging.basicConfig(level=logging.INFO,
-                    format='%(levelname) - %(funcName)s: %(message)s')
+                    format='%(levelname)s - %(funcName)s: %(message)s')
 
 from collections import OrderedDict
 from root_numpy import fill_hist
@@ -572,3 +572,93 @@ def get_slices(hist, direction, binning, basename=None):
         hists[bounds] = proj
 
     return hists
+
+
+def _get_nbins(hist):
+    """Get the bins in x-, y- and z-direction for the histogram"""
+    if hist.InheritsFrom('TH3'):
+        return hist.GetNbinsX(), hist.GetNbinsY(), hist.GetNbinsZ()
+    if hist.InheritsFrom('TH2'):
+        return hist.GetNbinsX(), hist.GetNbinsY()
+    if hist.InheritsFrom('TH1'):
+        return hist.GetNbinsX(),
+
+    logging.error('{} does not seem to inherit from TH1. Cannot get shape!'
+                  .format(hist.GetName()))
+
+
+def get_array(hist, overflow=False, errors=False):
+    """
+    Get the values of the passed histogram as numpy.array
+
+    NOTE: If the overflow bins are not included, then the indices into the array
+    have to be shifted by -1 compared to the TH1.GetBinContent indices, since for
+    TH1 the first "real" index is 1
+
+    Args:
+        hist (ROOT.TH1 or inheriting): Histogram for which the bin contents
+            should be obtained
+        overflow (optional, False): Include the overflow bins
+        errors (optional, False): Return the bin errors instead of the bin
+             contents
+
+    Returns:
+        numpy.ndarray: Numpy array in the same shape as the input hist. Indexing
+            into the array will return the same value as doing
+            hist.GetBinContent() with the up-to 3 dimensional indices
+    """
+    shape = _get_nbins(hist)
+    # The iterator over the TH1 spits out the overflow and underflow bins
+    of_shape = tuple(reversed([s + 2 for s in shape]))
+    # Transpose the reshaped array to match how the iterator of the TH1 spits
+    # the values out
+    if not errors:
+        vals = np.reshape(np.array([b for b in hist]), of_shape).T
+    else:
+        vals = np.reshape(np.array(
+            [hist.GetBinError(i) for i in xrange(np.prod(of_shape))]),
+                          of_shape).T
+
+    # Removing the overflow bins requires knowledge about the dimension
+    # (At least I can't think of anything different)
+    ndim = len(shape)
+    if not overflow:
+        if ndim == 1:
+            return vals[1:-1]
+        if ndim == 2:
+            return vals[1:-1, 1:-1]
+        if ndim == 3:
+            return vals[1:-1, 1:-1, 1:-1]
+
+    return vals
+
+
+def find_bin(binning, value):
+    """
+    Find the bin index in the passed binning (in a numpy friendly way)
+
+    Args:
+        binning (numpy.array): The values of the bin borders
+        value (numpy.array): The values for which the bin index should
+            be found
+
+    Returns:
+        numpy.array (int): The bin indices
+    """
+    # First get the places where the values are smaller than the bin borders
+    # We have to add an extra dimension to the value array in order to make
+    # numpys broadcasting work as intended
+    vlt = value[:, None] < binning
+    # Assuming that the values of the binning are strictly increasing (which
+    # should be true for all sensible binnings, we can now check where the
+    # condition changes and have thus determined the bin index into which each
+    # value falls)
+    rows, cols = np.where(np.diff(vlt))
+    # The rows can be checked to see if each value was categorized. If it was
+    # than it simply is an array with numbers increasing by one every row and
+    # giving a value for all input values
+    if not (len(rows) == len(value) and np.all(np.diff(rows) == 1)):
+        logging.warn('When trying to find the bin indices at least one value '
+                     'could not be attributed to a bin in the passed binning')
+
+    return cols
