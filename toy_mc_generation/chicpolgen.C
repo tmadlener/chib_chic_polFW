@@ -20,6 +20,7 @@
 #include <iostream>
 #include <string>
 #include <memory>
+#include <vector>
 
 #define GENRAPIDITY 1 // set to zero to generate the chic eta instead of the chic rapidity
 #define GENPTM 1 // set to zero to generate the pT/M distribution instead of pT
@@ -117,6 +118,14 @@ constexpr std::array<Mass, 3> MassSettings::MchiPDG;
 constexpr Mass MassSettings::MdimuonPDG;
 constexpr double MassSettings::Mprot;
 
+template<typename T>
+void conditionalBranch(TTree* t, T& var, const char* branchName, const std::vector<std::string>& storeBranches, const bool storeAll)
+{
+  if (storeAll || std::find(storeBranches.cbegin(), storeBranches.cend(), branchName) != storeBranches.cend()) {
+    t->Branch(branchName, &var);
+  }
+}
+
 
 const double PIG = TMath::Pi();
 
@@ -159,7 +168,7 @@ double func_pTM_gen(double* x, double*)
 }
 
 
-void chicpolgen(const gen_config& config = gen_config{}){
+void chicpolgen(const gen_config& config = gen_config{}, const std::vector<std::string>& storeBranches = {"all"}){
   gROOT->SetBatch();
   config.print(true);
   // translate configuration into const variables
@@ -246,92 +255,94 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
   TF1* rap_distr = new TF1("rap_distr",func_rap_gen,y_min,y_max,0);
 
+  const bool storeAllBranches = storeBranches.size() == 1 && storeBranches[0] == "all";
+
   TFile* hfile = new TFile( config.genfile.c_str(), "RECREATE", "chicpolgen");
 
   TTree* tr = new TTree("tr", "tr");
 
-  double pT_chi;        tr->Branch( "gen_chicPt",         &pT_chi);
-  double pT;            tr->Branch( "gen_JpsiPt",             &pT);
+  double pT_chi;    conditionalBranch(tr, pT_chi, "gen_chicPt", storeBranches, storeAllBranches);
+  double pT;            conditionalBranch(tr, pT, "gen_JpsiPt", storeBranches, storeAllBranches);
 #if GENRAPIDITY == 1
-  double pL_chi;     //   tr->Branch( "pL_chi",         &pL_chi,         "pL_chi/D" );
+  double pL_chi;     //   conditionalBranch(tr, pL_chi,         "pL_chi/D" , "pL_chi", storeBranches, storeAllBranches);
 #endif
-  // double pL;         //   tr->Branch( "pL",             &pL,             "pL/D" );
-  double y_chi;         tr->Branch( "gen_chicRap",          &y_chi);
-  double y;             tr->Branch( "gen_JpsiRap",              &y);
+  // double pL;         //   conditionalBranch(tr, pL,             "pL/D" , "pL", storeBranches, storeAllBranches);
+  double y_chi;         conditionalBranch(tr, y_chi, "gen_chicRap", storeBranches, storeAllBranches);
+  double y;             conditionalBranch(tr, y, "gen_JpsiRap", storeBranches, storeAllBranches);
 
   double Mchi;
   double Mpsi;
-  tr->Branch("gen_chicMass", &Mchi);
-  tr->Branch("gen_JpsiMass", &Mpsi);
+  conditionalBranch(tr, Mchi, "gen_chicMass", storeBranches, storeAllBranches);
+  conditionalBranch(tr, Mpsi, "gen_JpsiMass", storeBranches, storeAllBranches);
 
-  double pT_gamma;      tr->Branch( "gen_photonPt",       &pT_gamma);
-  double pL_gamma;      tr->Branch( "gen_photonPl",       &pL_gamma);
-  double y_gamma;       tr->Branch( "gen_photonEta",        &y_gamma);
+  double pT_gamma;      conditionalBranch(tr, pT_gamma, "gen_photonPt", storeBranches, storeAllBranches);
+  double pL_gamma;      conditionalBranch(tr, pL_gamma, "gen_photonPl", storeBranches, storeAllBranches);
+  double y_gamma;       conditionalBranch(tr, y_gamma, "gen_photonEta", storeBranches, storeAllBranches);
 
-  double pT_lepP;       tr->Branch( "gen_muPPt",        &pT_lepP);
-  double eta_lepP;      tr->Branch( "gen_muPEta",       &eta_lepP);
+  double pT_lepP;       conditionalBranch(tr, pT_lepP, "gen_muPPt", storeBranches, storeAllBranches);
+  double eta_lepP;      conditionalBranch(tr, eta_lepP, "gen_muPEta", storeBranches, storeAllBranches);
 
-  double pT_lepN;       tr->Branch( "gen_muNPt",        &pT_lepN);
-  double eta_lepN;      tr->Branch( "gen_muNEta",       &eta_lepN);
+  double pT_lepN;       conditionalBranch(tr, pT_lepN, "gen_muNPt", storeBranches, storeAllBranches);
+  double eta_lepN;      conditionalBranch(tr, eta_lepN, "gen_muNEta", storeBranches, storeAllBranches);
 
-  // int inAcc0;            tr->Branch( "inAcc0",          &inAcc0,          "inAcc0/I"    );
-  // int inAcc1;            tr->Branch( "inAcc1",          &inAcc1,          "inAcc1/I"    );
+  // int inAcc0;            conditionalBranch(tr, inAcc0, "inAcc0", storeBranches, storeAllBranches);
+  // int inAcc1;            conditionalBranch(tr, inAcc1, "inAcc1", storeBranches, storeAllBranches);
 
 // angle of psi direction in chic rest frame, wrt to chosen chic polarization axis
-  double cosTH_psi;     tr->Branch( "cosTH_psi",      &cosTH_psi,      "cosTH_psi/D" );
+  double cosTH_psi;     conditionalBranch(tr, cosTH_psi, "cosTH_psi", storeBranches, storeAllBranches);
 
 // angles of dilepton direction in the psi rest frame, wrt the psi direction in the chic rest frame
 // (axis definitions as in Fig 1b of PRD 83, 096001 (2011))
-  double costh_chihe;   tr->Branch( "costh_chihe",    &costh_chihe,    "costh_chihe/D" );
-  double phi_chihe;     tr->Branch( "phi_chihe",      &phi_chihe,      "phi_chihe/D" );
+  double costh_chihe;   conditionalBranch(tr, costh_chihe, "costh_chihe", storeBranches, storeAllBranches);
+  double phi_chihe;     conditionalBranch(tr, phi_chihe, "phi_chihe", storeBranches, storeAllBranches);
 
 // psi decay angles in the helicity frame
-  double costh_he;      tr->Branch( "gen_costh_HX",       &costh_he);
-  double phi_he;        tr->Branch( "gen_phi_HX",         &phi_he);
+  double costh_he;      conditionalBranch(tr, costh_he, "gen_costh_HX", storeBranches, storeAllBranches);
+  double phi_he;        conditionalBranch(tr, phi_he, "gen_phi_HX", storeBranches, storeAllBranches);
 
 // psi decay angles in the CS frame
-  double costh_cs;      tr->Branch( "gen_costh_CS",       &costh_cs);
-  double phi_cs;        tr->Branch( "gen_phi_CS",         &phi_cs);
+  double costh_cs;      conditionalBranch(tr, costh_cs, "gen_costh_CS", storeBranches, storeAllBranches);
+  double phi_cs;        conditionalBranch(tr, phi_cs, "gen_phi_CS", storeBranches, storeAllBranches);
 
 
-  // double M_gamma; tr->Branch("M_gamma", &M_gamma);
-  // double qM_chi; tr->Branch("qM_chi", &qM_chi);
+  // double M_gamma; conditionalBranch(tr, M_gamma, "M_gamma", storeBranches, storeAllBranches);
+  // double qM_chi; conditionalBranch(tr, qM_chi, "qM_chi", storeBranches, storeAllBranches);
 
   // smeared variables with "_sm" postfix
-  double pT_chi_sm;     tr->Branch("chicPt", &pT_chi_sm);
-  double y_chi_sm;     tr->Branch("chicRap", &y_chi_sm);
-  double M_chi_sm;      tr->Branch("mumugammaMass", &M_chi_sm);
-  double qM_chi_sm;      tr->Branch("chicMass", &qM_chi_sm);
+  double pT_chi_sm;     conditionalBranch(tr, pT_chi_sm, "chicPt", storeBranches, storeAllBranches);
+  double y_chi_sm;     conditionalBranch(tr, y_chi_sm, "chicRap", storeBranches, storeAllBranches);
+  double M_chi_sm;      conditionalBranch(tr, M_chi_sm, "mumugammaMass", storeBranches, storeAllBranches);
+  double qM_chi_sm;      conditionalBranch(tr, qM_chi_sm, "chicMass", storeBranches, storeAllBranches);
 
-  double pT_gamma_sm;     tr->Branch("photonPt", &pT_gamma_sm);
-  double y_gamma_sm;     tr->Branch("photonEta", &y_gamma_sm);
-  // double eta_gamma_sm;     tr->Branch("eta_gamma_sm", &eta_gamma_sm);
+  double pT_gamma_sm;     conditionalBranch(tr, pT_gamma_sm, "photonPt", storeBranches, storeAllBranches);
+  double y_gamma_sm;     conditionalBranch(tr, y_gamma_sm, "photonEta", storeBranches, storeAllBranches);
+  // double eta_gamma_sm;     conditionalBranch(tr, eta_gamma_sm, "eta_gamma_sm", storeBranches, storeAllBranches);
 
-  double pT_jpsi_sm;     tr->Branch("JpsiPt", &pT_jpsi_sm);
-  double y_jpsi_sm;     tr->Branch("JpsiRap", &y_jpsi_sm);
-  double M_jpsi_sm;      tr->Branch("JpsiMass", &M_jpsi_sm);
+  double pT_jpsi_sm;     conditionalBranch(tr, pT_jpsi_sm, "JpsiPt", storeBranches, storeAllBranches);
+  double y_jpsi_sm;     conditionalBranch(tr, y_jpsi_sm, "JpsiRap", storeBranches, storeAllBranches);
+  double M_jpsi_sm;      conditionalBranch(tr, M_jpsi_sm, "JpsiMass", storeBranches, storeAllBranches);
 
-  double pT_lepP_sm;     tr->Branch("muPPt", &pT_lepP_sm);
-  double eta_lepP_sm;     tr->Branch("muPEta", &eta_lepP_sm);
+  double pT_lepP_sm;     conditionalBranch(tr, pT_lepP_sm, "muPPt", storeBranches, storeAllBranches);
+  double eta_lepP_sm;     conditionalBranch(tr, eta_lepP_sm, "muPEta", storeBranches, storeAllBranches);
 
-  double pT_lepN_sm;     tr->Branch("muNPt", &pT_lepN_sm);
-  double eta_lepN_sm;     tr->Branch("muNEta", &eta_lepN_sm);
+  double pT_lepN_sm;     conditionalBranch(tr, pT_lepN_sm, "muNPt", storeBranches, storeAllBranches);
+  double eta_lepN_sm;     conditionalBranch(tr, eta_lepN_sm, "muNEta", storeBranches, storeAllBranches);
 
-  double Mchic;    tr->Branch("Q_value_gen", &Mchic);
+  double Mchic;    conditionalBranch(tr, Mchic, "Q_value_gen", storeBranches, storeAllBranches);
 
-  double costh_HX_sm; tr->Branch("costh_HX", &costh_HX_sm);
-  double phi_HX_sm; tr->Branch("phi_HX", &phi_HX_sm);
+  double costh_HX_sm; conditionalBranch(tr, costh_HX_sm, "costh_HX", storeBranches, storeAllBranches);
+  double phi_HX_sm; conditionalBranch(tr, phi_HX_sm, "phi_HX", storeBranches, storeAllBranches);
 
-  double costh_CS_sm; tr->Branch("costh_CS", &costh_CS_sm);
-  double phi_CS_sm; tr->Branch("phi_CS", &phi_CS_sm);
+  double costh_CS_sm; conditionalBranch(tr, costh_CS_sm, "costh_CS", storeBranches, storeAllBranches);
+  double phi_CS_sm; conditionalBranch(tr, phi_CS_sm, "phi_CS", storeBranches, storeAllBranches);
 
-  double costh_PX_sm; tr->Branch("costh_PX", &costh_PX_sm);
-  double phi_PX_sm; tr->Branch("phi_PX", &phi_PX_sm);
+  double costh_PX_sm; conditionalBranch(tr, costh_PX_sm, "costh_PX", storeBranches, storeAllBranches);
+  double phi_PX_sm; conditionalBranch(tr, phi_PX_sm, "phi_PX", storeBranches, storeAllBranches);
 
-  // double ca_gamma_jpsi;     tr->Branch("ca_gamma_jpsi", &ca_gamma_jpsi);
-  // double ca_mu_mu;     tr->Branch("ca_mu_mu", &ca_mu_mu);
-  // double ca_sm_gamma_jpsi;     tr->Branch("ca_sm_gamma_jpsi", &ca_sm_gamma_jpsi);
-  // double ca_sm_mu_mu;     tr->Branch("ca_sm_mu_mu", &ca_sm_mu_mu);
+  // double ca_gamma_jpsi;     conditionalBranch(tr, ca_gamma_jpsi, "ca_gamma_jpsi", storeBranches, storeAllBranches);
+  // double ca_mu_mu;     conditionalBranch(tr, ca_mu_mu, "ca_mu_mu", storeBranches, storeAllBranches);
+  // double ca_sm_gamma_jpsi;     conditionalBranch(tr, ca_sm_gamma_jpsi, "ca_sm_gamma_jpsi", storeBranches, storeAllBranches);
+  // double ca_sm_mu_mu;     conditionalBranch(tr, ca_sm_mu_mu, "ca_sm_mu_mu", storeBranches, storeAllBranches);
 
   // double lepP_eff, lepN_eff;
   double lepP_eff_sm, lepN_eff_sm;
@@ -339,15 +350,15 @@ void chicpolgen(const gen_config& config = gen_config{}){
   double gamma_eff_sm;
 
   if (!config.muonEffs.empty()) {
-    // tr->Branch("lepP_eff", &lepP_eff);
-    // tr->Branch("lepN_eff", &lepN_eff);
-    tr->Branch("lepP_eff_sm", &lepP_eff_sm);
-    tr->Branch("lepN_eff_sm", &lepN_eff_sm);
+    // conditionalBranch(tr, lepP_eff, "lepP_eff", storeBranches, storeAllBranches);
+    // conditionalBranch(tr, lepN_eff, "lepN_eff", storeBranches, storeAllBranches);
+    conditionalBranch(tr, lepP_eff_sm, "lepP_eff_sm", storeBranches, storeAllBranches);
+    conditionalBranch(tr, lepN_eff_sm, "lepN_eff_sm", storeBranches, storeAllBranches);
   }
 
   if (!config.photonEffs.empty()) {
-    // tr->Branch("gamma_eff", &gamma_eff);
-    tr->Branch("gamma_eff_sm", &gamma_eff_sm);
+    // conditionalBranch(tr, gamma_eff, "gamma_eff", storeBranches, storeAllBranches);
+    conditionalBranch(tr, gamma_eff_sm, "gamma_eff_sm", storeBranches, storeAllBranches);
   }
 
   // smearing initialization (for smearing according to MC)

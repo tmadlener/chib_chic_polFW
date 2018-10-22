@@ -25,6 +25,8 @@ int main(int argc, char *argv[])
   const auto muonEffFile = parser.getOptionVal<std::string>("--muonEffs", "");
   const auto photonEffFile = parser.getOptionVal<std::string>("--photonEffs", "");
 
+  const auto storeBranches = parser.getOptionVal<std::vector<std::string>>("--storeBranches", {"all"});
+
   // TODO: smearing configurable in the end
   // TODO: efficiencies configurable from json (including range finding)
 
@@ -45,7 +47,7 @@ int main(int argc, char *argv[])
   config.muonEffs = muonEffFile;
   config.photonEffs = photonEffFile;
 
-  chicpolgen(config);
+  chicpolgen(config, storeBranches);
 
   return 0;
 }

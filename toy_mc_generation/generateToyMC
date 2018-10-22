@@ -1,5 +1,6 @@
 #!/bin/bash
 
+set -e
 # Script for generating Toy MC samples
 
 # number of events to generate
@@ -17,12 +18,26 @@ OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/high_stats_llra
 # Generate the distribution root file on the fly
 GEN_DISTS=0
 
+# use the CS frame as natural frame
+USE_CS_FRAME=0
+
+# Store only the angular variables
+STORE_ONLY_ANGLES=0
+
+
 CHIC1_GENPTRANGE="9.1286:78.9975" # same as "real MC"
 CHIC2_GENPTRANGE="9.2456:80.01"   # same as "real MC"
 
-
 if [[ ${GEN_DISTS} -eq 1 ]]; then
-    DIST_ARG="--create-dists"
+    ADD_ARGS="--create-dists"
+fi
+
+if [[ ${USE_CS_FRAME} -eq 1 ]]; then
+    ADD_ARGS=${ADD_ARGS}" --CSframe true"
+fi
+
+if [[ ${STORE_ONLY_ANGLES} -eq 1 ]]; then
+    ADD_ARGS=${ADD_ARGS}" --storeBranches {costh,phi}_{HX,PX,CS}"
 fi
 
 # cleans up ratio so that it can easily be printed and used in filenames
@@ -69,5 +84,5 @@ for setting in ${!SETTINGS[@]}; do
     sbatch ./batchRunToyMCGen.sh ${outfile} ${state} ${helicity1} ${helicity2} ${NEVENTS} \
            --muonEffs ${MUON_EFFS} --photonEffs ${PHOTON_EFFS} ${pt_args} --ymax 1.4 \
            ${acceptarg} \
-           ${DIST_ARG}
+           ${ADD_ARGS}
 done
