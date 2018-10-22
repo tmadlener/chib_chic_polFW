@@ -15,6 +15,7 @@ hel2=${4}
 nevents=${5}
 shift 5
 
+set +x # To avoid excessive output from arg handling
 CREATE_DISTS=0
 if $(check_args_flag "--create-dists" ${@}); then
     CREATE_DISTS=1
@@ -26,6 +27,21 @@ if $(check_args_flag "--create-dists" ${@}); then
         set -- "$@" "$arg"
     done
 fi
+
+RM_SOURCE=0
+if $(check_args_flag "--rm-source" ${@}); then
+    RM_SOURCE=1
+
+    for arg; do
+        shift
+        [ ${arg} = "--rm-source" ] && continue
+        set -- "$@" "$arg"
+    done
+fi
+set -x
+
+echo "CREATE_DISTS: "${CREATE_DISTS}", RM_SOURCE: "${RM_SOURCE}
+
 
 exe=${CHIB_CHIC_POLFW_DIR}/toy_mc_generation/run_chicpolgen
 
@@ -40,4 +56,8 @@ if [[ ${CREATE_DISTS} -eq 1 ]]; then
     real_genfile=$(echo ${genfile} | sed 's:\.root:_'"$sbid"'\.root:')
     dist_file=$(echo ${real_genfile} | sed 's:\.root:_dists\.root:')
     ${mkhists} ${real_genfile} ${dist_file}
+fi
+if [[ ${RM_SOURCE} -eq 1 ]]; then
+    # remove the generated file after the histograms have been created
+    rm ${real_genfile}
 fi

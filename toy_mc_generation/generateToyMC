@@ -17,6 +17,8 @@ OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/high_stats_llra
 
 # Generate the distribution root file on the fly
 GEN_DISTS=0
+# Remove the data file after creating the distribution histogams
+RM_SOURCE=1
 
 # use the CS frame as natural frame
 USE_CS_FRAME=0
@@ -30,6 +32,11 @@ CHIC2_GENPTRANGE="9.2456:80.01"   # same as "real MC"
 
 if [[ ${GEN_DISTS} -eq 1 ]]; then
     ADD_ARGS="--create-dists"
+
+    if [[ ${RM_SOURCE} -eq 1 ]]; then
+        # Doesn't make sense to remove the source without creating dists
+        ADD_ARGS=${ADD_ARGS}" --rm-source"
+    fi
 fi
 
 if [[ ${USE_CS_FRAME} -eq 1 ]]; then
@@ -37,8 +44,9 @@ if [[ ${USE_CS_FRAME} -eq 1 ]]; then
 fi
 
 if [[ ${STORE_ONLY_ANGLES} -eq 1 ]]; then
-    ADD_ARGS=${ADD_ARGS}" --storeBranches {costh,phi}_{HX,PX,CS}"
+    ADD_ARGS=${ADD_ARGS}" $(echo --storeBranches {costh,phi}_{HX,PX,CS})" # use echo to expand braces
 fi
+
 
 # cleans up ratio so that it can easily be printed and used in filenames
 function pratio() {
