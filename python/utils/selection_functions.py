@@ -164,6 +164,21 @@ TRIGGER_BIT_MAP = {
     'HLT_Dimuon25_Jpsi': 1 << 1,
 }
 
+def trigger_sel_(trigger='HLT_Dimuon8_Jpsi'):
+    """Apply the trigger selection (reco MC and data only)"""
+    class TriggerSel(object):
+        """Internal helper class to easier handle the requires case"""
+        def __init__(self, trig):
+            self.requires = ['trigger']
+            self.trigger_bit = TRIGGER_BIT_MAP[get_full_trigger(trig)]
+
+        def __call__(self, dfr):
+            return (dfr.trigger & self.trigger_bit) == self.trigger_bit
+
+    return TriggerSel(trigger)
+
+
+@deprecated_soon('trigger_sel_')
 def trigger_sel(df, trigger='HLT_Dimuon8_Jpsi'):
     """Apply the trigger selection (reco and data only)"""
     full_trigger = get_full_trigger(trigger)
@@ -172,7 +187,21 @@ def trigger_sel(df, trigger='HLT_Dimuon8_Jpsi'):
     return (df.trigger & trigger_bit) == trigger_bit
 trigger_sel.requires = ['trigger']
 
+def prompt_sel_(ctau_sigma=2.5):
+    """Select the prompt events using a lifetime significance cut"""
+    class PromptSel(object):
+        """Internal helper class to handle the requires case"""
+        def __init__(self, ctau_sig):
+            self.sigma = ctau_sig
+            self.requires = ['Jpsict', 'JpsictErr']
 
+        def __call__(self, dfr):
+            return (dfr.Jpsict.abs() / dfr.JpsictErr) < self.sigma
+
+    return PromptSel(ctau_sigma)
+
+
+@deprecated_soon('prompt_sel_')
 def prompt_sel(dfr, ctau_sigma=2.5):
     """
     Select prompt events using a lifetime significance cut
@@ -186,7 +215,6 @@ def vtx_prob_sel(df, prob=0.01):
     return df.vtxProb > prob
 vtx_prob_sel.requires = ['vtxProb']
 
-
 def deta_sel(df, deta_max=0.015):
     """
     Select only events for which the generated and reconstruced photon eta match
@@ -194,12 +222,10 @@ def deta_sel(df, deta_max=0.015):
     return (df.photonEta - df.gen_photonEta).abs() < deta_max
 deta_sel.requires = ['photonEta', 'gen_photonEta']
 
-
 def chic_mass_sel(df, min_mass=3.325, max_mass=3.725):
     """Select only those events with a chic mass between min_mass and max_mass"""
     return get_bin_cut_df(df, 'chicMass', min_mass, max_mass)
 chic_mass_sel.requires = ['chicMass']
-
 
 def jpsi_kin_sel_(min_pt=8, max_pt=20, max_rap=1.2, gen=False):
     """Kinematic selection of jpsi
@@ -240,7 +266,6 @@ def chic_state_sel(df, state):
     pdgId = {'chic1': 20443, 'chic2': 445}
     return df.pdgId == pdgId[state]
 chic_state_sel.requires = ['pdgId']
-
 
 def flat_pt(pt, eta):
     """Helper function to return a flat pt-eta cut in 2D coords"""
@@ -311,6 +336,22 @@ def toy_reco(df, eff_name='gamma_eff_sm'):
     Select only those events for which the efficiency is larger than 0
     """
     return df.loc[:, eff_name] > 0
+
+
+def all_sel():
+    """
+    Selection that selects all events in a way that still satisfies the requires
+    helpers
+    """
+    class AllSel(object):
+        """Internal helper class"""
+        def __init__(self):
+            self.requires = []
+
+        def __call__(self, dfr):
+            return np.ones(dfr.shape[0], dtype=bool)
+
+    return AllSel()
 
 
 def collect_requirements(selections):

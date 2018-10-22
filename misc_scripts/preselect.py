@@ -17,17 +17,18 @@ from utils.data_handling import (
 import utils.selection_functions as sf
 from utils.plot_helpers import mkplot
 
-
-VARIABLES = ['trigger', 'Jpsi{Pt,Rap}', '{photon,mu{N,P}}{Pt,Eta}', 'vtxProb',
-             'Jpsict{,Err}', 'costh_HX', 'chicMass']
+# variables that are in the file after the preselection
+# variables necessary for the preslection will also be present!
+VARIABLES = [
+    '{costh,phi}_{HX,PX,CS}', 'chic{Pt,Rap}'
+]
 
 def get_jpsi_sel(jpsi_sel_str):
     """
     Get the jpsi selection function from the passed string
     """
     min_pt, max_pt, max_rap = [float(v) for v in jpsi_sel_str.split(':')]
-
-    return lambda d: sf.jpsi_kin_sel(d, min_pt, max_pt, max_rap)
+    return sf.jpsi_kin_sel_(min_pt, max_pt, max_rap)
 
 
 def get_lt_selection(mc=False, ct_sig=2.5):
@@ -35,8 +36,8 @@ def get_lt_selection(mc=False, ct_sig=2.5):
     Get the lifetime significance cut
     """
     if mc:
-        return lambda d: np.ones(d.shape[0], dtype=bool)
-    return lambda d: sf.prompt_sel(d, ct_sig)
+        return sf.all_sel()
+    return sf.prompt_sel_(ct_sig)
 
 
 def get_deta_sel(deta=False):
@@ -45,7 +46,7 @@ def get_deta_sel(deta=False):
     """
     if deta:
         return sf.deta_sel
-    return lambda d: np.ones(d.shape[0], dtype=bool)
+    return sf.all_sel()
 
 
 def apply_selection_one_by_one(data, selections):
@@ -82,23 +83,26 @@ def create_store_sel_hist(n_events, selections):
 
 def main(args):
     """Main"""
+    selections = OrderedDict()
+
+    selections['loose muon'] = sf.loose_muon_sel()
+    selections['trigger'] = sf.trigger_sel_(args.trigger)
+    selections['vtx prob'] = sf.vtx_prob_sel
+    selections['jpsi kin sel'] = get_jpsi_sel(args.jpsi)
+    selections['photon sel'] = sf.photon_sel_(sf.flat_pt(0.4, 1.5))
+    selections['lifetime cut'] = get_lt_selection(args.mc, 2.5)
+    selections['deta cut (MC only)'] = get_deta_sel(args.deta)
+    selections['chis mass cut'] = sf.chic_mass_sel # not strictly necessary from a PS point of view
+
+    global VARIABLES
+    VARIABLES.extend(sf.collect_requirements(selections.values()))
     if args.deta:
         VARIABLES.append('gen_photonEta')
     if args.mc:
         VARIABLES.append('pdgId')
+    VARIABLES = list(set(VARIABLES))
 
     data = get_dataframe(args.infile, columns=VARIABLES, where='trigger > 0')
-
-    selections = OrderedDict()
-
-    selections['loose muon'] = sf.loose_muon_sel
-    selections['trigger'] = lambda d: sf.trigger_sel(d, args.trigger)
-    selections['vtx prob'] = sf.vtx_prob_sel
-    selections['jpsi kin sel'] = get_jpsi_sel(args.jpsi)
-    selections['photon sel'] = lambda d: sf.photon_sel(d, sf.flat_pt(0.4, 1.5))
-    selections['lifetime cut'] = get_lt_selection(args.mc, 2.5)
-    selections['deta cut (MC only)'] = get_deta_sel(args.deta)
-    selections['chis mass cut'] = sf.chic_mass_sel # not strictly necessary from a PS point of view
 
     if not args.hist:
         sel_data = apply_selections(data, selections.values())
@@ -114,7 +118,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script to preselect ')
     parser.add_argument('infile', help='inputfile')
     parser.add_argument('outfile', help='preselected file')
-    parser.add_argument('-t', '--trigger', help='trigger',
+    parser.add_argument('-t', '--trigger', help='trigger name',
                         default='Dimuon8_Jpsi')
     parser.add_argument('-j', '--jpsi', default='8:20:1.2',
                         help='jpsi selection. format: minpt:maxpt:maxrap')
