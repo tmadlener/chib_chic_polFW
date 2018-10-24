@@ -456,7 +456,8 @@ def mkplot(pltables, **kwargs):
             # Force the usage of the plot hist if it is created
             drawOpt = kwargs.pop('drawOpt', '')
             kwargs['drawOpt'] = 'same' + drawOpt
-        can.add_pltables(plot_hist)
+            # only add the plotting frame if it is actually created
+            can.add_pltables(plot_hist)
 
     leg = kwargs.pop('leg', None)
     if leg is None:
