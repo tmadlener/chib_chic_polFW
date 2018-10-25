@@ -5,6 +5,7 @@ import sys
 import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s - %(funcName)s: %(message)s')
+import re
 
 import pandas as pd
 import numpy as np
@@ -16,13 +17,14 @@ from root_numpy import array2root
 
 from utils.misc_helpers import make_iterable
 
-def check_branch_available(tree, branch):
+def check_branch_available(tree, branch, nowarn=False):
     """
     Check if a branch with the passed name is available in the TTree
 
     Args:
         tree (ROOT.TTree): tree for which the check should be performed
         branch (str): branch name
+        nowarn (Boolean, optional): Suppress the warning log output
 
     Returns:
         bool: True if branch is in tree, else False
@@ -33,8 +35,9 @@ def check_branch_available(tree, branch):
     all_branches = [b.GetName() for b in tree.GetListOfBranches()]
     if branch in all_branches:
         return True
-    logging.warning('Could not find branch \'{}\' in TTree \'{}\''
-                    .format(branch, tree.GetName()))
+    log_func = logging.info if nowarn else logging.warning
+    log_func('Could not find branch \'{}\' in TTree \'{}\''
+             .format(branch, tree.GetName()))
     return False
 
 
@@ -62,7 +65,6 @@ def store_dataframe(dfr, outfile, tname='chi2_values', **kwargs):
         logging.warning('Output file doesnot have .root or .pkl format. '
                         'Creating a .pkl file instead')
         logging.debug('Output filename before substitution: {}'.format(outfile))
-        import re
         outfile = re.sub(r'(.*\.)(\w*)$', r'\1pkl', outfile)
         logging.debug('Output filename after substitution: {}'.format(outfile))
 
@@ -204,3 +206,26 @@ def get_treename(filename):
         logging.warning('Found no TTrees in {}'.format(filename))
 
     return None
+
+
+def list_obj(rfile, obj_type, filter_str=None):
+    """
+    Get a list (i.e. generator) of the names of all the objects in a root files
+
+    Args:
+        rfile (ROOT.TFile): root file
+        obj_type (str): Name of a root class from which the objects have to
+            inherit
+        filter_str (str, regex, or None, optional): if not None, the names have
+            to match this to be considered
+
+    """
+    if filter_str is None:
+        match_f = lambda x: True
+    else:
+        filter_rgx = re.compile(filter_str)
+        match_f = lambda x: re.search(filter_rgx, x)
+
+    return (k.GetName() for k in rfile.GetListOfKeys()
+            if match_f(k.GetName()) and
+            rfile.Get(k.GetName()).InheritsFrom(obj_type))
