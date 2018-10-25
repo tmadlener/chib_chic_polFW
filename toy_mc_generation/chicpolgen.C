@@ -251,6 +251,9 @@ void chicpolgen(const gen_config& config = gen_config{}, const std::vector<std::
   TF1* pTM_distr = new TF1("pTM_distr", func_pTM_gen,
                            pT_min / GenMassSettings.MchiPDG[config.chic_state].central,
                            pT_max / GenMassSettings.MchiPDG[config.chic_state].central, 0);
+
+  std::cout << "Integral of pTM_distr pdf between pT_min (" << pT_min << ") and pT_max (" << pT_max << ") = "
+            << pTM_distr->Integral(pT_min, pT_max) << "\n";
 #endif
 
   TF1* rap_distr = new TF1("rap_distr",func_rap_gen,y_min,y_max,0);
@@ -338,6 +341,10 @@ void chicpolgen(const gen_config& config = gen_config{}, const std::vector<std::
 
   double costh_PX_sm; conditionalBranch(tr, costh_PX_sm, "costh_PX", storeBranches, storeAllBranches);
   double phi_PX_sm; conditionalBranch(tr, phi_PX_sm, "phi_PX", storeBranches, storeAllBranches);
+
+  double cosTH_HX_sm; conditionalBranch(tr, cosTH_HX_sm, "cosTH_HX_sm", storeBranches, storeAllBranches);
+  double cosTH_PX_sm; conditionalBranch(tr, cosTH_PX_sm, "cosTH_PX_sm", storeBranches, storeAllBranches);
+  double cosTH_CS_sm; conditionalBranch(tr, cosTH_CS_sm, "cosTH_CS_sm", storeBranches, storeAllBranches);
 
   // double ca_gamma_jpsi;     conditionalBranch(tr, ca_gamma_jpsi, "ca_gamma_jpsi", storeBranches, storeAllBranches);
   // double ca_mu_mu;     conditionalBranch(tr, ca_mu_mu, "ca_mu_mu", storeBranches, storeAllBranches);
@@ -900,6 +907,14 @@ void chicpolgen(const gen_config& config = gen_config{}, const std::vector<std::
     costh_PX_sm = angles_PX.costh;
     phi_PX_sm = angles_PX.phi;
 
+    const auto Angles_HX = calcAnglesInFrame(smearedJpsi, smearedGamma, RefFrame::HX);
+    cosTH_HX_sm = Angles_HX.costh;
+
+    const auto Angles_CS = calcAnglesInFrame(smearedJpsi, smearedGamma, RefFrame::CS);
+    cosTH_CS_sm = Angles_CS.costh;
+
+    const auto Angles_PX = calcAnglesInFrame(smearedJpsi, smearedGamma, RefFrame::PX);
+    cosTH_PX_sm = Angles_PX.costh;
 
     // add the desired efficiencies
     if (muonEffs) {
