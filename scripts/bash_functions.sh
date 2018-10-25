@@ -210,3 +210,23 @@ function build_double_sided_CB() {
 
     return ${compile_status}
 }
+
+## Function that moves an already existing file to a new place
+function mv_existing() {
+    file=${1}
+    if [ -f ${file} ]; then
+        mvfile=$(echo ${file}).$(date '+%d%m%y_%H%M%S')
+        echo "${file} already exists. Moving it to ${mvfile}"
+        mv ${file} ${mvfile}
+    fi
+}
+export -f mv_existing
+
+## print the passed name and the value of the variable (if it is set)
+function print_var() {
+    var=${1}
+    if [ -n "${!var+set}" ]; then # only print variables that are set (even if possibly empty)
+        echo ${var}=${!var}
+    fi
+}
+export -f print_var

@@ -3,22 +3,22 @@
 set -e
 # Script for generating Toy MC samples
 
+###########################################################
+# SETTINGS FOR RUNNING THE GENERATION ON THE BATCH SYSTEM #
+###########################################################
 # number of events to generate
-NEVENTS=50000000
+NEVENTS=10000000
 # NACCEPT=1500000  # run until at least as many events are accepted (comment to exhaust NEVENTS)
+
+# Start N_JOBS each generating NEVENTS events (set to 1 or comment to start only one job)
+N_JOBS=1
 
 # efficiency files
 MUON_EFFS=$(pwd)/EffFiles/single_muon_effs_noTracking_L3ptg2_final_fit.root
 PHOTON_EFFS=$(pwd)/EffFiles/photon_effs_param.root
 
 # output base directory
-OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/high_stats_llratio_samples/
-# OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/compare_real_mc_gen_rap/
-
-# Generate the distribution root file on the fly
-GEN_DISTS=0
-# Remove the data file after creating the distribution histogams
-RM_SOURCE=1
+OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/acceptance_correction_maps_data/reco_level/
 
 # use the CS frame as natural frame
 USE_CS_FRAME=0
@@ -29,12 +29,66 @@ STORE_ONLY_ANGLES=1
 # Store efficiencies
 STORE_EFFS=1
 
+# Generate the distribution root file on the fly
+GEN_DISTS=0
+# Remove the data file after creating the distribution histogams
+RM_SOURCE=0
 
-CHIC1_GENPTRANGE="9.1286:78.9975" # same as "real MC"
-CHIC2_GENPTRANGE="9.2456:80.01"   # same as "real MC"
+# kinematic range to accept J/psis in
+JPSI_SEL=true
+JPSI_MINPT=8
+JPSI_MAXPT=20
+JPSI_MAXRAP=1.2
 
+# muon (loose) and photon selection
+MUON_SEL=true
+PHOTON_SEL=true
+
+# pT range to generate chic in
+CHIC1_GENPTRANGE="5:100"
+CHIC2_GENPTRANGE="5:100"
+# CHIC1_GENPTRANGE="9.1286:78.9975" # same as "real MC"
+# CHIC2_GENPTRANGE="9.2456:80.01"   # same as "real MC"
+
+# Which chic1 helicities should be generated
+# comment if you do not want to generate chic1
+CHIC1_HELICITIES=(2./3. 0 1)
+
+# Which chic2 helicities should be generated (NOTE: need R1 and R2, separated by comma)
+# comment if you do not want to generate chic2
+CHIC2_HELICITIES=(2./5.,2./5. 0,0 0,1)
+
+# other additional arguments that should be passed to run_chicpolgen
+# NOTE: these will be overridden by arguments created from settings above!
+ADD_ARGS=""
+
+
+########################################################################################################
+# NOTE: HERE ENDS THE PARTS WITH THE SETTINGS, BELOW ARE JUST MANIPULATIONS TO HAVE THE CORRECT FORMAT #
+########################################################################################################
+# persist the settings from above into a file so that it can in principle be copied in to rerun the
+# generation with the current settings
+function persist_settings() {
+    outfile=${1}/gen_settings.txt
+    mv_existing ${outfile}
+
+    persist_vars=(NEVENTS NACCEPT N_JOBS MUON_EFFS PHOTON_EFFS USE_CS_FRAME STORE_ONLY_ANGLES STORE_EFFS\
+                          GEN_DISTS RM_SOURCE JPSI_SEL JPSI_MINPT JPSI_MAXPT JPSI_MAXRAP MUON_SEL PHOTON_SEL\
+                          CHIC1_GENPTRANGE CHIC2_GENPTRANGE ADD_ARGS)
+    persist_arrays=(CHIC1_HELICITIES CHIC2_HELICITIES)
+
+    for var in ${persist_vars[@]}; do print_var ${var} >> ${outfile}; done
+    # no way currently to automatically handle the array variables
+    echo "CHIC1_HELICITIES=("${CHIC1_HELICITIES[@]}")" >> ${outfile}
+    echo "CHIC2_HELICITIES=("${CHIC2_HELICITIES[@]}")" >> ${outfile}
+}
+
+mkdir -p ${OUTBASEDIR}
+persist_settings ${OUTBASEDIR}
+
+ADD_ARGS=${ADD_ARGS}"--muonSel "${MUON_SEL}" --photonSel "${PHOTON_SEL}" --jpsiSel "${JPSI_SEL}
 if [[ ${GEN_DISTS} -eq 1 ]]; then
-    ADD_ARGS="--create-dists"
+    ADD_ARGS=${ADD_ARGS}" --create-dists"
 
     if [[ ${RM_SOURCE} -eq 1 ]]; then
         # Doesn't make sense to remove the source without creating dists
@@ -56,6 +110,9 @@ if [[ ${STORE_ONLY_ANGLES} -eq 1 ]]; then
     fi
 fi
 
+if [[ ${JPSI_SEL} = "true" ]]; then
+    ADD_ARGS=${ADD_ARGS}" --psiPtMin "${JPSI_MINPT}" --psiPtMax "${JPSI_MAXPT}" --psiRapMax "${JPSI_MAXRAP}
+fi
 
 # cleans up ratio so that it can easily be printed and used in filenames
 function pratio() {
@@ -67,15 +124,23 @@ function pratio() {
 # will be split along the ':' and then used as state, helicity1 and helicity2 input arguments
 # Additionally it is possible to set a min and max pt by appending |ptmin:ptmax to the settings
 declare -A SETTINGS
-for CHIC1_R in "0" "1" "2./3."; do
+for CHIC1_R in ${CHIC1_HELICITIES[@]}; do
     SETTINGS["chic1_R_"$(pratio ${CHIC1_R})]="1:"${CHIC1_R}":0|"${CHIC1_GENPTRANGE}
 done
-for CHIC2_R in "0,0" "1,0" "0,1" "2./5.,2./5."; do
+
+for CHIC2_R in ${CHIC2_HELICITIES[@]}; do
     CHIC2_R1=$(echo ${CHIC2_R} | awk -F',' '{print $1}')
     CHIC2_R2=$(echo ${CHIC2_R} | awk -F',' '{print $2}')
-
     SETTINGS["chic2_R1_"$(pratio ${CHIC2_R1})"_R2_"$(pratio ${CHIC2_R2})]="2:"${CHIC2_R1}":"${CHIC2_R2}"|"${CHIC2_GENPTRANGE}
 done
+
+if [ -n "${NACCEPT}" ]; then
+    acceptarg="--naccept "${NACCEPT}
+fi
+
+if [ -n "${N_JOBS}" ] && [[ ${N_JOBS} -ne 1 ]]; then
+    array_job="--array=1-"${N_JOBS}
+fi
 
 for setting in ${!SETTINGS[@]}; do
     args=${SETTINGS["${setting}"]}
@@ -92,13 +157,10 @@ for setting in ${!SETTINGS[@]}; do
         pt_args="--ptmin "${ptmin}" --ptmax "${ptmax}
     fi
 
-    if [ -n "${NACCEPT}" ]; then
-        acceptarg="--naccept "${NACCEPT}
-    fi
     outfile=${OUTBASEDIR}/${setting}/toy_data.root
 
     # throw it to the batch system
-    sbatch ./batchRunToyMCGen.sh ${outfile} ${state} ${helicity1} ${helicity2} ${NEVENTS} \
+    sbatch ${array_job} ./batchRunToyMCGen.sh ${outfile} ${state} ${helicity1} ${helicity2} ${NEVENTS} \
            --muonEffs ${MUON_EFFS} --photonEffs ${PHOTON_EFFS} ${pt_args} --ymax 1.4 \
            ${acceptarg} \
            ${ADD_ARGS}
