@@ -14,10 +14,12 @@ int main(int argc, char *argv[])
   const auto helicity2 = parser.getOptionVal<double>("--helicity2", 0);
   const auto state = parser.getOptionVal<int>("--state", 1);
   const auto nevents = parser.getOptionVal<int>("--nevents", 3000000);
+  // chic kinematics at generation
   const auto ptmin = parser.getOptionVal<double>("--ptmin", 7.0);
   const auto ptmax = parser.getOptionVal<double>("--ptmax", 30.0);
   const auto ymin = parser.getOptionVal<double>("--ymin", 0);
   const auto ymax = parser.getOptionVal<double>("--ymax", 1.3);
+  // natural pol frame
   const auto CSframe = parser.getOptionVal<bool>("--CSframe", false);
 
   const auto naccept = parser.getOptionVal<size_t>("--naccept", 0);
@@ -26,6 +28,17 @@ int main(int argc, char *argv[])
   const auto photonEffFile = parser.getOptionVal<std::string>("--photonEffs", "");
 
   const auto storeBranches = parser.getOptionVal<std::vector<std::string>>("--storeBranches", {"all"});
+
+  // j/psi kinematics at reconstruction
+  const auto jpsiSel = parser.getOptionVal<bool>("--jpsiSel", false);
+  const auto psiPtMin = parser.getOptionVal<double>("--psiPtMin", 8.0);
+  const auto psiPtMax = parser.getOptionVal<double>("--psiPtMax", 20.0);
+  const auto psiRapMax = parser.getOptionVal<double>("--psiRapMax", 1.2);
+
+  // muon and photon selection
+  const auto muonSel = parser.getOptionVal<bool>("--muonSel", false);
+  const auto photonSel = parser.getOptionVal<bool>("--photonSel", false);
+
 
   // TODO: smearing configurable in the end
   // TODO: efficiencies configurable from json (including range finding)
@@ -47,7 +60,16 @@ int main(int argc, char *argv[])
   config.muonEffs = muonEffFile;
   config.photonEffs = photonEffFile;
 
-  chicpolgen(config, storeBranches);
+  sel_config sel_conf;
+  sel_conf.jpsi_sel = jpsiSel;
+  sel_conf.muon_sel = muonSel;
+  sel_conf.photon_sel = photonSel;
+
+  sel_conf.psiPtMin = psiPtMin;
+  sel_conf.psiPtMax = psiPtMax;
+  sel_conf.psiRapMax = psiRapMax;
+
+  chicpolgen(config, storeBranches, sel_conf);
 
   return 0;
 }

@@ -24,7 +24,6 @@
 
 #define GENRAPIDITY 1 // set to zero to generate the chic eta instead of the chic rapidity
 #define GENPTM 1 // set to zero to generate the pT/M distribution instead of pT
-#define ACCEPTALL 1 // accept all events (i.e. do not apply pre-selections (defined below))
 
 /** * Configuration and settings for the generation
  *
@@ -89,6 +88,54 @@ struct gen_config {
     }
     std::cout << "output file: " << genfile << '\n';
     std::cout << "--------------------------------------------------" << std::endl;
+  }
+};
+
+/**
+ * Struct holding the configuration for the selection to be applied
+ */
+struct sel_config {
+  double psiPtMin{8.0}; // min J/psi pT (at reco level)
+  double psiPtMax{20.0}; // min J/psi pT (at reco level)
+  double psiRapMax{1.2}; // maximum J/psi absolute rapidity (at reco level)
+
+  bool jpsi_sel{false};
+  bool muon_sel{false}; // apply the loose muon selection
+  bool photon_sel{false}; // apply the photon selection
+
+  std::unique_ptr<Selector> getJpsiSelector() const {
+    if (jpsi_sel) {
+      return std::make_unique<PtRangeAbsRapiditySelector>(Range{psiPtMin, psiPtMax}, psiRapMax);
+    }
+    return std::make_unique<AllSelector>();
+  }
+
+  std::unique_ptr<Selector> getPhotonSelector() const {
+    if (photon_sel) {
+      return std::make_unique<MinPtMaxEtaSelector>(0.41, 1.5);
+    }
+    return std::make_unique<AllSelector>();
+  }
+
+  std::unique_ptr<Selector> getMuonSelector() const {
+    if (muon_sel) {
+      return std::make_unique<LooseMuonSelector>();
+    }
+    return std::make_unique<AllSelector>();
+  }
+
+  void print() const {
+    std::cout << "==================================================\n";
+    std::cout << "sel_config settings used for generation:\n"
+              << "apply loose muon selection: " << muon_sel << "\n"
+              << "apply photon selection: " << photon_sel << "\n"
+              << "apply J/psi selection: ";
+    if (jpsi_sel) {
+      std::cout << psiPtMin << " < pT < " << psiPtMax << ", |y| < " << psiRapMax << "\n";
+    } else {
+      std::cout << jpsi_sel << "\n";
+    }
+    std::cout << "==================================================" << std::endl;
   }
 };
 
@@ -168,9 +215,10 @@ double func_pTM_gen(double* x, double*)
 }
 
 
-void chicpolgen(const gen_config& config = gen_config{}, const std::vector<std::string>& storeBranches = {"all"}){
+void chicpolgen(const gen_config& config = gen_config{}, const std::vector<std::string>& storeBranches = {"all"}, const sel_config& sel_config = sel_config{}){
   gROOT->SetBatch();
   config.print(true);
+  sel_config.print();
   // translate configuration into const variables
   const double Ebeam = std::sqrt(config.pbeam * config.pbeam + GenMassSettings.Mprot * GenMassSettings.Mprot);
   const TLorentzVector targ(0., 0. , -config.pbeam, Ebeam); // "targ" = second beam
@@ -207,17 +255,9 @@ void chicpolgen(const gen_config& config = gen_config{}, const std::vector<std::
   }
 
   // Selectors to act on the smeared variables
-  // TODO: Make this configurable at run-time in some way
-#if ACCEPTALL == 0
-  const auto jpsiSelector = std::make_unique<PtRangeAbsRapiditySelector>(Range{8, 20}, 1.20);
-  const auto muonSelector = std::make_unique<LooseMuonSelector>();
-  const auto photonSelector = std::make_unique<MinPtMaxEtaSelector>(0.41, 1.5);
-#else
-  // To accept all events without filters
-  const auto jpsiSelector = std::make_unique<AllSelector>();
-  const auto muonSelector = std::make_unique<AllSelector>();
-  const auto photonSelector = std::make_unique<AllSelector>();
-#endif
+  const auto jpsiSelector = sel_config.getJpsiSelector();
+  const auto muonSelector = sel_config.getMuonSelector();
+  const auto photonSelector = sel_config.getPhotonSelector();
 
   delete gRandom;
   gRandom = new TRandom3(0);
