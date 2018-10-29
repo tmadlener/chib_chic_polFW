@@ -4,6 +4,8 @@ Tests for EfficiencyProvider classes
 """
 
 import unittest
+from mock import patch
+
 import numpy as np
 import numpy.testing as npt
 
@@ -17,6 +19,11 @@ class TestAcceptanceCorrectionProvider(unittest.TestCase):
         self.acc_map = create_histogram(np.random.uniform(0, 1, (10000, 2)),
                                         (20, 0, 1, 10, 0, 1))
         self.acc_map.Scale(1.0 / self.acc_map.Integral())
+
+        self.acc_map3 = create_histogram(np.random.uniform(0, 1, (100000, 3)),
+                                         (10, 0, 1, 10, 0, 1, 5, 0, 1))
+        self.acc_map3.Scale(1.0 / self.acc_map3.Integral())
+
 
 
     def test_masking_init(self):
@@ -52,6 +59,36 @@ class TestAcceptanceCorrectionProvider(unittest.TestCase):
              for v in test_points]
         )
         npt.assert_allclose(corrs, exp_corrs)
+
+
+    def test_eval_3d(self):
+        map_3d = AcceptanceCorrectionProvider(self.acc_map3)
+        test_ps = np.random.uniform(0, 1, (10000, 3))
+        corrs = map_3d.eval(test_ps[:, 0], test_ps[:, 1], test_ps[:, 2])
+
+        exp_corrs = np.array(
+            [1.0 / self.acc_map3.GetBinContent(self.acc_map3.FindBin(v[0], v[1], v[2]))
+             for v in test_ps]
+        )
+        npt.assert_allclose(corrs, exp_corrs)
+
+
+    @patch('utils.EfficiencyProvider.logging')
+    def test_eval_warnings(self, mock_logger):
+        corr_map2d = AcceptanceCorrectionProvider(self.acc_map)
+        test_ps = np.random.uniform(0, 1, (10, 3))
+        corr_map2d.eval(test_ps[:, 0], test_ps[:, 1], test_ps[:, 2])
+        mock_logger.warning.assert_called_with('Ignoring third variable for 2d corrections')
+
+        corr_map2d.eval(test_ps[:, 0], test_ps[:-1, 1])
+        mock_logger.error.assert_called_with('Need same number of costh and phi values')
+
+        corr_map3d = AcceptanceCorrectionProvider(self.acc_map3)
+        corr_map3d.eval(test_ps[:, 0], test_ps[:, 1])
+        mock_logger.error.assert_called_with('Need third variable for 3d corrections')
+
+        corr_map3d.eval(test_ps[:, 0], test_ps[:, 1], test_ps[:-1, 2])
+        mock_logger.error.assert_called_with('Need the same number of var and costh and phi values')
 
 
 if __name__ == '__main__':

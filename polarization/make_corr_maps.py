@@ -11,20 +11,21 @@ import logging
 logging.basicConfig(level=logging.WARNING,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
+import numpy as np
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 
-
-from utils.data_handling import get_dataframe, apply_selections
-from utils.hist_utils import divide, hist2d
-from utils.misc_helpers import _get_var, parse_binning, get_bin_cut_df
+from utils.data_handling import get_dataframe
+from utils.hist_utils import (
+    divide, hist2d, hist3d, get_array, from_array, get_binning
+)
+from utils.misc_helpers import _get_var, parse_binning
 
 WEIGHT_F = lambda d: d.gamma_eff_sm * 0.01 * d.lepP_eff_sm * d.lepN_eff_sm
 
-def create_bin_histograms(data, frames, n_costh, n_phi, effs=None):
-    """
-    Create all histograms
-    """
+
+def fill_histograms(data, frames, hist_func, effs=None):
+    """Fill the histograms"""
     hists = OrderedDict()
     weights = [None]
     if effs is not None:
@@ -33,28 +34,47 @@ def create_bin_histograms(data, frames, n_costh, n_phi, effs=None):
     for frame in frames:
         for weight in weights:
             name = frame + ('_eff' if weight is not None else '')
-            logging.debug('filling costh-phi hist for {}'.format(name))
-            hists[name] = hist2d(_get_var(data, 'costh_' + frame),
-                                 _get_var(data, 'phi_' + frame),
-                                 hist_sett=(n_costh, -1, 1, n_phi, -180, 180),
-                                 weights=weight)
+            logging.debug('Filling histogram for {}'.format(name))
+            hists[name] = hist_func(data, frame, weights=weight)
 
     return hists
 
 
-def get_bin_datasets(full_dfr, bin_var, binning):
-    """Return a generator expression yielding each bin dfr"""
-    for b_lo, b_up in zip(binning[:-1], binning[1:]):
-        yield apply_selections(full_dfr,
-                               lambda d: get_bin_cut_df(d, bin_var, b_lo, b_up))
+def get_costh_phi_in_bins(hist_3d):
+    """Get all costh phi histograms in each bin of the 3rd variable"""
+    arr = get_array(hist_3d)
+    binning = np.array([get_binning(hist_3d, 'X'), get_binning(hist_3d, 'Y')])
+    err = get_array(hist_3d, errors=True)
+    return [from_array(arr[:,:,i], binning, errors=err[:,:,i])
+            for i in xrange(arr.shape[2])]
 
 
-def store_hists(outfile, hists, basename):
+def store_hists(outfile, hists, basename, binvar=None):
     """Store histograms"""
     outfile.cd()
-    for name, hist in hists.iteritems():
-        hist.SetName('_'.join([basename, name]))
-        hist.Write()
+    if binvar is not None:
+        # store 2d projections onto costh-phi
+        for name, hist in hists.iteritems():
+            projections = get_costh_phi_in_bins(hist)
+            var_binning = get_binning(hist, 'Z')
+            for ibin, proj in enumerate(projections):
+                bin_bord = '{:.2f}_{:.2f}'.format(var_binning[ibin],
+                                                  var_binning[ibin + 1])
+                bin_bord = bin_bord.replace('.', 'p').replace('-', 'm')
+
+                proj.GetXaxis().SetTitle(hist.GetXaxis().GetTitle())
+                proj.GetYaxis().SetTitle(hist.GetYaxis().GetTitle())
+                proj.SetName('_'.join(['proj', basename, binvar, bin_bord, name]))
+                proj.Write()
+
+            # also store the 3d maps that are used in the lookup
+            hist.SetName('_'.join([basename, binvar, name]))
+            hist.Write()
+
+    else:
+        for name, hist in hists.iteritems():
+            hist.SetName('_'.join([basename, name]))
+            hist.Write()
 
 
 def create_histograms(data, frames, n_costh, n_phi, binvar, binning, effs=None):
@@ -62,30 +82,28 @@ def create_histograms(data, frames, n_costh, n_phi, binvar, binning, effs=None):
     Create histograms for each bin in the bin var
     """
     if binvar is not None:
-        hists = OrderedDict()
-        for ibin, bin_data in enumerate(get_bin_datasets(data, binvar, binning)):
-            logging.debug('Creating histograms for {} bin [{:.2f}, {:.2f}]'
-                          .format(binvar, binning[ibin], binning[ibin + 1]))
+        costh_binning = np.linspace(-1, 1, n_costh + 1)
+        phi_binning = np.linspace(-180, 180, n_phi + 1)
+        hist_sett = (n_costh, costh_binning, n_phi, phi_binning,
+                     len(binning) - 1, binning)
+        def fill_3d(data, frame, weights):
+            """3D histograms"""
+            return hist3d(_get_var(data, 'costh_' + frame),
+                          _get_var(data, 'phi_' + frame),
+                          _get_var(data, binvar),
+                          hist_sett=hist_sett,
+                          weights=weights)
+        return fill_histograms(data, frames, fill_3d, effs)
 
-            bin_str = '{}_{:.2f}_{:.2f}'.format(binvar, binning[ibin],
-                                                binning[ibin + 1]).replace('.', 'p')
-            hists[bin_str] = create_bin_histograms(bin_data, frames,
-                                                   n_costh, n_phi, effs)
-
-        # return the histograms as a dict with only 1 nesting level
-        retdict = OrderedDict()
-        for binstr in hists:
-            for name in hists[binstr]:
-                frame_eff = name.split('_')
-                full_name = '_'.join([frame_eff[0], binstr])
-                if len(frame_eff) == 2:
-                    full_name += ('_' + frame_eff[1])
-
-                retdict[full_name] = hists[binstr][name]
-        return retdict
     else:
-        logging.debug('Creating histograms without additional binning')
-        return create_bin_histograms(data, frames, n_costh, n_phi, effs)
+        def fill_2d(data, frame, weights):
+            """2D histograms"""
+            return hist2d(_get_var(data, 'costh_' + frame),
+                          _get_var(data, 'phi_' + frame),
+                          hist_sett=(n_costh, -1, 1, n_phi, -180, 180),
+                          weights=weights)
+
+        return fill_histograms(data, frames, fill_2d, effs)
 
 
 def main(args):
@@ -130,9 +148,9 @@ def main(args):
 
     logging.debug('storing to output file')
     outfile = r.TFile(args.outfile, 'recreate' if args.recreate else 'update')
-    store_hists(outfile, gen_hists, 'gen_costh_phi')
-    store_hists(outfile, reco_hists, 'reco_costh_phi')
-    store_hists(outfile, acc_maps, 'acc_map_costh_phi')
+    store_hists(outfile, gen_hists, 'gen_costh_phi', bin_var)
+    store_hists(outfile, reco_hists, 'reco_costh_phi', bin_var)
+    store_hists(outfile, acc_maps, 'acc_map_costh_phi', bin_var)
 
 
 if __name__ == '__main__':

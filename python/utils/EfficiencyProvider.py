@@ -130,19 +130,21 @@ class PhotonEfficiencies(EfficiencyProvider):
 class AcceptanceCorrectionProvider(object):
     """
     Class providing interface to easily obtain acceptance (and efficiency)
-    corrections depending on 2D (costh-phi) variables
+    corrections depending on 2D (costh-phi) variables or 3D (costh-phi plus
+    another variable)
     """
     def __init__(self, acc_map):
         """
         Args:
-            acc_map (TH2D): costh-phi map obtained by applying all cuts and
-                selections (and possibly efficiency weightings). For each bin
-                1 / (bin content) will be the weight for the acceptance
-                correction
+            acc_map (TH2D or TH3D): costh-phi map or costh-phi-var map
+                obtained by applying all cuts and selections (and possibly
+                efficiency weightings). For each bin 1 / (bin content) will be
+                the weight for the acceptance correction
         """
         self.hist = acc_map
         # Corrections are 1 / acceptance map
         acc_values = get_array(self.hist)
+
         # mask the values without acceptance in the acceptance map
         # this will also make them return -1 for the correction map
         acc_values -= 1 * (acc_values == 0)
@@ -150,20 +152,60 @@ class AcceptanceCorrectionProvider(object):
         self.costh_binning = get_binning(acc_map, 'X')
         self.phi_binning = get_binning(acc_map, 'Y')
 
+        self.dim = len(acc_values.shape)
+        if self.dim == 3:
+            logging.debug('Using 3d acceptance maps')
+            self.var_binning = get_binning(acc_map, 'Z')
 
-    def eval(self, costh, phi):
+
+    def eval(self, costh, phi, var=None):
         """
-        Evaluate the correction map at all given costh and phi values
+        Evaluate the correction map at all given costh and phi (and possibly var)
+        values
 
         Args:
-            costh, phi (np.array): Arrays (of equal length) containing all pairs
+            costh, phi, (np.array): Arrays (of equal length) containing all pairs
                 of costh and phi values
+            var (np.array, optional if map is only in 2D)
 
         Return:
             np.array: Array of the values in the correction map at the given
                  costh and phi coordinates. For coordinates where the acceptance
                  map contained 0 (i.e. infinite correction) -1 is returned
         """
+        if costh.shape != phi.shape:
+            logging.error('Need same number of costh and phi values')
+            return
+
+        if self.dim == 3:
+            if var is None:
+                logging.error('Need third variable for 3d corrections')
+            else:
+                if costh.shape != var.shape:
+                    logging.error('Need the same number of var and costh and phi'
+                                  ' values')
+                    return
+                return self._eval_3d(costh, phi, var)
+
+        if self.dim == 2:
+            if var is not None:
+                logging.warning('Ignoring third variable for 2d corrections')
+            return self._eval_2d(costh, phi)
+
+
+    def _eval_2d(self, costh, phi):
+        """Evaluate the correction map at all given costh and phi values"""
+        logging.debug('Evaluating using 2d variables')
         costh_bins = find_bin(self.costh_binning, costh)
         phi_bins = find_bin(self.phi_binning, phi)
         return self.corr_map[costh_bins, phi_bins]
+
+
+    def _eval_3d(self, costh, phi, var):
+        """Evaluate the correction map at all given costh, phi and var values"""
+        logging.debug('Evaluating using 3d variables')
+        costh_bins = find_bin(self.costh_binning, costh)
+        phi_bins = find_bin(self.phi_binning, phi)
+        var_bins = find_bin(self.var_binning, var)
+
+        return self.corr_map[costh_bins, phi_bins, var_bins]
