@@ -12,7 +12,9 @@ logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
 from collections import OrderedDict
-from root_numpy import fill_hist
+from itertools import chain
+from root_numpy import fill_hist, array2hist
+from root_numpy import __version__ as rnp_version
 
 from utils.misc_helpers import (
     make_iterable, create_random_str, get_vals_from_rwbuffer
@@ -455,7 +457,7 @@ def hist2d(varx, vary, **kwargs):
     automatic determination of the "optimal" histogram settings
 
     Keyword Args:
-
+        TODO
 
     Returns:
         ROOT.TH2D: The 2d histogram of the passed variables
@@ -482,6 +484,49 @@ def hist2d(varx, vary, **kwargs):
         kwargs['y_axis'] = vary.name
 
     return create_histogram(np.array([varx, vary]).T, hist_sett, **kwargs)
+
+
+def hist3d(varx, vary, varz, **kwargs):
+    """
+    Create a TH3D from the passed varx, vary and varz
+
+    This is a convenience wrapper around create_histogram that does some
+    automatic determination of the "optimal" histogram settings
+
+    Keyword Args:
+        TODO
+
+    Returns:
+        ROOT.TH3D: The 3d histogram of the passed variable
+
+    See also:
+        create_histogram
+    """
+    hist_sett = kwargs.pop('hist_sett', None)
+    if hist_sett is None:
+        x_sett = _get_hist_sett(varx, kwargs.pop('nbinsx', None),
+                                kwargs.pop('minx', None),
+                                kwargs.pop('maxx', None),
+                                kwargs.pop('x_hist_sett'), None)
+        y_sett = _get_hist_sett(vary, kwargs.pop('nbinsy', None),
+                                kwargs.pop('miny', None),
+                                kwargs.pop('maxy', None),
+                                kwargs.pop('y_hist_sett'), None)
+        z_sett = _get_hist_sett(varz, kwargs.pop('nbinsz', None),
+                                kwargs.pop('minz', None),
+                                kwargs.pop('maxz', None),
+                                kwargs.pop('z_hist_sett'), None)
+        hist_sett = x_sett + y_sett + z_sett
+
+    # use the name of the variables if they have one and nothing else is set
+    if kwargs.get('x_axis', None) is None and hasattr(varx, 'name'):
+        kwargs['x_axis'] = varx.name
+    if kwargs.get('y_axis', None) is None and hasattr(vary, 'name'):
+        kwargs['y_axis'] = vary.name
+    if kwargs.get('z_axis', None) is None and hasattr(varz, 'name'):
+        kwargs['z_axis'] = varz.name
+
+    return create_histogram(np.array([varx, vary, varz]).T, hist_sett, **kwargs)
 
 
 OTHER_AXIS = {'X': 'Y', 'Y': 'X'} # to get the 'other' direction
@@ -663,3 +708,91 @@ def find_bin(binning, value):
                      'could not be attributed to a bin in the passed binning')
 
     return cols
+
+
+def from_array(array, binning, **kwargs):
+    """
+    Create a ROOT histogram from the passed array
+
+    Overflow is directly handled by the array2hist function used internally
+
+    Args:
+        array (np.array): Array holding the bin contents for each bin
+        binning (np.array): Array holding the binning information for each
+           direction
+
+    Keyword Args:
+        errors (np.array, optional): Array of the same shape as array holding
+            the bin uncertainties
+
+    Returns:
+        ROOT.TH1: Up to TH3D depending on the shape of the passed array
+
+    See also:
+        root_numpy.array2hist
+    """
+    n_dim = len(array.shape)
+    if n_dim > 3 or n_dim < 0:
+        raise ValueError('Invalid number of dimensions of array: {}'
+                         .format(n_dim))
+    raise_err = False
+    if binning.shape[0] != n_dim:
+        if n_dim == 1:
+            shape = [len(binning) + 1]
+        else:
+            raise_err = True
+    else:
+        shape = [len(b) + 1 for b in binning] # include under- and overflow
+
+
+    if not raise_err:
+        for axis, bins in enumerate(shape):
+            if array.shape[axis] != bins and array.shape[axis] != bins - 2:
+                raise_err = True
+
+    if raise_err:
+        raise ValueError('Invalid binning for passed array: {} vs {}'
+                         .format(array.shape, binning.shape))
+
+    uncer = kwargs.pop('errors', None)
+    if uncer is not None:
+        if uncer.shape != array.shape:
+            raise ValueError('array and errors have to have the same shape')
+
+    hist_type = 'TH{}D'.format(n_dim)
+    hist_sett = list(chain.from_iterable((len(b) - 1, b) for b in binning))
+
+    try:
+        hist = getattr(r, hist_type)(create_random_str(8), '', *hist_sett)
+    except TypeError as exc:
+        logging.error ('Could not construct {} with passed binning: {}'.
+                       format(hist_type, binning))
+        raise exc
+
+    set_hist_opts(hist)
+
+    if rnp_version == '4.7.2':
+        array2hist(array, hist)
+        if uncer is not None:
+            # Need to take care of the under- and overflow here since SetError
+            # treats the first as underflow (See implementation of array2hist)
+            # No need to do all the checks since array2hist will already fail if
+            # array has the wrong shape and uncer has the same shape as array
+            slices = []
+            for axis, bins in enumerate(shape):
+                if uncer.shape[axis] == bins - 2:
+                    slices.append(slice(1, -1))
+                else:
+                    slices.append(slice(None))
+
+            uncer_of = np.zeros(shape, dtype=np.float64)
+            uncer_of[tuple(slices)] = uncer
+            uncer = uncer_of
+            hist.SetError(np.ravel(uncer.T))
+
+
+    if rnp_version == '4.7.3':
+        logging.info('Using root_numpys capabilities of setting the errors')
+        array2hist(array, hist, errors=uncer)
+
+    return hist
