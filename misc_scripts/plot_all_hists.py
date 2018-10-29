@@ -20,6 +20,8 @@ def store_hist(hist, out_dir, formats, draw_opt, **kwargs):
             haxis = getattr(hist, 'Get' + axis.upper() + 'axis')()
             haxis.SetRangeUser(*range_vals)
 
+
+    hist.SetStats(0)
     can = mkplot(hist, drawOpt=draw_opt)
 
     name ='/'.join([out_dir, hist.GetName()])
