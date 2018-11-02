@@ -200,6 +200,11 @@ class TestFromArray(unittest.TestCase):
         arr_hist = hu.from_array(arr, binning)
 
         npt.assert_equal(hu.get_array(arr_hist), arr)
+        npt.assert_equal(hu.get_binning(arr_hist, 'X'), hu.get_binning(hist, 'X'))
+        if n_dim > 1:
+            npt.assert_equal(hu.get_binning(arr_hist, 'Y'), hu.get_binning(hist, 'Y'))
+        if n_dim > 2:
+            npt.assert_equal(hu.get_binning(arr_hist, 'Z'), hu.get_binning(hist, 'Z'))
 
         err = hu.get_array(hist, errors=True)
         arr_err_hist = hu.from_array(arr, binning, errors=err)
@@ -220,6 +225,11 @@ class TestFromArray(unittest.TestCase):
         arr_hist = hu.from_array(arr, binning)
 
         npt.assert_equal(hu.get_array(arr_hist, overflow=True), arr)
+        npt.assert_equal(hu.get_binning(arr_hist, 'X'), hu.get_binning(hist, 'X'))
+        if n_dim > 1:
+            npt.assert_equal(hu.get_binning(arr_hist, 'Y'), hu.get_binning(hist, 'Y'))
+        if n_dim > 2:
+            npt.assert_equal(hu.get_binning(arr_hist, 'Z'), hu.get_binning(hist, 'Z'))
 
         err = hu.get_array(hist, errors=True, overflow=True)
         arr_err_hist = hu.from_array(arr, binning, errors=err)
