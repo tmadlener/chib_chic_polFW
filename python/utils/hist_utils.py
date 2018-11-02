@@ -739,6 +739,7 @@ def from_array(array, binning, **kwargs):
     if binning.shape[0] != n_dim:
         if n_dim == 1:
             shape = [len(binning) + 1]
+            binning = np.array([binning])
         else:
             raise_err = True
     else:
@@ -760,7 +761,8 @@ def from_array(array, binning, **kwargs):
             raise ValueError('array and errors have to have the same shape')
 
     hist_type = 'TH{}D'.format(n_dim)
-    hist_sett = list(chain.from_iterable((len(b) - 1, b) for b in binning))
+    hist_sett = list(chain.from_iterable((len(b) - 1, b.astype(np.float64))
+                                         for b in binning))
 
     try:
         hist = getattr(r, hist_type)(create_random_str(8), '', *hist_sett)

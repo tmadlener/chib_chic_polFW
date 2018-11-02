@@ -281,6 +281,11 @@ class TestFromArray(unittest.TestCase):
             hu.from_array(np.random.uniform(0, 1, (10, 4, 4, 5)), np.random.uniform(0, 1, 10))
 
 
+    def test_handles_binning(self):
+        # Test if binning arrays are handled correctly (type conversion for
+        # ROOT to understand)
+        hist = hu.from_array(np.random.uniform(0, 1, 10), np.arange(0, 11, 1))
+        npt.assert_equal(hu.get_binning(hist, 'X'), np.arange(0, 11, 1))
 
 
 if __name__ == '__main__':
