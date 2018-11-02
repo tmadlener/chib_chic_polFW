@@ -33,13 +33,12 @@ class TestAcceptanceCorrectionProvider(unittest.TestCase):
         """
         # Randomly set some bins to 0 in the acc map
         mask_bin_vals = np.random.uniform(0, 1, (10, 2))
-        idcs = []
+        idcs = set()
         for v in mask_bin_vals:
-            idcs.append((
-                self.acc_map.GetXaxis().FindBin(v[0]),
-                self.acc_map.GetYaxis().FindBin(v[1])
-            ))
-            self.acc_map.SetBinContent(idcs[-1][0], idcs[-1][1], 0)
+            idxx = self.acc_map.GetXaxis().FindBin(v[0])
+            idxy = self.acc_map.GetYaxis().FindBin(v[1])
+            idcs.add((idxx, idxy))
+            self.acc_map.SetBinContent(idxx, idxy, 0)
 
         corr_prov = AcceptanceCorrectionProvider(self.acc_map)
         self.assertEqual(np.sum(corr_prov.corr_map == -1), len(idcs))
