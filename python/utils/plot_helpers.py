@@ -483,7 +483,7 @@ def setup_latex():
         ROOT.TLatex: TLatex object with basic settings
     """
     latex = r.TLatex()
-    latex.SetNDC(True)
+    latex.SetNDC(False)
     latex.SetTextFont(42)
     latex.SetTextSize(0.03)
 
