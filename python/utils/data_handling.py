@@ -154,7 +154,8 @@ def apply_selections(dataframe, selections, negate=False):
 
     Returns:
          pandas.DataFrame: New DataFrame with only the elements of the passed
-             DataFrame that pass the selection
+             DataFrame that pass the selection, unless all elements pass the
+             selection, than the original dataframe will be returned
     """
     if selections is None:
         return dataframe
@@ -174,6 +175,11 @@ def apply_selections(dataframe, selections, negate=False):
 
     if negate:
         sum_selection = np.invert(sum_selection)
+
+    if np.sum(sum_selection) == dataframe.shape[0]:
+        logging.debug('Sum of selections (after possible negation) selects all '
+                      'elements from passed DataFrame.')
+        return dataframe
 
     # NOTE: since this indexing uses an array of bools this will always return a
     # copy
