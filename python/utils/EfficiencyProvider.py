@@ -133,13 +133,15 @@ class AcceptanceCorrectionProvider(object):
     corrections depending on 2D (costh-phi) variables or 3D (costh-phi plus
     another variable)
     """
-    def __init__(self, acc_map):
+    def __init__(self, acc_map, mask_prec=None):
         """
         Args:
             acc_map (TH2D or TH3D): costh-phi map or costh-phi-var map
                 obtained by applying all cuts and selections (and possibly
                 efficiency weightings). For each bin 1 / (bin content) will be
                 the weight for the acceptance correction
+            mask_prec (float, optional): If not None, mask all bins for which
+                the relative error is larger than the passed value
         """
         self.hist = acc_map
         # Corrections are 1 / acceptance map
@@ -147,7 +149,19 @@ class AcceptanceCorrectionProvider(object):
 
         # mask the values without acceptance in the acceptance map
         # this will also make them return -1 for the correction map
-        acc_values -= 1 * (acc_values == 0)
+        # acc_values -= 1 * (acc_values == 0)
+        masked_vals = (acc_values == 0).astype(bool)
+        if mask_prec is not None:
+            if isinstance(mask_prec, float):
+                acc_errs = get_array(self.hist, errors=True)
+                rel_uncer = np.divide(acc_errs, acc_values, where=acc_values!=0)
+                masked_vals |= (rel_uncer > mask_prec).astype(bool)
+            else:
+                logging.error('mask_prec has to be a float value. Not using it '
+                              'to mask bins with too low precision.')
+
+        acc_values = ~masked_vals * acc_values + -1 * masked_vals
+
         self.corr_map = 1.0 / acc_values
         self.costh_binning = get_binning(acc_map, 'X')
         self.phi_binning = get_binning(acc_map, 'Y')

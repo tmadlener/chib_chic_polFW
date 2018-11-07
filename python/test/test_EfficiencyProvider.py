@@ -9,7 +9,7 @@ from mock import patch
 import numpy as np
 import numpy.testing as npt
 
-from utils.hist_utils import create_histogram, find_bin
+from utils.hist_utils import create_histogram, get_array
 
 from utils.EfficiencyProvider import AcceptanceCorrectionProvider
 
@@ -25,8 +25,7 @@ class TestAcceptanceCorrectionProvider(unittest.TestCase):
         self.acc_map3.Scale(1.0 / self.acc_map3.Integral())
 
 
-
-    def test_masking_init(self):
+    def test_masking_zero_init(self):
         """
         Test if the masking in init works
         (i.e. if bins with 0 entries have -1 in it afterwards)
@@ -46,6 +45,48 @@ class TestAcceptanceCorrectionProvider(unittest.TestCase):
         # When obtaining the masked values keep in mind that ROOT histograms start at 1
         masked_vals = np.array([corr_prov.corr_map[x-1, y-1] for (x, y) in idcs])
         npt.assert_equal(masked_vals, -1*np.ones(len(idcs)))
+
+
+    def test_masking_low_prec_init(self):
+        """
+        Test if the masking in init works for bins with too low precision
+        """
+        # sprt(1e4 / (20*10)) / (1e4 / 20 * 10), average poisson uncertainty
+        min_prec = 0.143 # tuned to be slightly below the expected uncertainty
+        arr, err = get_array(self.acc_map), get_array(self.acc_map, errors=True)
+        masked_bins = (err / arr  > min_prec).astype(bool)
+
+        corr_prov = AcceptanceCorrectionProvider(self.acc_map, mask_prec=min_prec)
+        # the correction map has to have the same bins masked as the acceptance map
+        npt.assert_equal((corr_prov.corr_map == -1).astype(bool), masked_bins)
+
+
+    def test_masking_init(self):
+        """
+        Test if masking also works when finding zero bins and using precision
+        limit
+        """
+        # Mask the precision bins first, to avoid division by zero
+        min_prec = 0.143
+        arr, err = get_array(self.acc_map), get_array(self.acc_map, errors=True)
+        masked_bins = (err / arr > min_prec).astype(bool)
+
+        mask_bin_vals = np.random.uniform(0, 1, (10, 2))
+        idcs = set()
+        for v in mask_bin_vals:
+            idxx = self.acc_map.GetXaxis().FindBin(v[0])
+            idxy = self.acc_map.GetYaxis().FindBin(v[1])
+            idcs.add((idxx, idxy))
+            self.acc_map.SetBinContent(idxx, idxy, 0)
+
+        # add the bins that are masked due to being zero
+        for x, y in idcs:
+            masked_bins[x-1, y-1] = True # ROOT binning starts at 1
+
+        corr_prov = AcceptanceCorrectionProvider(self.acc_map, mask_prec=min_prec)
+        npt.assert_equal((corr_prov.corr_map == -1).astype(bool), masked_bins)
+
+
 
 
     def test_eval(self):
