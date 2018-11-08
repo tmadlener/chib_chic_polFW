@@ -113,7 +113,7 @@ def lth_2(**kwargs):
 
 def lth_1(**kwargs):
     """
-    Get lambda theta for the J=2 state
+    Get lambda theta for the J=1 state
 
     Keyword Args:
         R (float, or sympy.Symbol): The fraction of |Jz|=1,
