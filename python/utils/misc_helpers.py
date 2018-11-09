@@ -208,18 +208,25 @@ def get_storable_name(name, reverse=False):
     return replace_all(name, repl_pairs, reverse)
 
 
-def _get_var(dfr, get_var):
+def _get_var(dfr, get_var, np_func=None):
     """
     Get the variable from the dataframe depending on if is a one argument
     function, a string or already a numpy array
     """
+    if np_func is not None:
+        if isinstance(np_func, basestring):
+            np_func = getattr(np, np_func)
+
     if hasattr(get_var, '__call__'):
-        return get_var(dfr)
-    if isinstance(get_var, basestring) or \
+        var = get_var(dfr)
+    elif isinstance(get_var, basestring) or \
        (isinstance(get_var, list) and
         all(isinstance(v, basestring) for v in get_var)):
-        return dfr.loc[:, get_var]
-    return get_var
+        var = dfr.loc[:, get_var]
+    else:
+        var = get_var
+
+    return var if np_func is None else np_func(var)
 
 
 def get_equi_pop_bins(dfr, get_var, n_bins):
@@ -643,3 +650,35 @@ def float_rgx(char_separated=False):
     if char_separated:
         return rgx.replace(r'\.', 'p')
     return rgx
+
+
+def parse_func_var(expr):
+    """
+    Parse the functional form of an expression
+
+    Args:
+        expr (string): The expression that holds the variable and the function
+            on that variable in the form func(var). The function has to be
+            callable on numpy.arrays (NOTE: This is not checked here, but might
+            fail later)
+
+    Returns:
+        tuple: The name of the variable as string and the numpy function. If no
+            no function is called, then the function return will be None. If the
+            parsing fails None will be returned
+    """
+    func_rgx = r'^(\w+)\((\w+)\)$'
+    match = re.match(func_rgx, expr)
+    if match:
+        var = match.group(2)
+        func = match.group(1)
+        if hasattr(np, func):
+            return var, getattr(np, func)
+        else:
+            logging.error('Could not find a numpy function named \'{}\' that '
+                          'was parsed from \'{}\''.format(func, expr))
+
+    var_rgx = r'^\w+$'
+    match = re.match(var_rgx, expr)
+    if match:
+        return expr, None

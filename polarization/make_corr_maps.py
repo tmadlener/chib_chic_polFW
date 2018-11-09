@@ -8,7 +8,7 @@ import sys
 from collections import OrderedDict
 
 import logging
-logging.basicConfig(level=logging.WARNING,
+logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
 import numpy as np
@@ -19,7 +19,7 @@ from utils.data_handling import get_dataframe
 from utils.hist_utils import (
     divide, hist2d, hist3d, get_array, from_array, get_binning
 )
-from utils.misc_helpers import _get_var, parse_binning
+from utils.misc_helpers import _get_var, parse_binning, parse_func_var
 
 WEIGHT_F = lambda d: d.gamma_eff_sm * 0.01 * d.lepP_eff_sm * d.lepN_eff_sm
 
@@ -64,11 +64,11 @@ def store_hists(outfile, hists, basename, binvar=None):
 
                 proj.GetXaxis().SetTitle(hist.GetXaxis().GetTitle())
                 proj.GetYaxis().SetTitle(hist.GetYaxis().GetTitle())
-                proj.SetName('_'.join(['proj', basename, binvar, bin_bord, name]))
+                proj.SetName('_'.join(['proj', basename, binvar[0], bin_bord, name]))
                 proj.Write()
 
             # also store the 3d maps that are used in the lookup
-            hist.SetName('_'.join([basename, binvar, name]))
+            hist.SetName('_'.join([basename, binvar[0], name]))
             hist.Write()
 
     else:
@@ -90,7 +90,7 @@ def create_histograms(data, frames, n_costh, n_phi, binvar, binning, effs=None):
             """3D histograms"""
             return hist3d(_get_var(data, 'costh_' + frame),
                           _get_var(data, 'phi_' + frame),
-                          _get_var(data, binvar),
+                          _get_var(data, *binvar),
                           hist_sett=hist_sett,
                           weights=weights)
         return fill_histograms(data, frames, fill_3d, effs)
@@ -110,7 +110,7 @@ def main(args):
     """Main"""
     frames = args.frames.split(',')
     if args.bin_variable is not None:
-        bin_var = args.bin_variable
+        bin_var = parse_func_var(args.bin_variable)
         if args.binning is None:
             logging.error('You have to define a binning for \'{}\' if you want '
                           'to use it as binning variable'.format(bin_var))
@@ -166,9 +166,9 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--recreate', default=False, action='store_true',
                         help='Recreate the output file instead of updating it')
     parser.add_argument('-nc', '--ncosth', help='Number of bins in costh',
-                        default=32)
+                        default=32, type=int)
     parser.add_argument('-np', '--nphi', help='Number of bins in phi',
-                        default=45)
+                        default=45, type=int)
     parser.add_argument('-f', '--frames', help='comma separated list of frames '
                         'to produce correction maps in', default='PX,HX,CS')
     parser.add_argument('-s', '--scale-gen', help='Scale the gen level maps by '

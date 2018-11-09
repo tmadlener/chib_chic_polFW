@@ -326,6 +326,15 @@ class Test_GetVar(unittest.TestCase):
         pdt.assert_series_equal(var, self.test_df.col1)
 
 
+    def test_get_var_np_func(self):
+        """Test that passing an additional numpy function works"""
+        var = mh._get_var(self.test_df, 'col2', np.sqrt)
+        pdt.assert_series_equal(var, np.sqrt(self.test_df.col2))
+
+        var = mh._get_var(self.test_df, 'col1', 'abs')
+        pdt.assert_series_equal(var, self.test_df.col1.abs())
+
+
 class TestParseBinning(unittest.TestCase):
     """
     Some tests to illustrate the parse binning function and to check if the
@@ -433,6 +442,33 @@ class TestFloatingPtRgx(unittest.TestCase):
         flt_rgx = mh.float_rgx(True)
         for string in nomatch_cases:
             self.assertFalse(re.match(flt_rgx, string))
+
+
+class TestParseFuncVar(unittest.TestCase):
+    def test_parse_func_var_valid(self):
+        test_vars = (
+            'JpsiPt', 'JpsiRap', 'chic_Mass', 'someFunkyVariable_34'
+        )
+        test_funcs = ('abs', 'sqrt', 'sin')
+
+        for var in test_vars:
+            self.assertEqual((var, None), mh.parse_func_var(var))
+
+            for func in test_funcs:
+                self.assertEqual(
+                    (var, getattr(np, func)),
+                    (mh.parse_func_var(func + '(' + var + ')'))
+                )
+
+
+    @patch('utils.misc_helpers.logging')
+    def test_parse_func_var_invalid(self, mock_logger):
+        res = mh.parse_func_var('some_funky_func(some_funky_var)')
+        mock_logger.error.assert_called_with(
+            'Could not find a numpy function named \'some_funky_func\' that '\
+            'was parsed from \'some_funky_func(some_funky_var)\''
+        )
+        self.assertEqual(None, res)
 
 
 if __name__ == '__main__':
