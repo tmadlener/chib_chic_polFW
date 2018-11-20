@@ -103,10 +103,10 @@ def lth_2(**kwargs):
     R2 = kwargs.pop('R2', None)
 
     if R1 is not None:
-        lth = lth.subs({'R': R1})
+        lth = lth.subs({'R': sp.S(R1)})
 
     if R2 is not None:
-        lth = lth.subs({'R2': R2})
+        lth = lth.subs({'R2': sp.S(R2)})
 
     return lth
 
@@ -128,5 +128,5 @@ def lth_1(**kwargs):
     R = kwargs.pop('R', None)
 
     if R is not None:
-        lth = lth.subs({'R': R})
+        lth = lth.subs({'R': sp.S(R)})
     return lth
