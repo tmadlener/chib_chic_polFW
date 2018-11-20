@@ -11,6 +11,16 @@ from collections import OrderedDict
 from utils.misc_helpers import log_key_error
 
 
+# enable button names as soon as they are present
+def has_button_text():
+    ver = widgets.__version__
+    return int(ver.split('.')[0]) >= 7 and int(ver.split('.')[1]) >= 2
+
+interact_manual = lambda n: widgets.interact_manual
+if has_button_text():
+    interact_manual = lambda n: widgets.interact_manual.options(manual_name=n)
+
+
 class InteractiveSelection(object):
     """
     Class helping with choices by holding all the necessary state
@@ -88,12 +98,12 @@ class InteractiveSelection(object):
         for choice in self.choices:
             self.sel_boxes.append(widgets.Checkbox(self.curr_selected[choice],
                                                    description=choice))
-        widgets.interact_manual(self.update_selection,
-                                **{s.description: s.value for s in
+        interact_manual('Select')(self.update_selection,
+                         **{s.description: s.value for s in
                                    self.sel_boxes})
-        widgets.interact_manual(self.get_selected)
-        widgets.interact_manual(self.select_all)
-        widgets.interact_manual(self.deselect_all)
+        interact_manual('Get selected')(self.get_selected)
+        interact_manual('Select all')(self.select_all)
+        interact_manual('Select none')(self.deselect_all)
 
 
     def update_selection(self, **kwargs):
