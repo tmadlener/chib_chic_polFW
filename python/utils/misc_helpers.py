@@ -53,7 +53,8 @@ def replace_all(string, repl_pairs, reverse=False):
         string (str): input string
         repl_pairs (list of tuples): list containing tuples where the first
             element is the string to be replaced and the second element is the
-            replacement
+            replacement. Longer matches get precedent, for patterns with equal
+            length they are used as they appear in the list.
         reverse (bool): Reverse the ordering of the repl_pair list entries (i.e.
             when applying the function a second time, with reverse set to True
             the original string will be returned)
@@ -62,15 +63,17 @@ def replace_all(string, repl_pairs, reverse=False):
         str: string with all sub strings in the first element of the repl_pairs
             replaced with the accompanying second element
     """
-    ret_str = string
+    # swap the patterns and replacement here if we want to reverse the list
     if reverse:
-        for rep, sym in repl_pairs:
-            ret_str = ret_str.replace(sym, rep)
-    else:
-        for sym, rep in repl_pairs:
-            ret_str = ret_str.replace(sym, rep)
+        repl_pairs = [(rep, sym) for sym, rep in repl_pairs]
 
-    return ret_str
+    # sort according to length of replacement pattern
+    repl_pairs = sorted(repl_pairs, key=lambda p: len(p[0]), reverse=True)
+
+    # fill a dict for easier replacing of the patterns using a regex
+    subst = {p[0]: p[1] for p in repl_pairs}
+    rgx = re.compile('|'.join(map(lambda p: re.escape(p[0]), repl_pairs)))
+    return rgx.sub(lambda match: subst[match.group(0)], string)
 
 
 def make_iterable(possibly_iterable):

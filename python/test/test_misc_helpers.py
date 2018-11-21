@@ -471,5 +471,67 @@ class TestParseFuncVar(unittest.TestCase):
         self.assertEqual(None, res)
 
 
+class TestReplaceAll(unittest.TestCase):
+    def test_replace_all(self):
+        test_string = 'test abc 123'
+        repl_pairs = [
+            ('test', 'well this worked'),
+            ('ab', 'AB'),
+            ('abc', 'ABC'),
+            ('1', '0')
+        ]
+        exp_string = 'well this worked ABC 023'
+        self.assertEqual(exp_string, mh.replace_all(test_string, repl_pairs))
+
+        test_string = 'What happens if we have two patterns with equal length?'
+        repl_pairs = [
+            ('app', 'APP'),
+            ('ppe', 'I am not used'),
+        ]
+        exp_string = 'What hAPPens if we have two patterns with equal length?'
+        self.assertEqual(exp_string, mh.replace_all(test_string, repl_pairs))
+
+        # a slightly less obvious example where both patterns get replace once
+        repl_pairs = [('pe', 'PE'), ('en', 'EN')]
+        exp_string = 'What hapPEns if we have two patterns with equal lENgth?'
+        self.assertEqual(exp_string, mh.replace_all(test_string, repl_pairs))
+
+
+    def test_replace_all_reverse(self):
+        test_string = 'test ABc foo bar 123'
+        repl_pairs = [
+            ('ba', 'AB'),
+            ('abc', 'ABC'), # this is not used
+            ('321', '123'),
+            ('bar', 'foo'),
+            ('foo', 'bar')
+        ]
+        exp_string = 'test bac bar foo 321'
+        self.assertEqual(exp_string,
+                         mh.replace_all(test_string, repl_pairs, reverse=True))
+
+        repl_pairs = [
+            ('I will be ignored', 'test'),
+            ('But I am used', 'test '),
+        ]
+        exp_string = 'But I am usedABc foo bar 123'
+        self.assertEqual(exp_string,
+                         mh.replace_all(test_string, repl_pairs, reverse=True))
+
+
+    def test_replace_all_reverse_inverts(self):
+        test_string = 'test foo bar 123'
+        repl_pairs = [
+            ('test', 'whatever string we find'),
+            ('foo', 'also should not matter'),
+            ('bar', 'foo'), # even swapping should work
+            ('123', '000')
+        ]
+
+        self.assertEqual(test_string,
+                         mh.replace_all(mh.replace_all(test_string, repl_pairs),
+                                        repl_pairs, reverse=True))
+
+
 if __name__ == '__main__':
     unittest.main()
