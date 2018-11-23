@@ -133,34 +133,64 @@ class AcceptanceCorrectionProvider(object):
     corrections depending on 2D (costh-phi) variables or 3D (costh-phi plus
     another variable)
     """
-    def __init__(self, acc_map, mask_prec=None):
+    def __init__(self, acc_map, min_acc=0, mask_prec=None, mask=None):
         """
         Args:
             acc_map (TH2D or TH3D): costh-phi map or costh-phi-var map
                 obtained by applying all cuts and selections (and possibly
                 efficiency weightings). For each bin 1 / (bin content) will be
                 the weight for the acceptance correction
+            min_acc (float, optional): Mask all bins with an acceptance below
+                this value (default = 0)
             mask_prec (float, optional): If not None, mask all bins for which
                 the relative error is larger than the passed value
+            mask (np.array, optional): Array with the same dimensions as the
+                acceptance map. All bins containing a non False value will be
+                masked. Overrides the min_acc and mask_prec argument (i.e. they
+                will be ignored) but still respects zero bin masking
         """
         self.hist = acc_map
+        logging.debug('Using acceptance map \'{}\''.format(self.hist.GetName()))
         # Corrections are 1 / acceptance map
         acc_values = get_array(self.hist)
 
-        # mask the values without acceptance in the acceptance map
-        # this will also make them return -1 for the correction map
-        # acc_values -= 1 * (acc_values == 0)
-        masked_vals = (acc_values == 0).astype(bool)
-        if mask_prec is not None:
-            if isinstance(mask_prec, float):
-                acc_errs = get_array(self.hist, errors=True)
-                rel_uncer = np.divide(acc_errs, acc_values, where=acc_values!=0)
-                masked_vals |= (rel_uncer > mask_prec).astype(bool)
-            else:
-                logging.error('mask_prec has to be a float value. Not using it '
-                              'to mask bins with too low precision.')
+        if mask is not None:
+            if min_acc != 0:
+                logging.info('Ignoring min_acc={} because a mask is used'
+                             .format(min_acc))
+            if mask_prec is not None:
+                logging.info('Ignoring mask_prec={} because a mask is used'
+                             .format(mask_prec))
+            # mask the values without acceptance in the acceptance map
+            # this will also make them return -1 for the correction map
+            logging.debug('Masking {} bins according to the mask'
+                          .format(np.sum(mask)))
+            empty_mask = (acc_values == 0)
+            logging.debug('Masking {} empty bins'.format(np.sum(empty_mask)))
+            masked_vals = empty_mask | mask
+        else:
+            if min_acc < 0 or min_acc > 1:
+                logging.warning('The minimum acceptance should be a value '
+                                'between 0 and 1, but is {}'.format(min_acc))
+            masked_vals = (acc_values <= min_acc).astype(bool)
+            logging.debug('Minimum acceptance = {}: Masking {} bins'
+                          .format(min_acc, np.sum(masked_vals)))
+            if mask_prec is not None:
+                if isinstance(mask_prec, float):
+                    acc_errs = get_array(self.hist, errors=True)
+                    rel_uncer = np.divide(acc_errs, acc_values,
+                                          where=acc_values!=0)
+                    mask_uncer = (rel_uncer > mask_prec).astype(bool)
+                    logging.debug('Minimum precision = {}: Masking {} bins'
+                                  .format(mask_prec, np.sum(mask_uncer)))
+                    masked_vals |= mask_uncer
+                else:
+                    logging.error('mask_prec has to be a float value. Not using'
+                                  ' it to mask bins with too low precision.')
 
         acc_values = ~masked_vals * acc_values + -1 * masked_vals
+        logging.debug('{} of {} bins are masked in the correction map'
+                      .format(np.sum(masked_vals), acc_values.size))
 
         self.corr_map = 1.0 / acc_values
         self.costh_binning = get_binning(acc_map, 'X')

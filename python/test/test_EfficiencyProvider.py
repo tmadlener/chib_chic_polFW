@@ -61,15 +61,60 @@ class TestAcceptanceCorrectionProvider(unittest.TestCase):
         npt.assert_equal((corr_prov.corr_map == -1).astype(bool), masked_bins)
 
 
+    def test_masking_min_acc_init(self):
+        """Test if masking works for bins with too low acceptance (i.e. content)"""
+        min_acc = 0.00475 # (slightly below average occupancy)
+        arr = get_array(self.acc_map)
+        masked_bins = (arr < min_acc).astype(bool)
+
+        corr_prov = AcceptanceCorrectionProvider(self.acc_map, min_acc=min_acc)
+        npt.assert_equal((corr_prov.corr_map == -1).astype(bool), masked_bins)
+
+
+    @patch('utils.EfficiencyProvider.logging') # to catch info messages
+    def test_masking_mask_init(self, mock_logger):
+        """Test if using a mask works as intended"""
+        mask = np.random.uniform(0, 1, (20, 10)) < 0.5 # mask half randomly
+        corr_prov = AcceptanceCorrectionProvider(self.acc_map, mask=mask)
+        npt.assert_equal((corr_prov.corr_map == -1).astype(bool), mask)
+
+        # other arguments are ignored if a mask is passed
+        # NOTE: using the hardest possible cuts for them
+        corr_prov = AcceptanceCorrectionProvider(self.acc_map, mask=mask,
+                                                 min_acc=1, mask_prec=0)
+        npt.assert_equal((corr_prov.corr_map == -1).astype(bool), mask)
+
+        # zero bins are still masked
+        idcs = set()
+        mask_bin_vals = np.random.uniform(0, 1, (10, 2))
+        for v in mask_bin_vals:
+            idxx = self.acc_map.GetXaxis().FindBin(v[0])
+            idxy = self.acc_map.GetYaxis().FindBin(v[1])
+            idcs.add((idxx, idxy))
+            self.acc_map.SetBinContent(idxx, idxy, 0)
+
+        zero_masked_bins = np.zeros((20, 10), dtype=bool)
+        for x, y in idcs:
+            zero_masked_bins[x-1, y-1] = True # ROOT binning starts at 1
+
+        corr_prov = AcceptanceCorrectionProvider(self.acc_map, mask=mask)
+        npt.assert_equal((corr_prov.corr_map == -1).astype(bool), mask | zero_masked_bins)
+
+
+
     def test_masking_init(self):
         """
         Test if masking also works when finding zero bins and using precision
-        limit
+        limit or acceptance limit
         """
         # Mask the precision bins first, to avoid division by zero
         min_prec = 0.143
         arr, err = get_array(self.acc_map), get_array(self.acc_map, errors=True)
         masked_bins = (err / arr > min_prec).astype(bool)
+
+        # mask the min acceptance bins
+        min_acc = 0.00425
+        masked_bins |= (arr < min_acc).astype(bool)
 
         mask_bin_vals = np.random.uniform(0, 1, (10, 2))
         idcs = set()
@@ -85,8 +130,6 @@ class TestAcceptanceCorrectionProvider(unittest.TestCase):
 
         corr_prov = AcceptanceCorrectionProvider(self.acc_map, mask_prec=min_prec)
         npt.assert_equal((corr_prov.corr_map == -1).astype(bool), masked_bins)
-
-
 
 
     def test_eval(self):
