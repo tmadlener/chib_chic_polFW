@@ -16,14 +16,17 @@
 #include "TRotation.h"
 #include "TF1.h"
 #include "TFile.h"
+#include "THn.h"
 
 #include <iostream>
 #include <string>
 #include <memory>
 #include <vector>
+#include <unordered_map>
 
 #define GENRAPIDITY 1 // set to zero to generate the chic eta instead of the chic rapidity
 #define GENPTM 1 // set to zero to generate the pT/M distribution instead of pT
+
 
 /** * Configuration and settings for the generation
  *
@@ -139,6 +142,33 @@ struct sel_config {
   }
 };
 
+
+struct store_config {
+  std::vector<std::string> storeBranches{{"all"}};
+  bool storeHists{false};
+  int nBinsCosth{128};
+  int nBinsPhi{192};
+  void print() const {
+    std::cout << "++++++++++++++++++++++++++++++++++++++++++++++++++\n";
+    std::cout << "store_config settings used for generation:\n"
+              << "branches that will be stored: ";
+    for (const auto& branch : storeBranches) {
+      std::cout << branch << ", ";
+    }
+    std::cout << "\nstore histograms: " << storeHists;
+    if (storeHists) {
+      std::cout << "bins in costh: " << nBinsCosth << ", bins in phi: " << nBinsPhi << "\n";
+    }
+    std::cout << "++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
+  }
+};
+
+
+TH2D* createHist(const std::string& name, const int nBinsCosth, const int nBinsPhi) {
+  return new TH2D(name.c_str(), ";cos#vartheta;#varphi", nBinsCosth, -1, 1, nBinsPhi, -180, 180);
+}
+
+
 /**
  * Struct holding the width and the central value for a given state
  */
@@ -168,7 +198,7 @@ constexpr double MassSettings::Mprot;
 template<typename T>
 void conditionalBranch(TTree* t, T& var, const char* branchName, const std::vector<std::string>& storeBranches, const bool storeAll)
 {
-  if (storeAll || std::find(storeBranches.cbegin(), storeBranches.cend(), branchName) != storeBranches.cend()) {
+  if (t && (storeAll || std::find(storeBranches.cbegin(), storeBranches.cend(), branchName) != storeBranches.cend())) {
     t->Branch(branchName, &var);
   }
 }
@@ -215,10 +245,11 @@ double func_pTM_gen(double* x, double*)
 }
 
 
-void chicpolgen(const gen_config& config = gen_config{}, const std::vector<std::string>& storeBranches = {"all"}, const sel_config& sel_config = sel_config{}){
+void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_config = sel_config{}, const store_config& store_config = store_config{}){
   gROOT->SetBatch();
   config.print(true);
   sel_config.print();
+  store_config.print();
   // translate configuration into const variables
   const double Ebeam = std::sqrt(config.pbeam * config.pbeam + GenMassSettings.Mprot * GenMassSettings.Mprot);
   const TLorentzVector targ(0., 0. , -config.pbeam, Ebeam); // "targ" = second beam
@@ -298,98 +329,102 @@ void chicpolgen(const gen_config& config = gen_config{}, const std::vector<std::
 
   TF1* rap_distr = new TF1("rap_distr",func_rap_gen,y_min,y_max,0);
 
-  const bool storeAllBranches = storeBranches.size() == 1 && storeBranches[0] == "all";
+  const bool storeAllBranches = store_config.storeBranches.size() == 1 && store_config.storeBranches[0] == "all";
 
   TFile* hfile = new TFile( config.genfile.c_str(), "RECREATE", "chicpolgen");
 
-  TTree* tr = new TTree("tr", "tr");
+  TTree* tr = nullptr;
 
-  double pT_chi;    conditionalBranch(tr, pT_chi, "gen_chicPt", storeBranches, storeAllBranches);
-  double pT;            conditionalBranch(tr, pT, "gen_JpsiPt", storeBranches, storeAllBranches);
+  if (!(store_config.storeBranches.size() == 1 && store_config.storeBranches[0] == "none")) {
+    tr = new TTree("tr", "tr");
+  }
+
+  double pT_chi;    conditionalBranch(tr, pT_chi, "gen_chicPt", store_config.storeBranches, storeAllBranches);
+  double pT;            conditionalBranch(tr, pT, "gen_JpsiPt", store_config.storeBranches, storeAllBranches);
 #if GENRAPIDITY == 1
-  double pL_chi;     //   conditionalBranch(tr, pL_chi,         "pL_chi/D" , "pL_chi", storeBranches, storeAllBranches);
+  double pL_chi;     //   conditionalBranch(tr, pL_chi,         "pL_chi/D" , "pL_chi", store_config.storeBranches, storeAllBranches);
 #endif
-  // double pL;         //   conditionalBranch(tr, pL,             "pL/D" , "pL", storeBranches, storeAllBranches);
-  double y_chi;         conditionalBranch(tr, y_chi, "gen_chicRap", storeBranches, storeAllBranches);
-  double y;             conditionalBranch(tr, y, "gen_JpsiRap", storeBranches, storeAllBranches);
+  // double pL;         //   conditionalBranch(tr, pL,             "pL/D" , "pL", store_config.storeBranches, storeAllBranches);
+  double y_chi;         conditionalBranch(tr, y_chi, "gen_chicRap", store_config.storeBranches, storeAllBranches);
+  double y;             conditionalBranch(tr, y, "gen_JpsiRap", store_config.storeBranches, storeAllBranches);
 
   double Mchi;
   double Mpsi;
-  conditionalBranch(tr, Mchi, "gen_chicMass", storeBranches, storeAllBranches);
-  conditionalBranch(tr, Mpsi, "gen_JpsiMass", storeBranches, storeAllBranches);
+  conditionalBranch(tr, Mchi, "gen_chicMass", store_config.storeBranches, storeAllBranches);
+  conditionalBranch(tr, Mpsi, "gen_JpsiMass", store_config.storeBranches, storeAllBranches);
 
-  double pT_gamma;      conditionalBranch(tr, pT_gamma, "gen_photonPt", storeBranches, storeAllBranches);
-  double pL_gamma;      conditionalBranch(tr, pL_gamma, "gen_photonPl", storeBranches, storeAllBranches);
-  double y_gamma;       conditionalBranch(tr, y_gamma, "gen_photonEta", storeBranches, storeAllBranches);
+  double pT_gamma;      conditionalBranch(tr, pT_gamma, "gen_photonPt", store_config.storeBranches, storeAllBranches);
+  double pL_gamma;      conditionalBranch(tr, pL_gamma, "gen_photonPl", store_config.storeBranches, storeAllBranches);
+  double y_gamma;       conditionalBranch(tr, y_gamma, "gen_photonEta", store_config.storeBranches, storeAllBranches);
 
-  double pT_lepP;       conditionalBranch(tr, pT_lepP, "gen_muPPt", storeBranches, storeAllBranches);
-  double eta_lepP;      conditionalBranch(tr, eta_lepP, "gen_muPEta", storeBranches, storeAllBranches);
+  double pT_lepP;       conditionalBranch(tr, pT_lepP, "gen_muPPt", store_config.storeBranches, storeAllBranches);
+  double eta_lepP;      conditionalBranch(tr, eta_lepP, "gen_muPEta", store_config.storeBranches, storeAllBranches);
 
-  double pT_lepN;       conditionalBranch(tr, pT_lepN, "gen_muNPt", storeBranches, storeAllBranches);
-  double eta_lepN;      conditionalBranch(tr, eta_lepN, "gen_muNEta", storeBranches, storeAllBranches);
+  double pT_lepN;       conditionalBranch(tr, pT_lepN, "gen_muNPt", store_config.storeBranches, storeAllBranches);
+  double eta_lepN;      conditionalBranch(tr, eta_lepN, "gen_muNEta", store_config.storeBranches, storeAllBranches);
 
-  // int inAcc0;            conditionalBranch(tr, inAcc0, "inAcc0", storeBranches, storeAllBranches);
-  // int inAcc1;            conditionalBranch(tr, inAcc1, "inAcc1", storeBranches, storeAllBranches);
+  // int inAcc0;            conditionalBranch(tr, inAcc0, "inAcc0", store_config.storeBranches, storeAllBranches);
+  // int inAcc1;            conditionalBranch(tr, inAcc1, "inAcc1", store_config.storeBranches, storeAllBranches);
 
 // angle of psi direction in chic rest frame, wrt to chosen chic polarization axis
-  double cosTH_psi;     conditionalBranch(tr, cosTH_psi, "cosTH_psi", storeBranches, storeAllBranches);
+  double cosTH_psi;     conditionalBranch(tr, cosTH_psi, "cosTH_psi", store_config.storeBranches, storeAllBranches);
 
 // angles of dilepton direction in the psi rest frame, wrt the psi direction in the chic rest frame
 // (axis definitions as in Fig 1b of PRD 83, 096001 (2011))
-  double costh_chihe;   conditionalBranch(tr, costh_chihe, "costh_chihe", storeBranches, storeAllBranches);
-  double phi_chihe;     conditionalBranch(tr, phi_chihe, "phi_chihe", storeBranches, storeAllBranches);
+  double costh_chihe;   conditionalBranch(tr, costh_chihe, "costh_chihe", store_config.storeBranches, storeAllBranches);
+  double phi_chihe;     conditionalBranch(tr, phi_chihe, "phi_chihe", store_config.storeBranches, storeAllBranches);
 
 // psi decay angles in the helicity frame
-  double costh_he;      conditionalBranch(tr, costh_he, "gen_costh_HX", storeBranches, storeAllBranches);
-  double phi_he;        conditionalBranch(tr, phi_he, "gen_phi_HX", storeBranches, storeAllBranches);
+  double costh_he;      conditionalBranch(tr, costh_he, "gen_costh_HX", store_config.storeBranches, storeAllBranches);
+  double phi_he;        conditionalBranch(tr, phi_he, "gen_phi_HX", store_config.storeBranches, storeAllBranches);
 
 // psi decay angles in the CS frame
-  double costh_cs;      conditionalBranch(tr, costh_cs, "gen_costh_CS", storeBranches, storeAllBranches);
-  double phi_cs;        conditionalBranch(tr, phi_cs, "gen_phi_CS", storeBranches, storeAllBranches);
+  double costh_cs;      conditionalBranch(tr, costh_cs, "gen_costh_CS", store_config.storeBranches, storeAllBranches);
+  double phi_cs;        conditionalBranch(tr, phi_cs, "gen_phi_CS", store_config.storeBranches, storeAllBranches);
 
 
-  // double M_gamma; conditionalBranch(tr, M_gamma, "M_gamma", storeBranches, storeAllBranches);
-  // double qM_chi; conditionalBranch(tr, qM_chi, "qM_chi", storeBranches, storeAllBranches);
+  // double M_gamma; conditionalBranch(tr, M_gamma, "M_gamma", store_config.storeBranches, storeAllBranches);
+  // double qM_chi; conditionalBranch(tr, qM_chi, "qM_chi", store_config.storeBranches, storeAllBranches);
 
   // smeared variables with "_sm" postfix
-  double pT_chi_sm;     conditionalBranch(tr, pT_chi_sm, "chicPt", storeBranches, storeAllBranches);
-  double y_chi_sm;     conditionalBranch(tr, y_chi_sm, "chicRap", storeBranches, storeAllBranches);
-  double M_chi_sm;      conditionalBranch(tr, M_chi_sm, "mumugammaMass", storeBranches, storeAllBranches);
-  double qM_chi_sm;      conditionalBranch(tr, qM_chi_sm, "chicMass", storeBranches, storeAllBranches);
+  double pT_chi_sm;     conditionalBranch(tr, pT_chi_sm, "chicPt", store_config.storeBranches, storeAllBranches);
+  double y_chi_sm;     conditionalBranch(tr, y_chi_sm, "chicRap", store_config.storeBranches, storeAllBranches);
+  double M_chi_sm;      conditionalBranch(tr, M_chi_sm, "mumugammaMass", store_config.storeBranches, storeAllBranches);
+  double qM_chi_sm;      conditionalBranch(tr, qM_chi_sm, "chicMass", store_config.storeBranches, storeAllBranches);
 
-  double pT_gamma_sm;     conditionalBranch(tr, pT_gamma_sm, "photonPt", storeBranches, storeAllBranches);
-  double y_gamma_sm;     conditionalBranch(tr, y_gamma_sm, "photonEta", storeBranches, storeAllBranches);
-  // double eta_gamma_sm;     conditionalBranch(tr, eta_gamma_sm, "eta_gamma_sm", storeBranches, storeAllBranches);
+  double pT_gamma_sm;     conditionalBranch(tr, pT_gamma_sm, "photonPt", store_config.storeBranches, storeAllBranches);
+  double y_gamma_sm;     conditionalBranch(tr, y_gamma_sm, "photonEta", store_config.storeBranches, storeAllBranches);
+  // double eta_gamma_sm;     conditionalBranch(tr, eta_gamma_sm, "eta_gamma_sm", store_config.storeBranches, storeAllBranches);
 
-  double pT_jpsi_sm;     conditionalBranch(tr, pT_jpsi_sm, "JpsiPt", storeBranches, storeAllBranches);
-  double y_jpsi_sm;     conditionalBranch(tr, y_jpsi_sm, "JpsiRap", storeBranches, storeAllBranches);
-  double M_jpsi_sm;      conditionalBranch(tr, M_jpsi_sm, "JpsiMass", storeBranches, storeAllBranches);
+  double pT_jpsi_sm;     conditionalBranch(tr, pT_jpsi_sm, "JpsiPt", store_config.storeBranches, storeAllBranches);
+  double y_jpsi_sm;     conditionalBranch(tr, y_jpsi_sm, "JpsiRap", store_config.storeBranches, storeAllBranches);
+  double M_jpsi_sm;      conditionalBranch(tr, M_jpsi_sm, "JpsiMass", store_config.storeBranches, storeAllBranches);
 
-  double pT_lepP_sm;     conditionalBranch(tr, pT_lepP_sm, "muPPt", storeBranches, storeAllBranches);
-  double eta_lepP_sm;     conditionalBranch(tr, eta_lepP_sm, "muPEta", storeBranches, storeAllBranches);
+  double pT_lepP_sm;     conditionalBranch(tr, pT_lepP_sm, "muPPt", store_config.storeBranches, storeAllBranches);
+  double eta_lepP_sm;     conditionalBranch(tr, eta_lepP_sm, "muPEta", store_config.storeBranches, storeAllBranches);
 
-  double pT_lepN_sm;     conditionalBranch(tr, pT_lepN_sm, "muNPt", storeBranches, storeAllBranches);
-  double eta_lepN_sm;     conditionalBranch(tr, eta_lepN_sm, "muNEta", storeBranches, storeAllBranches);
+  double pT_lepN_sm;     conditionalBranch(tr, pT_lepN_sm, "muNPt", store_config.storeBranches, storeAllBranches);
+  double eta_lepN_sm;     conditionalBranch(tr, eta_lepN_sm, "muNEta", store_config.storeBranches, storeAllBranches);
 
-  double Mchic;    conditionalBranch(tr, Mchic, "Q_value_gen", storeBranches, storeAllBranches);
+  double Mchic;    conditionalBranch(tr, Mchic, "Q_value_gen", store_config.storeBranches, storeAllBranches);
 
-  double costh_HX_sm; conditionalBranch(tr, costh_HX_sm, "costh_HX", storeBranches, storeAllBranches);
-  double phi_HX_sm; conditionalBranch(tr, phi_HX_sm, "phi_HX", storeBranches, storeAllBranches);
+  double costh_HX_sm; conditionalBranch(tr, costh_HX_sm, "costh_HX", store_config.storeBranches, storeAllBranches);
+  double phi_HX_sm; conditionalBranch(tr, phi_HX_sm, "phi_HX", store_config.storeBranches, storeAllBranches);
 
-  double costh_CS_sm; conditionalBranch(tr, costh_CS_sm, "costh_CS", storeBranches, storeAllBranches);
-  double phi_CS_sm; conditionalBranch(tr, phi_CS_sm, "phi_CS", storeBranches, storeAllBranches);
+  double costh_CS_sm; conditionalBranch(tr, costh_CS_sm, "costh_CS", store_config.storeBranches, storeAllBranches);
+  double phi_CS_sm; conditionalBranch(tr, phi_CS_sm, "phi_CS", store_config.storeBranches, storeAllBranches);
 
-  double costh_PX_sm; conditionalBranch(tr, costh_PX_sm, "costh_PX", storeBranches, storeAllBranches);
-  double phi_PX_sm; conditionalBranch(tr, phi_PX_sm, "phi_PX", storeBranches, storeAllBranches);
+  double costh_PX_sm; conditionalBranch(tr, costh_PX_sm, "costh_PX", store_config.storeBranches, storeAllBranches);
+  double phi_PX_sm; conditionalBranch(tr, phi_PX_sm, "phi_PX", store_config.storeBranches, storeAllBranches);
 
-  double cosTH_HX_sm; conditionalBranch(tr, cosTH_HX_sm, "cosTH_HX_sm", storeBranches, storeAllBranches);
-  double cosTH_PX_sm; conditionalBranch(tr, cosTH_PX_sm, "cosTH_PX_sm", storeBranches, storeAllBranches);
-  double cosTH_CS_sm; conditionalBranch(tr, cosTH_CS_sm, "cosTH_CS_sm", storeBranches, storeAllBranches);
+  double cosTH_HX_sm; conditionalBranch(tr, cosTH_HX_sm, "cosTH_HX_sm", store_config.storeBranches, storeAllBranches);
+  double cosTH_PX_sm; conditionalBranch(tr, cosTH_PX_sm, "cosTH_PX_sm", store_config.storeBranches, storeAllBranches);
+  double cosTH_CS_sm; conditionalBranch(tr, cosTH_CS_sm, "cosTH_CS_sm", store_config.storeBranches, storeAllBranches);
 
-  // double ca_gamma_jpsi;     conditionalBranch(tr, ca_gamma_jpsi, "ca_gamma_jpsi", storeBranches, storeAllBranches);
-  // double ca_mu_mu;     conditionalBranch(tr, ca_mu_mu, "ca_mu_mu", storeBranches, storeAllBranches);
-  // double ca_sm_gamma_jpsi;     conditionalBranch(tr, ca_sm_gamma_jpsi, "ca_sm_gamma_jpsi", storeBranches, storeAllBranches);
-  // double ca_sm_mu_mu;     conditionalBranch(tr, ca_sm_mu_mu, "ca_sm_mu_mu", storeBranches, storeAllBranches);
+  // double ca_gamma_jpsi;     conditionalBranch(tr, ca_gamma_jpsi, "ca_gamma_jpsi", store_config.storeBranches, storeAllBranches);
+  // double ca_mu_mu;     conditionalBranch(tr, ca_mu_mu, "ca_mu_mu", store_config.storeBranches, storeAllBranches);
+  // double ca_sm_gamma_jpsi;     conditionalBranch(tr, ca_sm_gamma_jpsi, "ca_sm_gamma_jpsi", store_config.storeBranches, storeAllBranches);
+  // double ca_sm_mu_mu;     conditionalBranch(tr, ca_sm_mu_mu, "ca_sm_mu_mu", store_config.storeBranches, storeAllBranches);
 
   // double lepP_eff, lepN_eff;
   double lepP_eff_sm, lepN_eff_sm;
@@ -397,15 +432,37 @@ void chicpolgen(const gen_config& config = gen_config{}, const std::vector<std::
   double gamma_eff_sm;
 
   if (!config.muonEffs.empty()) {
-    // conditionalBranch(tr, lepP_eff, "lepP_eff", storeBranches, storeAllBranches);
-    // conditionalBranch(tr, lepN_eff, "lepN_eff", storeBranches, storeAllBranches);
-    conditionalBranch(tr, lepP_eff_sm, "lepP_eff_sm", storeBranches, storeAllBranches);
-    conditionalBranch(tr, lepN_eff_sm, "lepN_eff_sm", storeBranches, storeAllBranches);
+    // conditionalBranch(tr, lepP_eff, "lepP_eff", store_config.storeBranches, storeAllBranches);
+    // conditionalBranch(tr, lepN_eff, "lepN_eff", store_config.storeBranches, storeAllBranches);
+    conditionalBranch(tr, lepP_eff_sm, "lepP_eff_sm", store_config.storeBranches, storeAllBranches);
+    conditionalBranch(tr, lepN_eff_sm, "lepN_eff_sm", store_config.storeBranches, storeAllBranches);
   }
 
   if (!config.photonEffs.empty()) {
-    // conditionalBranch(tr, gamma_eff, "gamma_eff", storeBranches, storeAllBranches);
-    conditionalBranch(tr, gamma_eff_sm, "gamma_eff_sm", storeBranches, storeAllBranches);
+    // conditionalBranch(tr, gamma_eff, "gamma_eff", store_config.storeBranches, storeAllBranches);
+    conditionalBranch(tr, gamma_eff_sm, "gamma_eff_sm", store_config.storeBranches, storeAllBranches);
+  }
+
+  std::unordered_map<std::string, TH2D*> costhPhiHists;
+  if (store_config.storeHists) {
+    costhPhiHists.insert({"gen_HX", createHist("costh_phi_gen_HX", store_config.nBinsCosth, store_config.nBinsPhi)});
+    costhPhiHists.insert({"gen_CS", createHist("costh_phi_gen_CS", store_config.nBinsCosth, store_config.nBinsPhi)});
+    costhPhiHists.insert({"gen_PX", createHist("costh_phi_gen_PX", store_config.nBinsCosth, store_config.nBinsPhi)});
+
+    costhPhiHists.insert({"acc_HX", createHist("costh_phi_acc_HX", store_config.nBinsCosth, store_config.nBinsPhi)});
+    costhPhiHists.insert({"acc_CS", createHist("costh_phi_acc_CS", store_config.nBinsCosth, store_config.nBinsPhi)});
+    costhPhiHists.insert({"acc_PX", createHist("costh_phi_acc_PX", store_config.nBinsCosth, store_config.nBinsPhi)});
+
+    if (muonEffs && photonEffs) {
+      costhPhiHists.insert({"reco_HX", createHist("costh_phi_reco_HX", store_config.nBinsCosth, store_config.nBinsPhi)});
+      costhPhiHists.insert({"reco_CS", createHist("costh_phi_reco_CS", store_config.nBinsCosth, store_config.nBinsPhi)});
+      costhPhiHists.insert({"reco_PX", createHist("costh_phi_reco_PX", store_config.nBinsCosth, store_config.nBinsPhi)});
+    }
+  }
+
+  for (const auto& hist : costhPhiHists) {
+    hist.second->Sumw2();
+    hist.second->SetStats(0);
   }
 
   // smearing initialization (for smearing according to MC)
@@ -895,12 +952,16 @@ void chicpolgen(const gen_config& config = gen_config{}, const std::vector<std::
     const auto smearedJpsi = smearedLepP + smearedLepN;
     const auto smearedChi = smearedJpsi + smearedGamma;
 
-    // apply the selectors (as soon as possible in this case)
-    if (!(jpsiSelector->accept(smearedJpsi) &&
-         muonSelector->accept(smearedLepP) && muonSelector->accept(smearedLepN) &&
-         photonSelector->accept(smearedGamma))) {
-      continue;
-    }
+
+    // // apply the selectors (as soon as possible in this case)
+    // if (!(jpsiSelector->accept(smearedJpsi) &&
+    //      muonSelector->accept(smearedLepP) && muonSelector->accept(smearedLepN) &&
+    //      photonSelector->accept(smearedGamma))) {
+    //   continue;
+    // }
+    // If we do not select the J/psi there is no need to do further calculations
+    // Otherwise we need to at least calculate the angles to store them in the appropriate histograms
+    if (!jpsiSelector->accept(smearedJpsi)) continue;
 
     // const TLorentzVector halfSmearedChi = smearedJpsi + gamma;
 
@@ -947,6 +1008,25 @@ void chicpolgen(const gen_config& config = gen_config{}, const std::vector<std::
     costh_PX_sm = angles_PX.costh;
     phi_PX_sm = angles_PX.phi;
 
+    // fill the gen level histograms (i.e. without cuts on muons and photons)
+    if (store_config.storeHists) {
+      costhPhiHists["gen_HX"]->Fill(costh_HX_sm, phi_HX_sm);
+      costhPhiHists["gen_CS"]->Fill(costh_CS_sm, phi_CS_sm);
+      costhPhiHists["gen_PX"]->Fill(costh_PX_sm, phi_PX_sm);
+    }
+
+    // Now we can decide if we want to do the last few calculations as well or if we skip them, depending on the muon and photon selection
+    if (!(muonSelector->accept(smearedLepP) && muonSelector->accept(smearedLepN) && photonSelector->accept(smearedGamma))) {
+      continue;
+    }
+
+    // If we are still here than fill the histograms
+    if (store_config.storeHists) {
+      costhPhiHists["acc_HX"]->Fill(costh_HX_sm, phi_HX_sm);
+      costhPhiHists["acc_CS"]->Fill(costh_CS_sm, phi_CS_sm);
+      costhPhiHists["acc_PX"]->Fill(costh_PX_sm, phi_PX_sm);
+    }
+
     const auto Angles_HX = calcAnglesInFrame(smearedJpsi, smearedGamma, RefFrame::HX);
     cosTH_HX_sm = Angles_HX.costh;
 
@@ -968,7 +1048,16 @@ void chicpolgen(const gen_config& config = gen_config{}, const std::vector<std::
       gamma_eff_sm = photonEffs->Eval(pT_gamma_sm, y_gamma_sm);
     }
 
-    tr->Fill();
+    if (store_config.storeHists && muonEffs && photonEffs) {
+      // calculate the weight using and discard all events where one of the weights is below 0 (i.e. not determined)
+      const double eff_weight = (lepP_eff_sm > 0) * lepP_eff_sm *\
+        (lepN_eff_sm > 0) * lepN_eff_sm * (gamma_eff_sm > 0) * 0.01 * gamma_eff_sm;
+      costhPhiHists["reco_HX"]->Fill(costh_HX_sm, phi_HX_sm, eff_weight);
+      costhPhiHists["reco_CS"]->Fill(costh_CS_sm, phi_CS_sm, eff_weight);
+      costhPhiHists["reco_PX"]->Fill(costh_PX_sm, phi_PX_sm, eff_weight);
+    }
+
+    if(tr) tr->Fill();
     accepted++;
 
     if (check_accept && accepted >= config.n_accepted) {

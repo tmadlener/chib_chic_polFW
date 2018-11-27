@@ -26,6 +26,10 @@ USE_CS_FRAME=0
 # Store only the angular variables
 STORE_ONLY_ANGLES=1
 
+# Store only costh-phi histograms (at different stages)
+# NOTE: If this is enabled then no TTree will be stored
+STORE_ONLY_HISTS=1
+
 # Store efficiencies
 STORE_EFFS=1
 
@@ -41,6 +45,7 @@ JPSI_MAXPT=20
 JPSI_MAXRAP=1.2
 
 # muon (loose) and photon selection
+# NOTE: If you only want to store costh phi histograms to determine correction maps from them make sure to enable these selections
 MUON_SEL=true
 PHOTON_SEL=true
 
@@ -74,7 +79,7 @@ function persist_settings() {
 
     persist_vars=(NEVENTS NACCEPT N_JOBS MUON_EFFS PHOTON_EFFS USE_CS_FRAME STORE_ONLY_ANGLES STORE_EFFS\
                           GEN_DISTS RM_SOURCE JPSI_SEL JPSI_MINPT JPSI_MAXPT JPSI_MAXRAP MUON_SEL PHOTON_SEL\
-                          CHIC1_GENPTRANGE CHIC2_GENPTRANGE ADD_ARGS)
+                          CHIC1_GENPTRANGE CHIC2_GENPTRANGE ADD_ARGS STORE_ONLY_HISTS)
     persist_arrays=(CHIC1_HELICITIES CHIC2_HELICITIES)
 
     for var in ${persist_vars[@]}; do print_var ${var} >> ${outfile}; done
@@ -100,14 +105,19 @@ if [[ ${USE_CS_FRAME} -eq 1 ]]; then
     ADD_ARGS=${ADD_ARGS}" --CSframe true"
 fi
 
-if [[ ${STORE_ONLY_ANGLES} -eq 1 ]]; then
-    ADD_ARGS=${ADD_ARGS}" $(echo --storeBranches {costh,phi}_{HX,PX,CS})" # use echo to expand braces
-    ADD_ARGS=${ADD_ARGS}" $(echo cosTH_{PX,CS,HX}_sm)" # psi angle in chi restframe
-    ADD_ARGS=${ADD_ARGS}" $(echo Jpsi{Pt,Rap})" # also need Jpsi pT and rapidity for acceptance maps
-    if [[ ${STORE_EFFS} -eq 1 ]]; then
-        ADD_ARGS=${ADD_ARGS}" $(echo {gamma,lep{P,N}}_eff_sm)"
-        # ADD_ARGS=${ADD_ARGS}" $(echo {photon,mu{P,N}}{Pt,Eta})"
+if [[ ${STORE_ONLY_HISTS} -eq 0 ]]; then
+    if [[ ${STORE_ONLY_ANGLES} -eq 1 ]]; then
+        ADD_ARGS=${ADD_ARGS}" $(echo --storeBranches {costh,phi}_{HX,PX,CS})" # use echo to expand braces
+        ADD_ARGS=${ADD_ARGS}" $(echo cosTH_{PX,CS,HX}_sm)" # psi angle in chi restframe
+        ADD_ARGS=${ADD_ARGS}" $(echo Jpsi{Pt,Rap})" # also need Jpsi pT and rapidity for acceptance maps
+        if [[ ${STORE_EFFS} -eq 1 ]]; then
+            ADD_ARGS=${ADD_ARGS}" $(echo {gamma,lep{P,N}}_eff_sm)"
+            # ADD_ARGS=${ADD_ARGS}" $(echo {photon,mu{P,N}}{Pt,Eta})"
+        fi
     fi
+else
+    ADD_ARGS=${ADD_ARGS}" --storeBranches none" # do not store any branches
+    ADD_ARGS=${ADD_ARGS}" --storeHists true"
 fi
 
 if [[ ${JPSI_SEL} = "true" ]]; then

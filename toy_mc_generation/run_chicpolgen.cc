@@ -28,6 +28,7 @@ int main(int argc, char *argv[])
   const auto photonEffFile = parser.getOptionVal<std::string>("--photonEffs", "");
 
   const auto storeBranches = parser.getOptionVal<std::vector<std::string>>("--storeBranches", {"all"});
+  const auto storeHists = parser.getOptionVal<bool>("--storeHists", false);
 
   // j/psi kinematics at reconstruction
   const auto jpsiSel = parser.getOptionVal<bool>("--jpsiSel", false);
@@ -69,7 +70,11 @@ int main(int argc, char *argv[])
   sel_conf.psiPtMax = psiPtMax;
   sel_conf.psiRapMax = psiRapMax;
 
-  chicpolgen(config, storeBranches, sel_conf);
+  store_config store_conf;
+  store_conf.storeBranches = storeBranches;
+  store_conf.storeHists = storeHists;
+
+  chicpolgen(config, sel_conf, store_conf);
 
   return 0;
 }
