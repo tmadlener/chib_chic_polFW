@@ -101,6 +101,7 @@ struct sel_config {
   double psiPtMin{8.0}; // min J/psi pT (at reco level)
   double psiPtMax{20.0}; // min J/psi pT (at reco level)
   double psiRapMax{1.2}; // maximum J/psi absolute rapidity (at reco level)
+  double psiRapMin{0}; // minimum J/psi absolute rapidity (at reco level)
 
   bool jpsi_sel{false};
   bool muon_sel{false}; // apply the loose muon selection
@@ -108,7 +109,10 @@ struct sel_config {
 
   std::unique_ptr<Selector> getJpsiSelector() const {
     if (jpsi_sel) {
-      return std::make_unique<PtRangeAbsRapiditySelector>(Range{psiPtMin, psiPtMax}, psiRapMax);
+      if (psiRapMin == 0) {
+        return std::make_unique<PtRangeAbsRapiditySelector>(Range{psiPtMin, psiPtMax}, psiRapMax);
+      }
+      return std::make_unique<PtRangeAbsRapidityRangeSelector>(Range{psiPtMin, psiPtMax}, Range{psiRapMin, psiRapMax});
     }
     return std::make_unique<AllSelector>();
   }

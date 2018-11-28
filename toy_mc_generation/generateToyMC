@@ -43,6 +43,7 @@ JPSI_SEL=true
 JPSI_MINPT=8
 JPSI_MAXPT=20
 JPSI_MAXRAP=1.2
+JPSI_MINRAP=0 # min ABSOLUTE rapidity for selection
 
 # muon (loose) and photon selection
 # NOTE: If you only want to store costh phi histograms to determine correction maps from them make sure to enable these selections
@@ -121,7 +122,7 @@ else
 fi
 
 if [[ ${JPSI_SEL} = "true" ]]; then
-    ADD_ARGS=${ADD_ARGS}" --psiPtMin "${JPSI_MINPT}" --psiPtMax "${JPSI_MAXPT}" --psiRapMax "${JPSI_MAXRAP}
+    ADD_ARGS=${ADD_ARGS}" --psiPtMin "${JPSI_MINPT}" --psiPtMax "${JPSI_MAXPT}" --psiRapMax "${JPSI_MAXRAP}" --psiRapMin "${JPSI_MINRAP}
 fi
 
 # cleans up ratio so that it can easily be printed and used in filenames

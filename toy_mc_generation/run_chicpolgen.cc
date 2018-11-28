@@ -35,6 +35,7 @@ int main(int argc, char *argv[])
   const auto psiPtMin = parser.getOptionVal<double>("--psiPtMin", 8.0);
   const auto psiPtMax = parser.getOptionVal<double>("--psiPtMax", 20.0);
   const auto psiRapMax = parser.getOptionVal<double>("--psiRapMax", 1.2);
+  const auto psiRapMin = parser.getOptionVal<double>("--psiRapMin", 0);
 
   // muon and photon selection
   const auto muonSel = parser.getOptionVal<bool>("--muonSel", false);
@@ -69,6 +70,7 @@ int main(int argc, char *argv[])
   sel_conf.psiPtMin = psiPtMin;
   sel_conf.psiPtMax = psiPtMax;
   sel_conf.psiRapMax = psiRapMax;
+  sel_conf.psiRapMin = psiRapMin;
 
   store_config store_conf;
   store_conf.storeBranches = storeBranches;

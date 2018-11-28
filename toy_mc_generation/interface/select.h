@@ -46,6 +46,18 @@ public:
   }
 };
 
+class PtRangeAbsRapidityRangeSelector : public Selector {
+  Range ptRange;
+  Range rapRange;
+public:
+  PtRangeAbsRapidityRangeSelector(Range PtRange, Range RapRange) : ptRange(PtRange), rapRange(RapRange) {}
+  virtual bool accept(TLorentzVector const& p4) const override final {
+    const double absRap = std::abs(p4.Rapidity());
+    const double pT = p4.Pt();
+    return absRap > rapRange.min && absRap < rapRange.max && pT > ptRange.min && pT < ptRange.max;
+  }
+};
+
 class LooseMuonSelector : public Selector {
 public:
   virtual bool accept(TLorentzVector const& p4) const override final {
