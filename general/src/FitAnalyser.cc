@@ -16,6 +16,7 @@
 #include "TLegend.h"
 #include "TH1F.h"
 #include "TPaveText.h"
+#include "TLatex.h"
 #include "TFormula.h"
 #include "RooStats/SPlot.h"
 
@@ -34,7 +35,7 @@ FitAnalyser::FitAnalyser(const Fitter &f) :
   SetFitVariableName(f.m_fitvarname);
 }
 
-FitAnalyser::FitAnalyser(csr filename, csr model_name, csr fit_variable_name, csr workspace_name, csr dataset_name, csr snapshot_name) :
+FitAnalyser::FitAnalyser(csr filename, csr model_name, csr fit_variable_name, csr workspace_name, csr dataset_name, csr snapshot_name, csr fitresult_name) :
   m_filename(filename)
 {
   // Check if file is ok
@@ -46,8 +47,9 @@ FitAnalyser::FitAnalyser(csr filename, csr model_name, csr fit_variable_name, cs
   SetModelName(model_name);
   SetFitVariableName(fit_variable_name);
   SetWorkspaceName(workspace_name);
-  if (!snapshot_name.empty()) SetSnapshotName(snapshot_name);
   if (!dataset_name.empty()) SetDatasetName(dataset_name);
+  if (!snapshot_name.empty()) SetSnapshotName(snapshot_name);
+  if (!fitresult_name.empty()) SetFitResultName(fitresult_name);
 }
 
 void FitAnalyser::SetWorkspaceName(csr workspace_name)
@@ -119,7 +121,12 @@ RooFitResult * FitAnalyser::GetFitResult(csr fitresult_name)
 
   if (!fitresult_name.empty()) {
     auto r = dynamic_cast<RooFitResult*>(ws->genobj(fitresult_name.c_str()));
-    // if (!r) std::cout << "Could not find RooFitResult '" << fitresult_name << "' in RooWorkspace '" << m_wsname << "'." << std::endl;
+    if (!r) std::cout << "Could not find RooFitResult '" << fitresult_name << "' in RooWorkspace '" << m_wsname << "'." << std::endl;
+    return r;
+  }
+  if (!m_fitresultname.empty()) {
+    auto r = dynamic_cast<RooFitResult*>(ws->genobj(m_fitresultname.c_str()));
+    if (!r) std::cout << "Could not find RooFitResult '" << m_fitresultname << "' in RooWorkspace '" << m_wsname << "'." << std::endl;
     return r;
   }
   // else return fitresult if only one exists in workspace
@@ -202,7 +209,25 @@ void FitAnalyser::PlotFitResult(csr output_file, const std::vector<double> & lin
 
       std::stringstream ss;
       ss << std::fixed << std::setprecision(4);
-      ss << v->GetName() << ": " << v->getVal() << ", [ " << v->getMin() << ", " << v->getMax() << "]";
+      auto val = v->getVal();
+      ss << v->GetName() << ": ";
+      if (!v->isConstant()) {
+        auto min = v->getMin(), max = v->getMax();
+        bool val_is_min = (min == val), val_is_max = (max == val);
+
+        if (val_is_min || val_is_max) ss << "#color[2]{ " << val << "}";
+        else ss << val;
+        ss << ", [ ";
+        if (val_is_min) ss << "#color[2]{" << min << "}";
+        else ss << min;
+        ss << ", ";
+        if (val_is_max) ss << "#color[2]{" << max << " }";
+        else ss << max;
+        ss << "]";
+      }
+      else {
+        ss << val;
+      }
 
       ibox->AddText(ss.str().c_str());
     }
@@ -271,6 +296,244 @@ void FitAnalyser::PlotFitResult(csr output_file, const std::vector<double> & lin
   if (!output_file.empty()) canv->SaveAs(output_file.c_str());
 }
 
+void FitAnalyser::CustomPlot1(csr output_file, int year, bool is_dimuonfit, int data_bins, csr frame)
+{
+  // 2016:HLT_Dimuon8_Upsilon_Barrel, 2017:HLT_Dimuon10_Upsilon_Barrel_Seagulls
+  double lumi = (year == 2016 ? 34.88 : 37.15);
+  TString lumiText = (year == 2016 ? "34.88 fb^{-1} (13 TeV)" : "37.15 fb^{-1} (13 TeV)");
+
+  double width = 1200;
+  double height = 1000;
+
+  std::vector < std::pair< std::string, std::string > > pdfs{ {"background", "Background" } };
+
+  if (is_dimuonfit) {
+    pdfs.push_back({ "ups1s","#Upsilon(1S)" });
+    pdfs.push_back({ "ups2s","#Upsilon(2S)" });
+    pdfs.push_back({ "ups3s","#Upsilon(3S)" });
+  }
+  else {
+    pdfs.push_back({ "chib1","#chi_{b1}(1P)" });
+    pdfs.push_back({ "chib2","#chi_{b2}(1P)" });
+  }
+
+  if (!output_file.empty()) gROOT->SetBatch(kTRUE);
+  auto canv = new TCanvas("fit_results", "Fit Results", width, height);
+
+  auto var = GetVariable();
+  auto ds = GetDataset();
+  auto model = dynamic_cast<RooAddPdf*>(GetPdf());
+  auto ws = GetWorkspace(true);
+  if (!ds || !var || !model || !ws) return;
+
+
+  // Settings
+  // (in NDC, i.e. in percent of Canvas)
+
+  // Pdf colors
+  auto model_color = kBlue;
+  std::vector<int> colors = {
+    kBlack, // background
+    kGreen, // peak1
+    kRed,   // peak2
+    kViolet // peak3
+  };
+  std::vector<int> lines = {
+    kDashed,     // background
+    kDashDotted, // peak1
+    kDashDotted, // peak2
+    kDashDotted  // peak3
+  };
+
+  // Label
+  std::string xaxis_label = is_dimuonfit ? "m^{#mu#mu}" : "m^{#chi}";
+  xaxis_label += " (GeV)";
+  double label_size = 0.03;
+  double axis_title_size = 0.03;
+  double tick_size = 0.01;
+
+  // Margins 
+  double mt = 0.1, mb = 0.03, ml = 0.13, mr = 0.05;
+  double mbb = 0.08, mtt = 0.02; // between pull and plot (x2)
+
+  //Pull
+  double pull_range = 3.5;
+  double pull_pad_height = 0.15;
+
+  double pull_scale_y = 1. / pull_pad_height;
+  double plot_scale_y = 1. / (1. - pull_pad_height);
+  double scale = height / width;
+
+  std::cout << "pull_scale_y:" << pull_scale_y << "\nplot_scale_y:" << plot_scale_y
+    << "\nx-scale:" << scale << std::endl;
+
+  //
+  // End settings
+
+  // Plots and Pads
+  TPad *plot_pad = new TPad("plot", "", 0, pull_pad_height, 1, 1);
+  plot_pad->SetMargin(ml* scale, mr* scale, mbb*plot_scale_y, mt*plot_scale_y);
+  TPad *pull_pad = new TPad("pull", "", 0, 0, 1, pull_pad_height);
+  pull_pad->SetMargin(ml* scale, mr* scale, mb*pull_scale_y, mtt*pull_scale_y);
+  canv->cd();
+
+  auto plot = var->frame();
+  auto pull = var->frame();
+
+  plot->SetTitle((";" + xaxis_label + ";Events").c_str());
+  plot->SetTitleSize(axis_title_size*plot_scale_y);
+  plot->SetMinimum(0);
+
+  pull->SetTitle(";;Pull");
+  pull_pad->SetTicks(1, 1);
+  {
+    // Plot
+    auto y = plot->GetYaxis();
+    y->SetLabelSize(label_size*plot_scale_y);
+    y->SetTickSize(tick_size*scale);
+    auto x = plot->GetXaxis();
+    x->SetTickSize(tick_size*plot_scale_y);
+    x->SetTitleSize(axis_title_size*plot_scale_y);
+  }
+  {
+    // Pull
+    auto y = pull->GetYaxis();
+    y->SetLabelSize(label_size*pull_scale_y);
+    y->SetNdivisions(6, 2, 0, true);
+    y->SetTitleSize(axis_title_size*pull_scale_y);
+    y->SetTickSize(tick_size*scale);
+    y->SetLimits(-pull_range, pull_range);
+    y->SetTitleOffset(pull_pad_height);
+    auto x = pull->GetXaxis();
+    x->SetLabelSize(0);
+    x->SetTickSize(tick_size*pull_scale_y);
+  }
+
+
+  TLegend *leg = new TLegend(1. - 7.*mr*scale, 1. - 3.5*mt*plot_scale_y, 1. - 1.2*mr*scale, 1. - 1.2*mt*plot_scale_y);
+  leg->SetFillColor(0);
+  leg->SetLineColor(0);
+
+
+  // Plot costh range
+  if (!is_dimuonfit) {
+    // costh var only in costh binned workspaces
+    std::string costhvarname = "costh_" + frame;
+    auto costh = ws->var(costhvarname.c_str());
+    double abs_costh_min = 0, abs_costh_max = 1;
+    if (costh) {
+      auto low_part = ds->reduce((costhvarname + " <0").c_str());
+      auto high_part = ds->reduce((costhvarname + " >0").c_str());
+      double min_low, max_low, min_high, max_high, tmp_minlow;
+      low_part->getRange(*costh, min_low, max_low);
+      high_part->getRange(*costh, min_high, max_high);
+      std::cout << "low: " << min_low << "," << max_low << "\n"
+        << "high: " << min_high << "," << max_high << "\n";
+      tmp_minlow = min_low;
+      min_low = abs(max_low);
+      max_low = abs(tmp_minlow);
+      abs_costh_min = min_low;
+      if (min_low > min_high) abs_costh_min = min_high;
+      abs_costh_max = max_low;
+      if (max_low < max_high) abs_costh_max = max_high;
+      abs_costh_max = round(abs_costh_max * 1000) / 1000.;
+      abs_costh_min = round(abs_costh_min * 1000) / 1000.;
+      if (year == 2016 && std::string(ds->GetName()) == std::string("data_costh_bin_5")) abs_costh_max = 0.86;
+      if (year == 2017 && std::string(ds->GetName()) == std::string("data_costh_bin_4")) abs_costh_max = 0.82;
+
+    }
+    auto ibox = new TPaveText(0.1 + plot_pad->GetLeftMargin(), 0.7 - plot_pad->GetTopMargin(),
+      0.25 + plot_pad->GetLeftMargin(), 0.9 - plot_pad->GetTopMargin(), "NBNDC");
+    ibox->SetFillColor(0);
+    ibox->SetTextSize(0.042);
+    {
+      std::stringstream ss;
+      ss <</* std::setprecision(2) <<*/ abs_costh_min << " < |cos#vartheta^{" << frame << "}| < " << abs_costh_max;
+      ibox->AddText(ss.str().c_str());
+      std::cout << ss.str() << std::endl;
+    }
+    //ibox->AddText("");
+    plot->addObject(ibox);
+  }
+
+  // Plot model and dataset and get pull
+  RooCmdArg data_binning(RooFit::Binning(data_bins, var->getMin(), var->getMax()));
+  ds->plotOn(plot, RooFit::Name("dataplot"), data_binning);
+  model->plotOn(plot, RooFit::Name("fullmodel"), RooFit::LineColor(model_color));
+  auto pull_histo = plot->pullHist();
+  leg->AddEntry(plot->findObject("fullmodel"), "Full model", "L");
+  leg->AddEntry(plot->findObject("dataplot"), "Data", "PE");
+
+  pull->addPlotable(pull_histo, "P");
+  pull->addObject(new TLine(var->getMin(), 0, var->getMax(), 0));
+
+
+  // Plot single pdfs
+
+  for (int i = 0, s = pdfs.size(); i < s; ++i) {
+    auto pdfname = pdfs.at(i).first.c_str();
+    auto pdftitle = pdfs.at(i).second.c_str();
+    auto pdf = ws->pdf(pdfname);
+    if (!pdf) continue;
+    auto name = ("pdf" + std::to_string(i)).c_str();
+    model->plotOn(plot, RooFit::Name(name), RooFit::Components(*pdf), RooFit::LineColor(colors.at(i)), RooFit::LineStyle(lines.at(i)), RooFit::LineWidth(2));
+    leg->AddEntry(plot->findObject(name), pdftitle, "L");
+  }
+
+  //plot dataset again, to be on top
+  ds->plotOn(plot, data_binning);
+
+  //for (double x : lines) plot->addObject(new TLine(x, plot->GetMinimum(), x, plot->GetMaximum()));
+
+  plot->addObject(leg);
+
+  if (is_dimuonfit) {
+    auto f = get_file();
+    auto min = (RooRealVar*)f->Get("dimuon_cut_min");
+    auto max = (RooRealVar*)f->Get("dimuon_cut_max");
+    if (min && max) for (double x : {min->getValV(), max->getValV()}) {
+      auto line = new TLine(x, plot->GetMinimum(), x, plot->GetMaximum());
+      line->SetLineColor(kRed + 1);
+      line->SetLineWidth(2);
+      line->Print();
+      plot->addObject(line);
+      double xndc = (x - 8.7) / 2.4 - 0.1;
+      auto box = new TPaveText(xndc + plot_pad->GetLeftMargin(), 0.90 - plot_pad->GetTopMargin(),
+        xndc + plot_pad->GetLeftMargin() + 0.1, 0.95 - plot_pad->GetTopMargin(), "NDC");
+      std::stringstream ss;
+      ss << std::setprecision(3) << x;
+      box->AddText(ss.str().c_str());
+      box->SetFillColor(0);
+      box->SetTextColor(kRed + 1);
+      box->Print();
+      plot->addObject(box);
+    }
+  }
+  // Draw to canvas
+  canv->cd();
+  pull_pad->Draw();
+  plot_pad->Draw();
+  plot_pad->cd();
+  plot->Draw();
+
+  pull_pad->cd();
+  pull->Draw();
+
+  plot_pad->cd();
+  // Add CMS and Lumi
+  add_cms_lumi(plot_pad, lumi);
+
+  canv->Update();
+
+
+  std::cout << "PULL TITLE SIZE:" << pull->GetYaxis()->GetTitleSize()
+    << "\nPLOT pad width:" << plot_pad->GetWw() << ", " << plot_pad->GetWNDC()
+    << "\nPULL pad width:" << pull_pad->GetWw() << ", " << pull_pad->GetWNDC() << std::endl;
+
+
+  if (!output_file.empty()) canv->SaveAs(output_file.c_str());
+}
+
 void FitAnalyser::CustomPlot(csr output_file)
 {
   std::vector<double> lines;
@@ -313,8 +576,8 @@ void FitAnalyser::CustomPlot(csr output_file)
   pull_pad->SetTicks(1, 1);
 
 
-  // Legend - TODO: find a solution
-  //https://root-forum.cern.ch/t/pdf-color-in-tlegend/26621
+  // Legend - 
+  // This works: https://root-forum.cern.ch/t/roofit-tlegend/6356/5
 
   // Print variables on the plot
   double iboxy1 = 0.7;
@@ -322,7 +585,7 @@ void FitAnalyser::CustomPlot(csr output_file)
 
   auto ibox = new TPaveText(0.7, iboxy1, 0.98 - plot_pad->GetTopMargin(), 0.98 - plot_pad->GetRightMargin(), "NBNDC");
   ibox->SetFillColor(0);
-  ibox->SetTextSize(ibox->GetTextSize()*0.6);
+  ibox->SetTextSize(ibox->GetTextSize()*0.9);
   ibox->AddText("8 < p_{T}^{#mu#mu} < 50 GeV");
   ibox->AddText("");
 
@@ -582,4 +845,45 @@ std::pair<double, double> FitAnalyser::get_chi2_ndof()
   return{ chi2, ndof };
 
 
+}
+
+void FitAnalyser::add_cms_lumi(TPad* c, double lumi, std::string cmsExtraText, double TeV) {
+  auto t = c->GetTopMargin();
+  auto r = c->GetRightMargin();
+  auto l = c->GetLeftMargin();
+
+  // Add CMS text
+  std::string cmsText = "CMS";
+  int cmsTextFont = 61;
+  double cmsTextSize = 0.35;
+  double cmsTextOffset = 0.1;
+  int extraTextFont = 52; // for cmsExtraText
+  double extraTextSize = cmsTextSize*0.8;
+
+  std::stringstream ss;
+  ss << lumi << " fb^{-1} (" << TeV << " TeV)";
+  std::string lumitext = ss.str();
+  std::cout << lumitext << std::endl;
+  int  lumiTextFont = 42;
+  double lumiTextSize = 0.3;
+  double  lumiTextOffset = 0.1;
+
+  auto latex = TLatex();
+  latex.SetNDC();
+  latex.SetTextAngle(0);
+  latex.SetTextColor(kBlack);
+
+  latex.SetTextFont(lumiTextFont);
+  latex.SetTextAlign(31);
+  latex.SetTextSize(lumiTextSize * t);
+  latex.DrawLatex(1 - r, 1 - t + lumiTextOffset * t, lumitext.c_str());
+
+  latex.SetTextFont(cmsTextFont);
+  latex.SetTextAlign(11);
+  latex.SetTextSize(cmsTextSize * t);
+  auto cms_text_width = latex.DrawLatex(l, 1 - t + cmsTextOffset*t, cmsText.c_str())->GetXsize();
+
+  latex.SetTextFont(extraTextFont);
+  latex.SetTextSize(extraTextSize*t);
+  latex.DrawLatex(l + cms_text_width, 1 - t + cmsTextOffset*t, (" " + cmsExtraText).c_str());
 }

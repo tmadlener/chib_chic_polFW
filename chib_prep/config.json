@@ -7,11 +7,6 @@
       "name": "dz",
       "min": 0,
       "max": 1
-    },
-    {
-      "name": "testVar",
-      "min": -3,
-      "max": 9.4
     }
   ],
 

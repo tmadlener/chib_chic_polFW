@@ -26,6 +26,7 @@ defaulttarget:
 	@echo "   preselection [cleanpreselection]"
 	@echo "   fitting [cleanfitting]"
 	@echo "   output [cleanoutput]"
+	@echo "   helper [cleanhelper]"
 
 all: _dir_setup preselection fitting
 
@@ -72,7 +73,7 @@ cleanoutput: cleanchiorganizer cleanutils cleantreemerger  cleanparalooper
 #####################
 # HELPER TOOLS
 
-helper : getworkspacefile fitresults
+helper : getworkspacefile fitresults fitresultplot
 
 getworkspacefile: $(BUILDDIR)/getworkspacefile.o  $(BUILDDIR)/chiorganizer.o $(BUILDDIR)/utils.o
 	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB)
@@ -87,8 +88,16 @@ $(BUILDDIR)/fitresults.o: $(SRCDIR)/chib_fitresults.cc $(INCDIR)/ChiOrganizer.h 
 	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
 cleanfitresults:
 	rm -f $(BUILDDIR)/fitresults.o $(TARGET)/fitresults
-	
-cleanhelper: cleanchiorganizer cleanfitanalyser cleanutils cleanfitresults cleangetworkspacefile cleancustomfuncs
+
+fitresultplot: $(BUILDDIR)/fitresult_plot.o $(BUILDDIR)/chiorganizer.o $(BUILDDIR)/fitanalyser.o $(BUILDDIR)/fitter.o $(BUILDDIR)/utils.o $(CUSTOMFUNCTIONS)
+	$(CC) $^ -o $(TARGET)/$@ $(CFLAGSINC) $(LIB) $(ROOFITLIBS)	
+$(BUILDDIR)/fitresult_plot.o: $(SRCDIR)/fitresult_plot.cc $(INCDIR)/ChiOrganizer.h $(GENINCDIR)/FitAnalyser.h
+	$(CC) $< -o $@ $(CFLAGSINC) $(LIB) -c
+cleanfitresultplot:
+	rm -f $(BUILDDIR)/fitresult_plot.o $(TARGET)/fitresultplot
+
+
+cleanhelper: cleanchiorganizer cleanfitanalyser cleanutils cleanfitresults cleangetworkspacefile cleancustomfuncs cleanfitresultplot
 #
 #####################
 

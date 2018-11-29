@@ -18,6 +18,8 @@ int main(int argc, char **argv) {
   std::map<std::string, std::pair<double, double> > bin;
   bin[binvarname] = { bin_min, bin_max };
 
+  if (extension == "NONE") extension = "";
+
   ChiOrganizer o(basedir, configfile);
   auto result = o.FileName(bin, extension);
 

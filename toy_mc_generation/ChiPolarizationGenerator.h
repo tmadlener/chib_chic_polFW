@@ -1,11 +1,12 @@
 #ifndef CHI_POL_GEN_JN_H
 #define CHI_POL_GEN_JN_H
 
-//TODO: optimize generation
+// SIMULATION OF POLARIZED CHI events in the HELICITY HX frame 
 
 #include <utility>
 #include <string>
 #include <chrono>
+#include <memory>
 
 #include "TF1.h"
 #include "TRotation.h"
@@ -24,7 +25,7 @@ struct Mass {
   double width = 0;
 };
 
-class ChiPolarizationGenerator
+class ChiPolarizationGenerator final
 {
 private:
   ChiPolarizationGenerator(const ChiPolarizationGenerator &) = delete;
@@ -41,10 +42,11 @@ private:
 
   TRotation get_rotation(const TLorentzVector &chi, bool for_lepton = false);
 
-  // pseudo-globals
+  bool accept_event(TLorentzVector* chi, TLorentzVector* dimuon, TLorentzVector* muPos, TLorentzVector* muNeg, TLorentzVector* gamma);
+
   double tmp_dimuon_M = 0;
   double tmp_chi_M = 0;
-  TLorentzVector tmp_dimuon_in_chiframe;
+  TLorentzVector tmp_dimuon_in_chiframe{};
 
   // Constants:  [GeV]
   const Mass PdgMassPsi{ 3.097, 9.29e-5 };
@@ -67,8 +69,8 @@ private:
   const double p_beam = 6500;
 
   const double Ebeam = std::sqrt(p_beam * p_beam + mass_proton * mass_proton);
-  const TLorentzVector beam1;
-  const TLorentzVector beam2;
+  const TLorentzVector beam1{};
+  const TLorentzVector beam2{};
 
   ////////////
   // Settings:
@@ -82,9 +84,9 @@ private:
   // * chic2 with lambdatheta = +1 (maximum positive): R = 0, R2 = 1
   // * chic2 with lambdatheta = -3/5 (maximum negative): R = 0, R2 = 0
   // Simulation follows https://arxiv.org/abs/1103.4882
-  double R{ 2. / 3. }; // chi(j=1) helicity R = |b(m=-1)|^2 + |b(m=+1)|^2
-  double R2{ 0 }; // chi(j=1) helicity R2 = |b(m=-2)|^2 + |b(m=+2)|^2
-  // where R+R2+|b(m=0)|^2 = 0 has to fulfilled
+  double R = 2. / 3.; // chi(j=1) helicity R = |b(m=-1)|^2 + |b(m=+1)|^2
+  double R2 = 0; // chi(j=1) helicity R2 = |b(m=-2)|^2 + |b(m=+2)|^2
+  // where R+R2+|b(m=0)|^2 = 1
 
   RefFrame chi_polarization_frame = RefFrame::HX;
 
@@ -96,19 +98,27 @@ private:
   Mass dimuon_mass = PdgMassPsi;
   double dimuon_mass_pdg = PdgMassPsi.central;
 
-  double min_pT = 7; //chi
-  double max_pT = 30; // chi
+  double min_pT = 5; // chi
+  double max_pT = 60; // chi
   double min_rap = 0; // Absolute Rapidity
   double max_rap = 1.3;
   int chi_state = 1;
-  TF1* pT_distr = nullptr;
-  TF1* rap_distr = nullptr;
-  TF1* photonCrystalBall = nullptr; // smearing function for photons (fit to MC + some tuning)
+  std::unique_ptr<TF1> pTM_distr;
+  std::unique_ptr<TF1> rap_distr;
+  std::unique_ptr<TF1> photonCrystalBall; // smearing function for photons (fit to MC + some tuning)
 
-  const int pT_distr_npx = 30; //The integral of the function is computed at fNpx points.
-  //  If the function has sharp peaks, you should increase the number of points(SetNpx) 
-  //  such that the peak is correctly tabulated at several points.) from ROOT TF1::GetRandom() Documentation
+  // Selections
+  bool apply_selections = true;
+  double min_photon_pt = 0.4;
+  double max_photon_abseta = 1.5;
+  bool apply_loose_muon_selection = true;
+  double min_dimuon_pt = 8;
+  double max_dimuon_pt = 50;
+  double min_abs_dimuon_rap = 0;
+  double max_abs_dimuon_rap = 1.2;
 
+  void setup_distributions();
+  
   ////////////
   void print_settings();
 
@@ -118,88 +128,109 @@ private:
   void fill_branches();
   void setup_branches(TTree *t);
 
+  Long64_t accepted_events{};
+
+  // LorentzVector
+
+  TLorentzVector m_chi{};
+  TLorentzVector m_dimuon{};
+  TLorentzVector m_gamma{};
+  TLorentzVector m_muPos{};
+  TLorentzVector m_muNeg{};
+  TLorentzVector m_smearedLepP{};
+  TLorentzVector m_smearedLepN{};
+  TLorentzVector m_smearedGamma{};
+  TLorentzVector m_smearedJpsi{};
+  TLorentzVector m_smearedChi{};
+  TLorentzVector m_halfSmearedChi{};
+
+
   // BRANCHES
   //
 
-  Long64_t event_id = 0;
+  Long64_t event_id{};
 
-  TLorentzVector *chi = nullptr;
-  TLorentzVector *dimuon = nullptr;
-  TLorentzVector *gamma = nullptr;
-  TLorentzVector* muPos = nullptr;
-  TLorentzVector* muNeg = nullptr;
+  TLorentzVector *chi{};
+  TLorentzVector *dimuon{};
+  TLorentzVector *gamma{};
+  TLorentzVector* muPos{};
+  TLorentzVector* muNeg{};
 
-  double costh_dimuon_in_chi_restframe = 0;
-  double phi_dimuon_in_chi_restframe = 0;
-  double costh_lepton_in_dimuon_restframe = 0;
-  double phi_lepton_in_dimuon_restframe = 0;
-  double costh_HX = 0;
-  double phi_HX = 0;
-  double costh_CS = 0;
-  double phi_CS = 0;
+  double costh_dimuon_in_chi_restframe{};
+  double phi_dimuon_in_chi_restframe{};
+  double costh_lepton_in_dimuon_restframe{};
+  double phi_lepton_in_dimuon_restframe{};
+  double costh_HX{};
+  double phi_HX{};
+  double costh_CS{};
+  double phi_CS{};
+  double costh_PX{};
+  double phi_PX{};
 
-  TLorentzVector* smearedLepP = nullptr;
-  TLorentzVector* smearedLepN = nullptr;
-  TLorentzVector* smearedGamma = nullptr;
-  TLorentzVector* smearedJpsi = nullptr;
-  TLorentzVector* smearedChi = nullptr;
-  TLorentzVector* halfSmearedChi = nullptr;
+  TLorentzVector* smearedLepP{};
+  TLorentzVector* smearedLepN{};
+  TLorentzVector* smearedGamma{};
+  TLorentzVector* smearedJpsi{};
+  TLorentzVector* smearedChi{};
+  TLorentzVector* halfSmearedChi{};
 
-  double costh_HX_sm = 0;
-  double phi_HX_sm = 0;
-  double costh_CS_sm = 0;
-  double phi_CS_sm = 0;
+  double costh_HX_sm{};
+  double phi_HX_sm{};
+  double costh_CS_sm{};
+  double phi_CS_sm{};
+  double costh_PX_sm{};
+  double phi_PX_sm{};
 
 
   // compatibility branches:
 
-  double pT_chi = 0;
-  double pT = 0;
-  double pL_chi = 0;
+  double pT_chi{};
+  double pT{};
+  double pL_chi{};
 
-  double y_chi = 0;
-  double y = 0;
-  double Mchi = 0;
-  double Mpsi = 0;
+  double y_chi{};
+  double y{};
+  double Mchi{};
+  double Mpsi{};
 
 
-  double pT_gamma = 0;
-  double pL_gamma = 0;
-  double y_gamma = 0;
-  double pT_lepP = 0;
-  double eta_lepP = 0;
-  double pT_lepN = 0;
-  double eta_lepN = 0;
+  double pT_gamma{};
+  double pL_gamma{};
+  double y_gamma{};
+  double pT_lepP{};
+  double eta_lepP{};
+  double pT_lepN{};
+  double eta_lepN{};
 
   // angle of psi direction in chic rest frame, wrt to chosen chic polarization axis
-  double cosTH_psi = 0;
+  double cosTH_psi{};
   // angles of dilepton direction in the psi rest frame, wrt the psi direction in the chic rest frame
   // (axis definitions as in Fig 1b of PRD 83, 096001 (2011))
-  double costh_chihe = 0;
-  double phi_chihe = 0;
+  double costh_chihe{};
+  double phi_chihe{};
   // psi decay angles in the helicity frame
-  double costh_he = 0;
-  double phi_he = 0;
+  double costh_he{};
+  double phi_he{};
   // psi decay angles in the CS frame
-  double costh_cs = 0;
-  double phi_cs = 0;
+  double costh_cs{};
+  double phi_cs{};
 
   // smeared variables with "_sm" postfix
-  double pT_chi_sm = 0;
-  double y_chi_sm = 0;
-  double M_chi_sm = 0;
-  double qM_chi_sm = 0;
-  double pT_gamma_sm = 0;
-  double y_gamma_sm = 0;
-  double eta_gamma_sm = 0;
-  double pT_jpsi_sm = 0;
-  double y_jpsi_sm = 0;
-  double M_jpsi_sm = 0;
-  double pT_lepP_sm = 0;
-  double eta_lepP_sm = 0;
-  double pT_lepN_sm = 0;
-  double eta_lepN_sm = 0;
-  double Mchic = 0;
+  double pT_chi_sm{};
+  double y_chi_sm{};
+  double M_chi_sm{};
+  double qM_chi_sm{};
+  double pT_gamma_sm{};
+  double y_gamma_sm{};
+  double eta_gamma_sm{};
+  double pT_jpsi_sm{};
+  double y_jpsi_sm{};
+  double M_jpsi_sm{};
+  double pT_lepP_sm{};
+  double eta_lepP_sm{};
+  double pT_lepN_sm{};
+  double eta_lepN_sm{};
+  double Mchic{};
 
   //TODO: Efficiency branches {lepP_eff_sm, lepN_eff_sm, gamma_eff_sm}
 
@@ -208,15 +239,17 @@ private:
 
   // Performance
   std::chrono::nanoseconds total_time_chigen{};
-  ULong64_t total_number_chigen = 0;
+  ULong64_t total_number_chigen{};
   std::chrono::nanoseconds total_time_dimuongen{};
-  ULong64_t total_number_dimuongen = 0;
+  ULong64_t total_number_dimuongen{};
   std::chrono::nanoseconds total_time_anglesgen{};
-  ULong64_t total_number_anglesgen = 0;
+  ULong64_t total_number_anglesgen{};
   std::chrono::nanoseconds total_time_smearing{};
-  ULong64_t total_number_smearing = 0;
+  ULong64_t total_number_smearing{};
   std::chrono::nanoseconds total_time_fillbranches{};
-  ULong64_t total_number_fillbranches = 0;
+  ULong64_t total_number_fillbranches{};
+  std::chrono::nanoseconds total_time_selection{};
+  ULong64_t total_number_selection{};
 
   void print_performance();
 
@@ -231,29 +264,6 @@ public:
     chi_mass = PdgMassChic[chi_state];
     dimuon_mass = PdgMassPsi;
 
-    rap_distr = new TF1("rap_distr", [](double* x, double* p) { return 1; }, min_rap, max_rap, 0);
-    //rap_distr->Npx(5000);
-
-    pT_distr = new TF1("pT_distr", [/*&mass=chi_mass.central*/](double* x, double* p) {
-      // The time consuming part is the SetParameter, that forces the integral to be updated for EACH event:
-      // https://root-forum.cern.ch/t/faster-update-for-tf1/20991
-
-      // beta: CHECK HERE FUNCTION AND PARAMETER VALUES: USE THOSE OF GLOBAL FIT (considering that this is a pT distribution, not a pT/M distribution)
-      constexpr double beta = 3.39924; // same as in MC generation from Alberto, (was 3.45)
-      constexpr double gamma = 0.635858; // same as in MC generation from Alberto, (was 0.73)
-      constexpr double A = 1. / (beta - 2.) / gamma;
-      const double pT_over_chimass = x[0]/p[0]; // pT = x[0], chimass = p[0]
-
-      return x[0] * pow(1. + A * pT_over_chimass*pT_over_chimass, -beta);
-    }, min_pT, max_pT, 1);
-    pT_distr->SetNpx(pT_distr_npx); // for performance reasons
-
-    // smearing function for photons (fit to MC + some tuning)
-    photonCrystalBall = new TF1("photonCrystalBall", "ROOT::Math::crystalball_pdf(x[0], [2], [3], [1], [0])", -1.5, 1.5);
-    photonCrystalBall->FixParameter(0, 0);
-    photonCrystalBall->FixParameter(1, 1.7e-2);
-    photonCrystalBall->FixParameter(2, 0.82); // alpha
-    photonCrystalBall->FixParameter(3, 1.9); // N
   }
 
   ~ChiPolarizationGenerator() {
@@ -295,8 +305,8 @@ public:
       std::cout << "WARNING: dimuon_mass width is zero" << std::endl;
       dimuon_width_is_zero = true;
     }
-
-  }
+}
+  void applySelections(bool apply = true) { apply_selections = apply; }
 
   void setKinematics(double pt_min, double pt_max, double absrap_min, double absrap_max) {
     if (pt_min < 0 || pt_max < pt_min || absrap_min < 0 || absrap_max < absrap_min) {

@@ -267,6 +267,7 @@ def do_chib_ratio(args):
     bin_sel_info = get_bin_sel_info(args.pklfile, args.fitfile)
     costh_bins = bin_sel_info['costh_bins']
     costh_means = bin_sel_info['costh_means']
+    frame = bin_sel_info['frame']
 
     yields = None
     with open(args.configfile, 'r') as f:
@@ -285,13 +286,10 @@ def do_chib_ratio(args):
 
     plot_sett = {
         'range': [0, 0, 1, 0.75],
-        'xtitle': '|cos#theta^{HX}|', 'ytitle': '#chi_{b2} / #chi_{b1}'
+        'xtitle': '|cos#theta^{'+frame+'}|', 'ytitle': 'Ratio #chi_{b2} / #chi_{b1}'
     }
-    ptmin = args.ptmin
-    ptmax = args.ptmax
 
-    plot_name = '{}/chib2_chib1_pt{}_{}_nbins{}_costh_HX.pdf'.format(outdir, ptmin, ptmax, len(costh_bins))
-    make_plot(graph, {}, plot_name, plot_sett)
+    make_plot(graph, {}, args.saveas, plot_sett)
 
 def do_chic_ratio(args):
     """
@@ -439,8 +437,8 @@ def add_chib_parser(parsers, baseparser):
                                default='config.json')
     chib_r_parser.add_argument('--graphoutfile', help='file to store produced TGraph',
                                default='')
-    chib_r_parser.add_argument('--ptmin', type=float)
-    chib_r_parser.add_argument('--ptmax', type=float)
+    chib_r_parser.add_argument('--saveas', help='file to save ratio plot')
+
     #chib_r_parser.add_argument('mcfile', help='mc file containing flat tuple '
     #                           'and all weights for the desired polarization '
     #                           'scenarios')

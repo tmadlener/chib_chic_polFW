@@ -193,6 +193,7 @@ void chicpolgen(const gen_config& config = gen_config{}){
   const auto jpsiSelector = std::make_unique<PtRangeAbsRapiditySelector>(Range{8, 20}, 1.20);
   const auto muonSelector = std::make_unique<LooseMuonSelector>();
   const auto photonSelector = std::make_unique<MinPtMaxEtaSelector>(0.41, 1.5);
+  bool apply_selections = false;
 
   // To accept all events without filters
   // const auto jpsiSelector = std::make_unique<AllSelector>();
@@ -584,7 +585,6 @@ void chicpolgen(const gen_config& config = gen_config{}){
 
   // 4-vector:
 
-    TLorentzVector chi;
     chi.SetXYZM( pT_chi * cos(Phi_chi) , pT_chi * sin(Phi_chi), pL_chi, Mchi );
     
 #ifdef TESTING
@@ -832,7 +832,8 @@ void chicpolgen(const gen_config& config = gen_config{}){
     const auto smearedChi = smearedJpsi + smearedGamma;
 
     // apply the selectors (as soon as possible in this case)
-    if (!(jpsiSelector->accept(smearedJpsi) &&
+    if (apply_selections &&
+        !(jpsiSelector->accept(smearedJpsi) &&
          muonSelector->accept(smearedLepP) && muonSelector->accept(smearedLepN) &&
          photonSelector->accept(smearedGamma))) {
       continue;

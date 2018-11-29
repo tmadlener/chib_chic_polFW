@@ -4,6 +4,7 @@
 #include <iomanip>
 #include <string>
 #include <sstream>
+#include <cmath>
 
 #include "Riostream.h"
 #include "TSystem.h"
@@ -29,14 +30,15 @@ template <typename T> int sgn(T val) {
 
 TLorentzVector* ChiPolarizationGenerator::generate_chi()
 {
+  // Generation of chi in the CMS of the proton-proton event
+
   addTime time(total_time_chigen);
   ++total_number_chigen;
-  // Generation of chi in the CMS of the proton-proton event
 
   // M:
   // generate the chi mass and the dimuon mass such that they are correlated similar to what they are in data:
   // 1) get the chi mass and the dimuon mass according to the fitted data distributions
-  // 2) in data the chi mass is actually the mass from the KVF but we assume that we can treat it as a Q-value
+  // 2) in data the chi mass is actually the mass from the kinematic vertex fit (KVF) but we assume that we can treat it as a Q-value
   //    (M_mumugamma - M_mumu + M_pdg_dimuon), so we reverse it to get to the chic mass we actually want to generate
 
   double tmp_chi_mass;
@@ -46,18 +48,13 @@ TLorentzVector* ChiPolarizationGenerator::generate_chi()
     tmp_dimuon_M = (dimuon_width_is_zero) ? dimuon_mass.central : gRandom->Gaus(dimuon_mass.central, dimuon_mass.width);
   }
   tmp_chi_M = tmp_chi_mass - dimuon_mass_pdg + tmp_dimuon_M;
-
-  //The following line is for compatibility reasons:
-  Mchic = tmp_chi_mass;
-  //
+  Mchic = tmp_chi_mass; // For compatibility reasons
 
   // pT
   double chi_pT;
   {
-    //stopwatch s("random pT");
-    pT_distr->SetParameter(0, tmp_chi_M);
-    chi_pT = pT_distr->GetRandom();
-
+    //stopwatch s("random pTM");
+    chi_pT = pTM_distr->GetRandom()*tmp_chi_M;
   }
 
   // Phi
@@ -66,7 +63,6 @@ TLorentzVector* ChiPolarizationGenerator::generate_chi()
     //stopwatch s("random chi");
     chi_phi = 2. * PI * gRandom->Rndm();
   }
-  TLorentzVector* chi = new TLorentzVector();
 
   double rnd_rap;
   {
@@ -74,19 +70,22 @@ TLorentzVector* ChiPolarizationGenerator::generate_chi()
     const int rnd_sign = sgn<>(gRandom->Uniform(-1., 1.));
     rnd_rap = rap_distr->GetRandom() * rnd_sign; // this value is also used as random eta
   }
+
 #if GENRAPIDITY == 1
   // pL
   double chi_pL = 0.5 * sqrt(tmp_chi_M*tmp_chi_M + chi_pT*chi_pT) * (exp(rnd_rap) - exp(-rnd_rap));
-  chi->SetXYZM(chi_pT * cos(chi_phi), chi_pT * sin(chi_phi), chi_pL, tmp_chi_M);
+  m_chi.SetXYZM(chi_pT * cos(chi_phi), chi_pT * sin(chi_phi), chi_pL, tmp_chi_M);
+  //chi->SetXYZM(chi_pT * cos(chi_phi), chi_pT * sin(chi_phi), chi_pL, tmp_chi_M);
 #else
-  chi->SetPtEtaPhiM(chi_pT, rnd_rap, chi_phi, tmp_chi_M);
+  m_chi.SetPtEtaPhiM(chi_pT, rnd_rap, chi_phi, tmp_chi_M);
+  //chi->SetPtEtaPhiM(chi_pT, rnd_rap, chi_phi, tmp_chi_M);
 #endif
 
 #ifdef TESTING
   std::cout << chi_pT << ", " << tmp_chi_mass << ", " << tmp_dimuon_M << ", " << tmp_chi_M << std::endl;
 #endif
 
-  return chi;
+  return &m_chi;
 }
 
 std::pair< Angles, Angles > ChiPolarizationGenerator::generate_dimuon_angles()
@@ -259,10 +258,10 @@ TLorentzVector* ChiPolarizationGenerator::generate_dimuon(TRotation *rot2xyz, TV
   tmp_dimuon_in_chiframe.Transform(*rot2xyz);
 
   // Dimuon in the proton-proton CM frame:
-  TLorentzVector *dimuon = new TLorentzVector(tmp_dimuon_in_chiframe);
-  dimuon->Boost(*boost2cm);
+  m_dimuon = tmp_dimuon_in_chiframe;
+  m_dimuon.Boost(*boost2cm);
 
-  return dimuon;
+  return &m_dimuon;
 }
 
 std::pair< TLorentzVector*, TLorentzVector*> ChiPolarizationGenerator::generate_leptons(TRotation *rot2xyz, TVector3* boost2cm, double cosTh, double phi)
@@ -281,13 +280,12 @@ std::pair< TLorentzVector*, TLorentzVector*> ChiPolarizationGenerator::generate_
   lepton_dimuon.Transform(*rot2xyz);
 
   // leptons in the laboratory frame
-  TLorentzVector* lepP = new TLorentzVector(lepton_dimuon);
-  lepP->Boost(*boost2cm);
-  TLorentzVector* lepN = new TLorentzVector(lepton_dimuon);
-  lepN->SetPxPyPzE(-lepton_dimuon.Px(), -lepton_dimuon.Py(), -lepton_dimuon.Pz(), lepton_dimuon.E());
-  lepN->Boost(*boost2cm);
+  m_muPos = lepton_dimuon;
+  m_muPos.Boost(*boost2cm);
+  m_muNeg.SetPxPyPzE(-lepton_dimuon.Px(), -lepton_dimuon.Py(), -lepton_dimuon.Pz(), lepton_dimuon.E());
+  m_muNeg.Boost(*boost2cm);
 
-  return{ lepP, lepN };
+  return{ &m_muPos, &m_muNeg };
 }
 
 TLorentzVector* ChiPolarizationGenerator::generate_gamma(TRotation *rot2xyz, TVector3* boost2cm, double cosTh, double phi)
@@ -296,20 +294,17 @@ TLorentzVector* ChiPolarizationGenerator::generate_gamma(TRotation *rot2xyz, TVe
   double p_gamma_chi = -0.5 * (tmp_chi_M * tmp_chi_M - tmp_dimuon_M * tmp_dimuon_M) / tmp_chi_M;
   double sinTh = sqrt(1 - cosTh*cosTh);
 
-  TLorentzVector gamma_chi;
-  gamma_chi.SetXYZM(p_gamma_chi * sinTh * cos(phi),
+  m_gamma.SetXYZM(p_gamma_chi * sinTh * cos(phi),
     p_gamma_chi * sinTh * sin(phi),
     p_gamma_chi * cosTh,
     0.);
 
-
-  gamma_chi.Transform(*rot2xyz);
+  m_gamma.Transform(*rot2xyz);
 
   // boost gamma from the chic rest frame into the proton-proton CM frame:
-  TLorentzVector *gamma = new TLorentzVector(gamma_chi);
-  gamma->Boost(*boost2cm);
+  m_gamma.Boost(*boost2cm);
 
-  return gamma;
+  return &m_gamma;
 }
 
 TRotation ChiPolarizationGenerator::get_rotation(const TLorentzVector &vec, bool for_lepton)
@@ -368,13 +363,13 @@ TRotation ChiPolarizationGenerator::get_rotation(const TLorentzVector &vec, bool
 void ChiPolarizationGenerator::generate(const ULong64_t nevents)
 {
   TFile f(outfilename.c_str(), "RECREATE");
-  auto t = new TTree("toy_mc", "toy_mc");
+  auto t = new TTree("toy_mc", "toy_mc"); // is owned by TFile
 
+  // Setup
   setup_branches(t);
-
+  setup_distributions(); // now all settings should be complete
   delete gRandom;
   gRandom = new TRandom3(rnd_seed); // important to use TRandom3
-
 
   event_id = 0;
 
@@ -404,6 +399,7 @@ void ChiPolarizationGenerator::generate(const ULong64_t nevents)
     dimuon = generate_dimuon(&chi_rotation, &chi_boost, costh_dimuon_in_chi_restframe, phi_dimuon_in_chi_restframe);
     gamma = generate_gamma(&chi_rotation, &chi_boost, costh_dimuon_in_chi_restframe, phi_dimuon_in_chi_restframe);
 
+
     auto dimuon_boost = dimuon->BoostVector();
     auto dimuon_rotation = get_rotation(*dimuon, true);
     auto leptons = generate_leptons(&dimuon_rotation, &dimuon_boost, costh_lepton_in_dimuon_restframe, phi_lepton_in_dimuon_restframe);
@@ -423,14 +419,25 @@ void ChiPolarizationGenerator::generate(const ULong64_t nevents)
       ++total_number_smearing;
       // obtaining smeared four-momenta for the muons and photons and 
       // calculating the smeared variables for the chi and dimuon from there
-      smearedLepP = new TLorentzVector(smearParticleGaus(*muPos, 0, 0.03));
-      smearedLepN = new TLorentzVector(smearParticleGaus(*muNeg, 0, 0.03));
-      smearedGamma = new TLorentzVector(smearParticleTF1(*gamma, photonCrystalBall));
+      m_smearedLepP = smearParticleGaus(*muPos, 0, 0.03);
+      m_smearedLepN = smearParticleGaus(*muNeg, 0, 0.03);
+      m_smearedGamma = smearParticleTF1(*gamma, photonCrystalBall.get());
 
-      smearedJpsi = new TLorentzVector((*smearedLepP) + (*smearedLepN));
-      smearedChi = new TLorentzVector((*smearedJpsi) + (*smearedGamma));
-      halfSmearedChi = new TLorentzVector((*smearedJpsi) + (*gamma));
+      m_smearedJpsi = m_smearedLepP + m_smearedLepN;
+      m_smearedChi = m_smearedJpsi + m_smearedGamma;
+      m_halfSmearedChi = m_smearedJpsi + (*gamma);
+
+      smearedLepP = &m_smearedLepP;
+      smearedLepN = &m_smearedLepN;
+      smearedGamma = &m_smearedGamma;
+      smearedJpsi = &m_smearedJpsi;
+      smearedChi = &m_smearedChi;
+      halfSmearedChi = &m_halfSmearedChi;
     }
+
+    // Selections
+    if (apply_selections && !accept_event(smearedChi, smearedJpsi, smearedLepP, smearedLepN, smearedGamma)) continue;
+    //
 
     // TODO: efficiencies
         //// add the desired efficiencies
@@ -447,24 +454,14 @@ void ChiPolarizationGenerator::generate(const ULong64_t nevents)
 
     fill_branches();
     t->Fill();
+    ++accepted_events;
+    
   }
-  t->Write();
+  t->Write(0, TObject::kWriteDelete);
   f.Close();
 
   std::cout << "FINISHED GENERATION\n"
-    "Written output to file " << outfilename << std::endl;
-
-  delete chi;
-  delete dimuon;
-  delete gamma;
-  delete muPos;
-  delete muNeg;
-  delete smearedLepP;
-  delete smearedLepN;
-  delete smearedGamma;
-  delete smearedJpsi;
-  delete smearedChi;
-  delete halfSmearedChi;
+    "Written " << accepted_events << " (of " << event_id << " generated) events to file " << outfilename << std::endl;
 }
 
 void ChiPolarizationGenerator::fill_branches()
@@ -479,6 +476,9 @@ void ChiPolarizationGenerator::fill_branches()
   auto angles_CS = calcAnglesInFrame(*muNeg, *muPos, RefFrame::CS);
   costh_CS = angles_CS.costh;
   phi_CS = angles_CS.phi;
+  auto angles_PX = calcAnglesInFrame(*muNeg, *muPos, RefFrame::PX);
+  costh_PX = angles_PX.costh;
+  phi_PX = angles_PX.phi;
 
   auto angles_sm_HX = calcAnglesInFrame(*smearedLepN, *smearedLepP, RefFrame::HX);
   costh_HX_sm = angles_sm_HX.costh;
@@ -486,6 +486,9 @@ void ChiPolarizationGenerator::fill_branches()
   auto angles_sm_CS = calcAnglesInFrame(*smearedLepN, *smearedLepP, RefFrame::CS);
   costh_CS_sm = angles_sm_CS.costh;
   phi_CS_sm = angles_sm_CS.phi;
+  auto angles_sm_PX = calcAnglesInFrame(*smearedLepN, *smearedLepP, RefFrame::PX);
+  costh_PX_sm = angles_sm_PX.costh;
+  phi_PX_sm = angles_sm_PX.phi;
 
   // compatibility branches
 
@@ -572,6 +575,8 @@ void ChiPolarizationGenerator::setup_branches(TTree *t)
   t->Branch("phi_HX", &phi_HX);
   t->Branch("costh_CS", &costh_CS);
   t->Branch("phi_CS", &phi_CS);
+  t->Branch("costh_PX", &costh_PX);
+  t->Branch("phi_PX", &phi_PX);
 
 #ifndef DONT_WRITE_LORENTZ
   t->Branch("smearedLepP", &smearedLepP);
@@ -586,6 +591,8 @@ void ChiPolarizationGenerator::setup_branches(TTree *t)
   t->Branch("phi_HX_sm", &phi_HX_sm);
   t->Branch("costh_CS_sm", &costh_CS_sm);
   t->Branch("phi_CS_sm", &phi_CS_sm);
+  t->Branch("costh_PX_sm", &costh_CS_sm);
+  t->Branch("phi_PX_sm", &phi_CS_sm);
 
   // compatibility branches:
 
@@ -668,15 +675,25 @@ void ChiPolarizationGenerator::print_settings()
     "width(chi) = " << chi_mass.width << "\n"
     "mass(dimuon) = " << dimuon_mass.central << "\n"
     "width(dimuon) = " << dimuon_mass.width << "\n"
-    "pdg_mass(dimuon) = " << dimuon_mass_pdg << "\n"
-    "Npx of pT_distr = " << pT_distr->GetNpx() << "\n"
-    "output file: " << outfilename << " (will be overwritten)\n"
+    "pdg_mass(dimuon) = " << dimuon_mass_pdg << "\n";
+  if (pTM_distr) ss << "Npx of pTM_distr = " << pTM_distr->GetNpx() << "\n";
+
+  if (apply_selections) {
+    ss << std::string(50, '-') << "\n"
+      "Selections:\n"
+      "\t- pT(gamma) > " << min_photon_pt << "\n"
+      "\t- |eta(gamma)| < " << max_photon_abseta << "\n"
+      "\t- " << min_dimuon_pt << " < pT(dimuon) < " << max_dimuon_pt << "\n"
+      "\t- " << min_abs_dimuon_rap << " < rapidity(dimuon) < " << max_abs_dimuon_rap << "\n"
+      "\t- loose muon selection " << (apply_loose_muon_selection ? "" : "NOT ") << "applied\n";
+  }
+  else ss << "No selections applied.\n";
+  ss << "output file: " << outfilename << " (will be overwritten)\n"
     << std::string(50, '-');
 
   std::cout << ss.rdbuf() << std::endl;
 
 }
-
 
 void ChiPolarizationGenerator::print_performance()
 {
@@ -692,7 +709,7 @@ void ChiPolarizationGenerator::print_performance()
     std::stringstream ss;
     std::stringstream stime;
     auto duration_ms = time.count() / 1.e6;
-    auto percentoftotaltime = double(total_time.count()) / time.count() * 100.;
+    auto percentoftotaltime = double(time.count()) / total_time.count() * 100.;
     unsigned long long mins = duration_ms / 1000. / 60.;
     unsigned long long secs = (duration_ms - mins * 1000 * 60) / 1000.;
     unsigned long long ms = (duration_ms - secs * 1000 - mins * 1000 * 60);
@@ -711,8 +728,70 @@ void ChiPolarizationGenerator::print_performance()
     << format("dimuon", total_time_dimuongen, total_number_dimuongen) << "\n"
     << format("angles", total_time_anglesgen, total_number_anglesgen) << "\n"
     << format("smearing", total_time_smearing, total_number_smearing) << "\n"
+    << format("selection", total_time_selection, total_number_selection) << "\n"
     << format("fillbranches", total_time_fillbranches, total_number_fillbranches) << "\n"
     << std::string(b * 5, '-') << "\n"
-    << format("total time", total_time, event_id) << "\n\n\n"
+    << format("total time", total_time, event_id) << "\n\n"
     << std::flush;
+}
+
+void ChiPolarizationGenerator::setup_distributions() {
+
+  // Usefull information from ROOT TF1::GetRandom() Documentation:
+  // The integral of the function is computed at fNpx points.
+  // If the function has sharp peaks, you should increase the number of points(SetNpx) 
+  // such that the peak is correctly tabulated at several points.) 
+
+
+  // Rapdity
+  rap_distr.reset(new TF1("rap_distr", [](double* x, double* p) { return 1; }, min_rap, max_rap, 0));
+
+
+  // pT over M 
+  pTM_distr.reset(new TF1("pTM_distr", [](double* x, double* p) {
+    constexpr double beta = 3.39924; // same as in MC generation from Alberto, (was 3.45)
+    constexpr double gamma = 0.635858; // same as in MC generation from Alberto, (was 0.73)
+    constexpr double A = 1. / (beta - 2.) / gamma;
+    const double pTM = x[0]; // pTM = x[0]
+    return pTM * pow(1. + A * pTM * pTM, -beta);
+  }, min_pT / chi_mass.central, max_pT / chi_mass.central, 0));
+
+
+  // Smearing function for photons (fit to MC + some tuning)
+  photonCrystalBall.reset(new TF1("photonCrystalBall",
+    "ROOT::Math::crystalball_pdf(x[0], [2], [3], [1], [0])", -1.5, 1.5));
+  photonCrystalBall->FixParameter(0, 0);
+  photonCrystalBall->FixParameter(1, 1.7e-2);
+  photonCrystalBall->FixParameter(2, 0.82); // alpha
+  photonCrystalBall->FixParameter(3, 1.9); // N
+
+}
+
+bool ChiPolarizationGenerator::accept_event(TLorentzVector* chi, TLorentzVector* dimuon, TLorentzVector* muPos, TLorentzVector* muNeg, TLorentzVector* gamma)
+{
+  addTime time(total_time_selection);
+  ++total_number_selection;
+
+  // photon pT
+  if (gamma->Pt() < min_photon_pt) return false;
+  if (abs(gamma->Eta()) > max_photon_abseta) return false;
+
+  // dimuon pT and rapidity
+  if (dimuon->Pt() < min_dimuon_pt || dimuon->Pt() > max_dimuon_pt) return false;
+  double abs_dimuon_rap = abs(dimuon->Rapidity());
+  if (abs_dimuon_rap < min_abs_dimuon_rap || abs_dimuon_rap > max_abs_dimuon_rap) return false;
+
+  // muon selection
+  if (apply_loose_muon_selection) {
+    // Loose muon selection: adapted from https://github.com/tmadlener/chib_chic_polFW/blob/master/toy_mc_generation/interface/select.h#L49-L60
+    // pT > 3.5 GeV, if |eta| < 1.2
+    // pT > 3.5 - (|eta| - 1.2) * 2.5 GeV, if 1.2 < |eta| < 1.6
+    for (auto mu : { muPos, muNeg }) {
+      const double mu_pT = mu->Pt();
+      const double abs_eta = abs(mu->Eta());
+      if ((abs_eta < 1.2 && mu_pT < 3.5) || (abs_eta > 1.2 && abs_eta < 1.6 && mu_pT < (6.5 - 2.5*abs_eta))) return false;
+    }
+  }
+
+  return true;
 }

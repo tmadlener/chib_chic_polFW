@@ -23,7 +23,7 @@ logging.basicConfig(level=logging.INFO,
 
 
 from utils.hist_utils import (
-    draw_var_to_hist, set_hist_opts, set_bins_to_zero
+    draw_var_to_hist, set_hist_opts, set_bins_to_zero,divide
 )
 from utils.data_handling import check_branch_available
 from utils.PlotServer import PlotServer
@@ -207,6 +207,7 @@ def main(args):
             tmpbins = json.load(jsonf)['costh_bins']
             binning = [b[0] for b in tmpbins]
             binning.append(tmpbins[-1][-1])
+            if binning[-1] < 1: binning.append(1) # last bin is empty, just added to have histogram from 0 to 1
             binning = np.array(binning).astype(np.float)
     print(binning)
         

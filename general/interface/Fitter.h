@@ -66,6 +66,9 @@ public:
     AddBinVariable(fitvariable_name, min, max);
   }
 
+  // if background is set it will be fitted alone first in the defined region
+  void SetBackground(const std::string & background_pdf_name, std::vector<std::pair<double, double> > background_fit_regions);
+
   void AddVariable(csr variable_name) {
     AddBinVariable(variable_name, 0, 0);
   }
@@ -84,6 +87,8 @@ public:
       m_roovar_borders.push_back({ min, max });
     }
   }
+  
+  void SetMaxIterations(int i) { if (i > 0 && i < 50) m_max_iterations = i; }
 
   void RemoveBinVariables(csr variable_name) {
     //TODO: implement
@@ -96,6 +101,8 @@ public:
 
   static const std::string dataset_name;
   static const std::string snapshot_name;
+  
+  std::string workspace_name() { return m_wsname; }
 
 
 
@@ -110,10 +117,13 @@ private:
   std::string m_in_dsname;
   std::string m_fitvarname;
   std::string m_modelname;
+  std::string m_bgname;
+  int m_max_iterations = 1;
 
   std::vector <std::string> m_roo_vars;
   std::vector < std::pair<double, double> > m_roovar_borders;
   std::vector <std::string> m_factory_strings;
+  std::vector <std::pair<double, double> > m_bgfitregions;
 
   RooDataSet get_dataset(TFile* f, bool *ok = nullptr);
   bool setup_workspace(RooWorkspace*, RooDataSet */*, bool *ok = nullptr*/);

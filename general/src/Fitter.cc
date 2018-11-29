@@ -88,13 +88,62 @@ void Fitter::Fit(int numCPUs, uint32_t fit_flags)
   {
     scopeLog log("Fitting");
     stopwatch watch("Fitting");
-    int print_level = 1;
+    int print_level = -1;
     if (FitFlag::SuppressOutput & fit_flags) print_level = -1;
     if (FitFlag::MaximumOutput & fit_flags) print_level = 3;
-    fit_results.reset(model->fitTo(ds, RooFit::NumCPU(numCPUs), RooFit::Minos(FitFlag::EnableMinos & fit_flags), RooFit::Save(true),
-      RooFit::Extended(FitFlag::ExtendedFit & fit_flags), RooFit::Warnings(FitFlag::SuppressWarnings & fit_flags), RooFit::PrintEvalErrors(1),
-      RooFit::PrintLevel(print_level)));
-    fit_results->Print();
+    RooLinkedList fit_settings;
+    fit_settings.Add(new RooCmdArg(RooFit::NumCPU(numCPUs)));
+    fit_settings.Add(new RooCmdArg(RooFit::Save(true)));
+    fit_settings.Add(new RooCmdArg(RooFit::Minos(FitFlag::EnableMinos & fit_flags)));
+    fit_settings.Add(new RooCmdArg(RooFit::Warnings(FitFlag::SuppressWarnings & fit_flags)));
+    fit_settings.Add(new RooCmdArg(RooFit::PrintEvalErrors(print_level)));
+    fit_settings.Add(new RooCmdArg(RooFit::PrintLevel(print_level)));
+    fit_settings.Add(new RooCmdArg(RooFit::Offset(true)));
+    fit_settings.Add(new RooCmdArg(RooFit::Minimizer("Minuit2", "minimize")));
+
+    if (!m_bgname.empty() && !m_bgfitregions.empty())
+    {
+      std::string ranges_string;
+      auto fitvar = ws->var(m_fitvarname.c_str());
+      auto bgpdf = ws->pdf(m_bgname.c_str());
+      int i = 0;
+      if (fitvar) {
+        for (auto &r : m_bgfitregions) {
+          ++i;
+          std::string range_string = "R" + std::to_string(i);
+          ranges_string += range_string + ",";
+          fitvar->setRange(range_string.c_str(), r.first, r.second);
+        }
+        ranges_string.pop_back();
+        auto bg_fitsettings = (RooLinkedList*)fit_settings.Clone("bgfit_settings");
+        bg_fitsettings->Add(new RooCmdArg(RooFit::Range(ranges_string.c_str())));
+        
+        std::cout << "Performing a background only fit first Ranges(" << ranges_string << ")." << std::endl;
+        auto bgresult = bgpdf->fitTo(ds, *bg_fitsettings);
+        std::cout << "Results of background only fit:\n";
+        bgresult->Print();
+        delete bgresult;
+      }
+    }
+    
+    // Add these settings after the background fit
+    fit_settings.Add(new RooCmdArg(RooFit::Extended(FitFlag::ExtendedFit & fit_flags)));
+
+    for (int i = 0; i < m_max_iterations; ++i) {
+      std::cout << "ITERATION " << i << std::endl;
+      std::cout << "Current values:\n";
+      auto vars = ws->allVars();
+      auto it = vars.createIterator();
+      TObject *var;
+      while ((var = it->Next())) {
+        auto v = dynamic_cast<RooRealVar*>(var);
+        if (!v) continue;
+        std::cout << v->GetName() << " = " << v->getValV() << std::endl;
+      }
+      fit_results.reset(model->fitTo(ds, fit_settings));
+      fit_results->Print();
+      if (fit_results->status() == 0) break;
+    }
   }
 
   //Save results:
@@ -228,4 +277,14 @@ bool Fitter::params_ok()
 
   std::cout << std::flush;
   return isOk;
+}
+
+
+void Fitter::SetBackground(const std::string & background_pdf_name, std::vector<std::pair<double, double> > background_fit_regions) {
+  if (background_fit_regions.empty()) {
+    std::cout << "You have to provide at least one region for the background to fit" << std::endl;
+    return;
+  }
+  m_bgname = background_pdf_name;
+  m_bgfitregions = background_fit_regions;
 }

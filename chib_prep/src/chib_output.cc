@@ -17,7 +17,7 @@ public:
     TreeMerger(sweight_file, input_file, sweight_tree, input_tree, outfile, "data", "EntryID") {}
 
   void SetYields(const std::vector<std::string> & yield_names) { m_yield_names = yield_names; }
-  void SetDoubleBranches(const std::vector<std::string> & double_branches_names) { m_double_branches_names = double_branches_names; } // Branches of other types has to be added 'manually'
+  void SetDoubleBranches(const std::vector<std::string> & double_branches_names) { m_double_branches_names = double_branches_names; } // Branches of other types has to be added manually
 
 private:
   std::vector<std::string> m_yield_names;
@@ -36,6 +36,13 @@ private:
       m_secondary_in_tree->SetBranchAddress(d.c_str(), &double_vars.back());
       m_out_tree->Branch(d.c_str(), &double_vars.back());
     }
+
+    m_secondary_in_tree->SetBranchAddress("EntryID_low", &low_ID);
+    m_secondary_in_tree->SetBranchAddress("EntryID_high", &high_ID);
+    m_secondary_in_tree->SetBranchAddress("EntryID", &entry_id);
+    m_out_tree->Branch("EntryID_low", &low_ID);
+    m_out_tree->Branch("EntryID_high", &high_ID);
+    m_out_tree->Branch("EntryID", &entry_id);
 
     // Setup sWeight branches
     yield_vars.reserve(m_yield_names.size() * 2);
@@ -69,6 +76,10 @@ private:
   Double_t cosTh_CS;
   Double_t phi_CS;
   Double_t cosAlpha;
+
+  Int_t low_ID;
+  Int_t high_ID;
+  Long64_t entry_id;
 
   std::vector<Double_t> yield_vars;
   std::vector<Double_t> double_vars;
@@ -157,8 +168,9 @@ int main(int argc, char **argv) {
 
   ChibSWeightMerger merger(inputfile, sweightfile, inputtree, sweighttree, outfile);
   merger.SetYields(yield_names);
-  merger.SetDoubleBranches({ "dimuon_mass", "dimuon_pt", "chi_mass_rf1S", "chi_pt_rf1S",
-    "costh_HX", "phi_HX", "costh_CS", "phi_CS", "costh_PX", "phi_PX", "cosalpha_HX" });
+  merger.SetDoubleBranches({ "dimuon_mass", "dimuon_pt","dimuon_rap", "chi_mass_rf1S", "chi_pt_rf1S","chi_rap_rf1S",
+    "pt_mupos", "eta_mupos", "pt_muneg", "eta_muneg", "photon_pT", "photon_eta", "photon_energy",
+    "costh_HX", "phi_HX", "costh_CS", "phi_CS", "costh_PX", "phi_PX", "cosalpha_HX", "dz", "probFit1S", "delta_phi" });
   merger.loop(nEvents, nThreads);
 
 }

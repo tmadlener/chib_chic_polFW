@@ -24,19 +24,21 @@ class RooFitResult;
 class RooAbsPdf;
 class RooWorkspace;
 class TTree;
+class TPad;
 
 class FitAnalyser {
 public:
   using csr = const std::string &;
 
   FitAnalyser(const Fitter &);
-  FitAnalyser(csr filename, csr model_name, csr fit_variable_name, csr workspace_name = "", csr dataset_name = "", csr snapshot_name = "");
+  FitAnalyser(csr filename, csr model_name, csr fit_variable_name, csr workspace_name = "", csr dataset_name = "", csr snapshot_name = "", csr fitresult_name = "");
 
   void SetWorkspaceName(csr workspace_name);
   void SetFitVariableName(csr variable_name) { m_fitvarname = variable_name; }
   void SetModelName(csr model_name) { m_modelname = model_name; }
   void SetSnapshotName(csr snapshot_name) { m_snapshotname = snapshot_name; }
   void SetDatasetName(csr dataset_name) { m_datasetname = dataset_name; }
+  void SetFitResultName(csr fitresult_name) { m_fitresultname = fitresult_name; }
 
   RooWorkspace *GetWorkspace(bool load_snapshot = false);
   RooDataSet *GetDataset(csr dataset_name = "");
@@ -45,11 +47,13 @@ public:
   RooAbsPdf *GetPdf(csr pdf_name = "");
   double GetVariableValue(csr variable_name, bool &ok);
   void PlotFitResult(csr output_file = "", const std::vector<double> & lines = std::vector<double>(), bool addResultBox = true, bool noTitle = false);
+  void CustomPlot1(csr output_file = "", int year = 2016, bool isdimuonfit = false, int data_bins=100, csr frame="HX");
   void CustomPlot(csr output_file = "");
   double EvaluateFormula(csr formula, bool &ok);
   double GetXForQuantile(csr pdf_name, double quantileq, bool &ok);
   //double GetIntegralValue(/*TODO: pdf_name, range*/);
   RooDataSet * AddSWeights(const std::vector<std::string> & yield_names);
+  void add_cms_lumi(TPad* pad, double lumi, std::string cmsExtraText = "work in progress", double TeV = 13);
 
 private:
   const std::string m_filename;
@@ -58,6 +62,7 @@ private:
   std::string m_datasetname = Fitter::dataset_name;
   std::string m_fitvarname;
   std::string m_modelname;
+  std::string m_fitresultname;
   RooWorkspace *m_workspace = nullptr;
 
   TFile* get_file();

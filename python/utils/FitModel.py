@@ -76,6 +76,9 @@ class FitModel(object):
         wsp.saveSnapshot('snap_{}'.format(savename), wsp.allVars())
         fit_results.SetName('fit_res_{}'.format(savename))
         ws_import(wsp, fit_results)
+        if add_cut:
+            fit_data.SetName('data_{}'.format(savename))
+            ws_import(wsp, fit_data)
 
 
     def plot(self, wsp, pdfname, snapname='', add_cut='', **kwargs):

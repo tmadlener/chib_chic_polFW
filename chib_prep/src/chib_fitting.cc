@@ -1,6 +1,7 @@
 #include "Fitter.h"
 #include "FitAnalyser.h"
 #include "ChiOrganizer.h"
+#include "utils.h"
 
 #include "ArgParser.h"
 
@@ -8,6 +9,7 @@
 #include "TUUID.h"
 #include "TTree.h"
 #include "RooDataSet.h"
+#include "RooRealVar.h"
 #include "TList.h"
 
 #include <map>
@@ -64,7 +66,7 @@ int main(int argc, char **argv) {
   auto c_inputdata = corg.GetConfigParam<std::string>("input_data_file", ok);
   if (!ok) return 1;
   auto c_inputtree = corg.GetConfigParam<std::string>("input_data_tree", "data");
-
+  
   // Additional cuts
   auto c_additional_cutvars = corg.GetVariableList("cut_variables");
   for (auto &c : c_additional_cutvars) std::cout << c.first << ": " << c.second.first << ", " << c.second.second << std::endl;
@@ -86,6 +88,9 @@ int main(int argc, char **argv) {
   if (!ok) return 1;
   auto c_dimuon_cut_formula_max = corg.GetConfigParam<std::string>(strvec{ "dimuon_cut_formula", "max" }, ok);
   if (!ok) return 1;
+  // Additional cuts before chi fit
+  auto c_additional_cutvars_chifit = corg.GetVariableList("chi_cut_variables");
+  for (auto &c : c_additional_cutvars_chifit) std::cout << c.first << ": " << c.second.first << ", " << c.second.second << std::endl;
 
   // Chi model specifications
   auto c_chi_modelname = corg.GetConfigParam<std::string>("chi_modelname", ok);
@@ -123,7 +128,7 @@ int main(int argc, char **argv) {
   std::string h_resultfilename = out_file_base + "_chifit1P1S_outputtree.root";
 
   std::string DataID;
-  {
+  if (file_exists(c_inputdata)) {
     TFile in(c_inputdata.c_str(), "read");
     if (!in.IsZombie()) {
       TNamed *id = nullptr;
@@ -136,7 +141,7 @@ int main(int argc, char **argv) {
   // Check if ID of data file changed, if yes force a refit
   bool data_FileID_changed = false;
 
-  if (!c_force_file_recreation) {
+  if (!c_force_file_recreation && file_exists(h_outputfile)) {
     TFile out(h_outputfile.c_str(), "read");
     if (!out.IsZombie()) {
       TNamed *id = nullptr;
@@ -154,77 +159,88 @@ int main(int argc, char **argv) {
   }
 
   // Dimuon fit
+    Fitter dimuon_fitter;
+    dimuon_fitter.SetInputData(c_inputdata, c_inputtree);
+    dimuon_fitter.SetOutfile(h_outputfile, c_force_file_recreation || data_FileID_changed);
+    dimuon_fitter.SetWorkspaceName(h_dimuonwsname, c_force_refit_dimuon);
+    dimuon_fitter.AddVariable(c_chi_fitvar);
 
-  Fitter dimuon_fitter;
-  dimuon_fitter.SetInputData(c_inputdata, c_inputtree);
-  dimuon_fitter.SetOutfile(h_outputfile, c_force_file_recreation || data_FileID_changed);
-  dimuon_fitter.SetWorkspaceName(h_dimuonwsname, c_force_refit_dimuon);
-  dimuon_fitter.AddVariable(c_chi_fitvar);
+    // Additional cuts
+    for (auto &cut : c_additional_cutvars) dimuon_fitter.AddBinVariable(cut.first, cut.second.first, cut.second.second);
 
-  // Additional cuts
-  for (auto &cut : c_additional_cutvars) dimuon_fitter.AddBinVariable(cut.first, cut.second.first, cut.second.second);
+    // Add variables for additional selection applied later for the chi_fit
+    for (auto &cut : c_additional_cutvars_chifit) dimuon_fitter.AddVariable(cut.first);
 
-  // Needed for later matching of weights to events:
-  dimuon_fitter.AddVariable("EntryID_low");
-  dimuon_fitter.AddVariable("EntryID_high");
+    // Needed for later matching of weights to events:
+    dimuon_fitter.AddVariable("EntryID_low");
+    dimuon_fitter.AddVariable("EntryID_high");
 
-  for (const auto &bin : p_binvars_min_max) {
-    const auto &bn = bin.first;
-    const auto &border = bin.second;
-    dimuon_fitter.AddBinVariable(bn, border.first, border.second);
-  }
+    for (const auto &bin : p_binvars_min_max) {
+      const auto &bn = bin.first;
+      const auto &border = bin.second;
+      dimuon_fitter.AddBinVariable(bn, border.first, border.second);
+    }
 
-  dimuon_fitter.SetModel(c_dimuon_model, c_dimuon_modelname, c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max);
-  dimuon_fitter.Fit(8, Fitter::EnableMinos);
+    dimuon_fitter.SetModel(c_dimuon_model, c_dimuon_modelname, c_dimuon_fitvar, c_dimuon_fitrange_min, c_dimuon_fitrange_max);
+    dimuon_fitter.Fit(8, (Fitter::EnableMinos | Fitter::SuppressOutput | Fitter::SuppressWarnings));
 
-  // Add input data DataID to workspace file
-  {
-    TFile f(h_outputfile.c_str(), "update");
-    TFile in(c_inputdata.c_str(), "read");
-    if (!f.IsZombie() && !in.IsZombie()) {
-      // Add file and tree names
-      TList file_list;
-      file_list.SetOwner(true);
-      file_list.Add(new TNamed("InputDataFile", c_inputdata));
-      file_list.Add(new TNamed("InputDataTree", c_inputtree));
-      file_list.Add(new TNamed("OutputDataFile", h_resultfilename));
-      file_list.Add(new TNamed("OutputDataTree", "data"));
-      TNamed *id = nullptr; in.GetObject("DataID", id);
-      file_list.Add(id);
-      f.cd();
-      file_list.Write(0, TObject::kWriteDelete);
-
-      // Add yield variable names
-      if (!c_sweight_yields.empty()) {
-        TList yield_list;
-        yield_list.SetOwner(true); // now the list is responsible for deleting its objects
-        yield_list.SetName("sWeight_yield_names");
-        for (auto &y : c_sweight_yields) yield_list.Add(new TObjString(y.c_str()));
+    // Add input data DataID to workspace file
+    {
+      TFile f(h_outputfile.c_str(), "update");
+      TFile in(c_inputdata.c_str(), "read");
+      if (!f.IsZombie() && !in.IsZombie()) {
+        // Add file and tree names
+        TList file_list;
+        file_list.SetOwner(true);
+        file_list.Add(new TNamed("InputDataFile", c_inputdata));
+        file_list.Add(new TNamed("InputDataTree", c_inputtree));
+        file_list.Add(new TNamed("OutputDataFile", h_resultfilename));
+        file_list.Add(new TNamed("OutputDataTree", "data"));
+        TNamed *id = nullptr; in.GetObject("DataID", id);
+        file_list.Add(id);
         f.cd();
-        yield_list.Write(0, TObject::kWriteDelete | TObject::kSingleKey);
+        file_list.Write(0, TObject::kWriteDelete);
+
+        // Add yield variable names
+        if (!c_sweight_yields.empty()) {
+          TList yield_list;
+          yield_list.SetOwner(true); // now the list is responsible for deleting its objects
+          yield_list.SetName("sWeight_yield_names");
+          for (auto &y : c_sweight_yields) yield_list.Add(new TObjString(y.c_str()));
+          f.cd();
+          yield_list.Write(0, TObject::kWriteDelete | TObject::kSingleKey);
+        }
       }
     }
-  }
 
-  std::pair<double, double> dimuon_cut{ 0,0 };
-  {
-    FitAnalyser dimuon_analyser(dimuon_fitter);
+    std::pair<double, double> dimuon_cut{ 0,0 };
+    {
+      FitAnalyser dimuon_analyser(dimuon_fitter);
 
-    std::string dimuon_plot_name(h_dimuonplotname);
-    bool okmin = false;
-    bool okmax = false;
+      std::string dimuon_plot_name(h_dimuonplotname);
+      bool okmin = false;
+      bool okmax = false;
 
-    dimuon_cut = { dimuon_analyser.EvaluateFormula(c_dimuon_cut_formula_min, okmin), dimuon_analyser.EvaluateFormula(c_dimuon_cut_formula_max, okmax) };
-    if (!okmin || !okmax) {
-      std::cout << "Problems evaluating dimuon mass cut for chi fit. \n\t"
-        << c_dimuon_cut_formula_min << "\n\t"
-        << c_dimuon_cut_formula_max << "\n"
-        << "NOT continuing with the chi fit." << std::endl;
-      return 1;
+      dimuon_cut = { dimuon_analyser.EvaluateFormula(c_dimuon_cut_formula_min, okmin), dimuon_analyser.EvaluateFormula(c_dimuon_cut_formula_max, okmax) };
+      if (!okmin || !okmax) {
+        std::cout << "Problems evaluating dimuon mass cut for chi fit. \n\t"
+          << c_dimuon_cut_formula_min << "\n\t"
+          << c_dimuon_cut_formula_max << "\n"
+          << "NOT continuing with the chi fit." << std::endl;
+        return 1;
+      }
+
+      dimuon_analyser.PlotFitResult(dimuon_plot_name, { dimuon_cut.first, dimuon_cut.second });
     }
-
-    dimuon_analyser.PlotFitResult(dimuon_plot_name, { dimuon_cut.first, dimuon_cut.second });
-  }
+    {
+      // Add dimuon cut variables to output file
+      TFile f(h_outputfile.c_str(), "update");
+      RooRealVar minvar("dimuon_cut_min", c_dimuon_cut_formula_min.c_str(), dimuon_cut.first);
+      RooRealVar maxvar("dimuon_cut_max", c_dimuon_cut_formula_max.c_str(), dimuon_cut.second);
+      f.cd();
+      minvar.Write(0, TObject::kWriteDelete | TObject::kSingleKey);
+      maxvar.Write(0, TObject::kWriteDelete | TObject::kSingleKey);
+    }
 
   // Chi fit
   Fitter chi_fitter;
@@ -243,14 +259,20 @@ int main(int argc, char **argv) {
   // Cut depending on nS of dimuon fit
   chi_fitter.AddBinVariable(c_dimuon_fitvar, dimuon_cut.first, dimuon_cut.second);
 
+  // Additional cuts for chi_fit
+  for (auto &cut : c_additional_cutvars_chifit) chi_fitter.AddBinVariable(cut.first, cut.second.first, cut.second.second);
+
 
   chi_fitter.SetModel(c_chi_model, c_chi_modelname, c_chi_fitvar, c_chi_fitrange_min, c_chi_fitrange_max);
   u_int32_t flag = Fitter::EnableMinos;
   if (c_extended_chi_fit) flag |= Fitter::ExtendedFit;
+
+  chi_fitter.SetBackground("background", { {9.7,9.8},{10,10.15} });
+  chi_fitter.SetMaxIterations(3);
+
   chi_fitter.Fit(8, flag);
 
   // Create output file with tree containing sWeights
-
   FitAnalyser chi_analyser(chi_fitter);
 
   std::string chi_plot_name(h_outputfile);

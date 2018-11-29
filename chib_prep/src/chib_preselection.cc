@@ -41,14 +41,15 @@ ChibPreselection::ChibPreselection(const std::vector<std::string>& infilenames, 
     AddBranchesToCopy({ "dz", "vProb" , "q_value", "conversionflag", "probFit1S", "rf1S_rank", "probFit2S", "rf2S_rank", "probFit3S", "rf3S_rank", "pi0rejected", "pi0_abs_mass", "numPrimaryVertices" });
 
     min_pt = 8;
-    m_trigminval = 0; // bei rerco hat das mit matching nicht funktioniert, 1 only matched else 0
+    m_trigminval = 0; // bei rereco hat das mit matching nicht funktioniert, 1 only matched else 0
     muonNname = "muonN_p4";
 
   }
 
   if (m_year == 2017) {
-    triggers.emplace_back("dimuon10ups_trigger");
-    triggers.emplace_back("dimuon12ups_trigger");
+    
+    triggers.emplace_back("dimuon10ups_trigger"); // for now only the dimuon10ups_trigger: contains only seagulls
+    //triggers.emplace_back("dimuon12ups_trigger"); //pt 12 trigger has tight muon cut, that would influence polarization
 
     AddBranchesToCopy(triggers);
 
@@ -76,19 +77,8 @@ bool ChibPreselection::fill_and_cut_variables()
   static thread_local auto & photon = get_branch<TLorentzVector*>("photon_p4");
 
   static thread_local auto & chi_rf1s = get_branch<TLorentzVector*>("rf1S_chi_p4");
-  //static thread_local auto & dimuon_rf1s = get_branch<TLorentzVector*>("rf1S_dimuon_p4");
-  //static thread_local auto & muPos_rf1s = get_branch<TLorentzVector*>("rf1S_muonP_p4");
-  //static thread_local auto & muNeg_rf1s = get_branch<TLorentzVector*>("rf1S_muonN_p4");
-
   static thread_local auto & chi_rf2s = get_branch<TLorentzVector*>("rf2S_chi_p4");
-  //static thread_local auto & dimuon_rf2s = get_branch<TLorentzVector*>("rf2S_dimuon_p4");
-  //static thread_local auto & muPos_rf2s = get_branch<TLorentzVector*>("rf2S_muonP_p4");
-  //static thread_local auto & muNeg_rf2s = get_branch<TLorentzVector*>("rf2S_muonN_p4");
-
   static thread_local auto & chi_rf3s = get_branch<TLorentzVector*>("rf3S_chi_p4");
-  //static thread_local auto & dimuon_rf3s = get_branch<TLorentzVector*>("rf3S_dimuon_p4");
-  //static thread_local auto & muPos_rf3s = get_branch<TLorentzVector*>("rf3S_muonP_p4");
-  //static thread_local auto & muNeg_rf3s = get_branch<TLorentzVector*>("rf3S_muonN_p4");
 
 
   static thread_local bool get_trigger = true;
@@ -102,11 +92,6 @@ bool ChibPreselection::fill_and_cut_variables()
     }
   }
 
-  // CUTS - TODO: LOGGING
-
-  //
-  // Dimuon Cuts
-  //
 
   // Trigger Cut
   bool trig_passed = false;
@@ -125,22 +110,13 @@ bool ChibPreselection::fill_and_cut_variables()
   // Rapidity
   if (dimuon->Rapidity() < -1.2 || dimuon->Rapidity() > 1.2) return false;
 
-  // Cowboys/Seagulls
 
   // Dimuon Vertex Probability  (vProb)
   if (m_year == 2016) {
     static thread_local auto & vProb = get_branch<double>("vProb");
     if (vProb < 0.01) return false;
   }
-
-  // Photon Eta, Rap
-
-  // Dz
-
-  //
-  // Chi cuts?
-  //
-
+  
 
   // NEW BRANCHES
 
@@ -232,6 +208,7 @@ void ChibPreselection::make_mu_things(std::vector<Double_t>& vars, TLorentzVecto
   const auto angles_cs = calcAnglesInFrame(*muNeg, *muPos, RefFrame::CS);
 
   vars.at(++id) = angles_hx.costh;
+  vars.at(++id) = abs(angles_hx.costh);
   vars.at(++id) = angles_hx.phi;
   vars.at(++id) = angles_hx.cosalpha;
 
@@ -276,6 +253,7 @@ void ChibPreselection::setup_collections(const std::string & varsuffix, std::vec
     // id == 5
 
     m_out_tree->Branch(("costh_HX" + varsuffix).c_str(), &vars.at(++id));
+    m_out_tree->Branch(("abs_costh_HX" + varsuffix).c_str(), &vars.at(++id));
     m_out_tree->Branch(("phi_HX" + varsuffix).c_str(), &vars.at(++id));
     m_out_tree->Branch(("cosalpha_HX" + varsuffix).c_str(), &vars.at(++id));
 
@@ -286,7 +264,7 @@ void ChibPreselection::setup_collections(const std::string & varsuffix, std::vec
     m_out_tree->Branch(("costh_CS" + varsuffix).c_str(), &vars.at(++id));
     m_out_tree->Branch(("phi_CS" + varsuffix).c_str(), &vars.at(++id));
     m_out_tree->Branch(("cosalpha_CS" + varsuffix).c_str(), &vars.at(++id));
-    // id == 14
+    // id == 15
     m_out_tree->Branch(("delta_phi" + varsuffix).c_str(), &vars.at(++id));
 
     m_out_tree->Branch(("eta_mupos" + varsuffix).c_str(), &vars.at(++id));
@@ -296,7 +274,7 @@ void ChibPreselection::setup_collections(const std::string & varsuffix, std::vec
     m_out_tree->Branch(("eta_muneg" + varsuffix).c_str(), &vars.at(++id));
     m_out_tree->Branch(("pt_muneg" + varsuffix).c_str(), &vars.at(++id));
     m_out_tree->Branch(("phi_muneg" + varsuffix).c_str(), &vars.at(++id));
-    // id == 21
+    // id == 22
   }
 }
 
@@ -307,6 +285,7 @@ void ChibPreselection::fill_photon_vars(std::vector<TLorentzVector*> photon_vecs
     photon_vars.at(++id) = vec->Rapidity();
     photon_vars.at(++id) = vec->Eta();
     photon_vars.at(++id) = vec->E();
+    photon_vars.at(++id) = vec->Pt();
   }
 }
 
@@ -322,15 +301,21 @@ void ChibPreselection::setup_photon_vars() // has to correspond to fill_photon_v
     m_out_tree->Branch(("photon_rap" + suf).c_str(), &photon_vars.at(++id));
     m_out_tree->Branch(("photon_eta" + suf).c_str(), &photon_vars.at(++id));
     m_out_tree->Branch(("photon_energy" + suf).c_str(), &photon_vars.at(++id));
+    m_out_tree->Branch(("photon_pT" + suf).c_str(), &photon_vars.at(++id));
   }
 }
 
 bool ChibPreselection::accept_muon(const TLorentzVector * mu)
 {
-  // TODO: rapidity dependent muon cut
+  // 2017: already at L1 4.5 GeV minimum muon pT required
+  if (m_year == 2017) return mu->Pt() > 4.5;
 
-  if (mu->Pt() < 3.) return false;
-  return true;
+  // Loose muon selection: adapted from https://github.com/tmadlener/chib_chic_polFW/blob/master/toy_mc_generation/interface/select.h#L49-L60
+  // pT > 3.5 GeV, if |eta| < 1.2
+  // pT > 3.5 - (|eta| - 1.2) * 2.5 GeV, if 1.2 < |eta| < 1.6
+  const double mu_pT = mu->Pt();
+  const double abs_eta = abs(mu->Eta());
+  return (abs_eta < 1.2 && mu_pT > 3.5) || (abs_eta > 1.2 && abs_eta < 1.6 && mu_pT > (6.5 - 2.5*abs_eta));
 }
 
 

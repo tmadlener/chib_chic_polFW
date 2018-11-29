@@ -314,7 +314,7 @@ def divide(num, denom, **kwargs):
 
     Keyword Args:
         name (str): If not empty this will be set as the name of the ratio TH1
-        [x|y]label (str): Labels for the x and y-axis.
+        [x|y]lab    el (str): Labels for the x and y-axis.
 
     Returns:
         ratio (ROOT.TH1): Ratio histogram obtained from cloning num and then

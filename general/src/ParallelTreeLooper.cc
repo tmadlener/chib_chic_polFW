@@ -173,13 +173,13 @@ long long ParallelTreeLooper::loop_multithreaded(long long nEvents, long long nT
     update_every = events_per_worker - 1;
   }
   
-  TUUID uuid;
+  std::string uid_ = TUUID().AsString();
   for (long long start = 0, end = events_per_worker, i = 0; i < nThreads; ++i, start = end, end += events_per_worker) {
     if (i == nThreads - 1) end = nEvents;
     counters.emplace_back(0);
     worker_filenames.emplace_back("");
     threads.emplace_back(&ParallelTreeLooper::worker, this, start, end, (int)i, std::ref(counters.back()),
-      std::ref(worker_filenames.back()), std::ref(cout_lock), std::ref(clone_lock), update_every, uuid.AsString());
+      std::ref(worker_filenames.back()), std::ref(cout_lock), std::ref(clone_lock), update_every, uid_);
   }
 
   //join all threads

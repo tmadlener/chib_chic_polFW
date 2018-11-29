@@ -33,13 +33,16 @@ def make_fit_res_plots(wsp, costh_bins, state, outdir, **kwargs):
         mass_model = ChibMassModel(kwargs.pop("configfile"))
     else:
         mass_model = JpsiMassModel('JpsiMass')
+        
+    frame=kwargs.pop("frame")
+    if frame is None: frame="HX"
 
     for i, ctbin in enumerate(costh_bins):
-        costh_cut = get_bin_cut_root('TMath::Abs(costh_HX)', *ctbin)
+        costh_cut = get_bin_cut_root('TMath::Abs(costh_{})'.format(frame), *ctbin)
         snapname = 'snap_costh_bin_{}'.format(i)
 
-        pdfname = '/'.join([outdir, 'mass_fit_{}_costh_bin_{}.pdf'
-                            .format(state, i)])
+        pdfname = '/'.join([outdir, 'mass_fit_{}_costh{}_bin_{}.pdf'
+                            .format(state, frame, i)])
 
         mass_model.plot(wsp, pdfname, snapname, costh_cut, **kwargs)
         mass_model.plot_fit_params(wsp, pdfname.replace('.pdf', '_fit_res.pdf'),
@@ -54,8 +57,8 @@ def make_fit_res_plots(wsp, costh_bins, state, outdir, **kwargs):
 
         if kwargs.get('refit', False):
             snapname = 'snap_refit_costh_bin_{}'.format(i)
-            pdfname = '/'.join([outdir, 'mass_fit_{}_costh_bin_{}_refit.pdf'
-                              .format(state, i)])
+            pdfname = '/'.join([outdir, 'mass_fit_{}_costh{}_bin_{}_refit.pdf'
+                              .format(state, frame, i)])
 
             mass_model.plot(wsp, pdfname, snapname, costh_cut, **kwargs)
             mass_model.plot_fit_params(wsp,
@@ -87,7 +90,7 @@ def main(args):
     make_fit_res_plots(ws, bin_sel_info['costh_bins'],
                        args.state, outdir, logy=args.logy,
                        configfile=args.configfile, ppars=args.print_pars,
-                       corr_matrix=args.corr_matrix, refit=args.refit)
+                       corr_matrix=args.corr_matrix, refit=args.refit, frame=bin_sel_info['frame'])
 
 
 if __name__ == '__main__':

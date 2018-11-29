@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.DEBUG,
 
 from utils.data_handling import get_dataframe
 from utils.misc_helpers import (
-    get_costh_binning, get_bin_means, cond_mkdir_file, get_bin_cut_root,
+    get_costh_binning, get_bin_means, cond_mkdir_file, cond_mkdir, get_bin_cut_root,
     chunks
 )
 from utils.roofit_utils import get_var, ws_import, get_args
@@ -24,7 +24,7 @@ from utils.jpsi_fitting import JpsiMassModel
 from utils.chib_fitting import ChibMassModel
 
 
-def get_ws_vars(state, massmodel=None):
+def get_ws_vars(state, massmodel=None, frame='HX'):
     """
     Get the workspace variables for the given state (jpsi or chic)
     """
@@ -36,14 +36,11 @@ def get_ws_vars(state, massmodel=None):
         'jpsi': [
             'JpsiMass[2.9, 3.25]', 'costh_HX[-1, 1]'
         ],
-        'chib' : [
-            'chi_mass_rf1S[9.7,10.15]', 'costh_HX[-1, 1]'
-        ],
     }
     if state == 'chib' and massmodel:
         return [
             '{}[{}, {}]'.format(massmodel.mname, massmodel.fitvarmin, massmodel.fitvarmax),
-            'costh_HX[-1, 1]'
+            'costh_{}[-1, 1]'.format(frame)
         ]
 
     return wsvars[state]
@@ -91,12 +88,12 @@ def import_data(wsp, datatree, datavars):
     ws_import(wsp, data)
 
 
-def do_binned_fits(mass_model, wsp, costh_bins, refit=False):
+def do_binned_fits(mass_model, wsp, costh_bins, refit=False,frame='HX'):
     """
     Do the fits in all costh bins
     """
     for ibin, ctbin in enumerate(costh_bins):
-        bin_sel = get_bin_cut_root('TMath::Abs(costh_HX)', *ctbin)
+        bin_sel = get_bin_cut_root('TMath::Abs(costh_{})'.format(frame), *ctbin)
         savename = 'costh_bin_{}'.format(ibin)
         mass_model.fit(wsp, savename, bin_sel)
         if refit:
@@ -111,7 +108,7 @@ def do_binned_fits(mass_model, wsp, costh_bins, refit=False):
 
 
 def create_bin_info_json(state, nbins, datafile, fitfile, bininfo_file=None,
-                         fixedbinning=[]):
+                         fixedbinning=[], frame='HX'):
     """
     Determine the costh binning and store the information into a json
     """
@@ -120,14 +117,16 @@ def create_bin_info_json(state, nbins, datafile, fitfile, bininfo_file=None,
 
     treename = 'chic_tuple' if state == 'chic' else 'data'
     dfr = get_dataframe(datafile, treename, columns=['costh_HX'])
-    dfr['costh_HX'].max()
+
     if fixedbinning and fixedbinning[-1]==-1: fixedbinning[-1]=dfr['costh_HX'].abs().max()
+    fixedbinning=zip(fixedbinning[:-1],fixedbinning[1:])
     costh_bins = get_costh_binning(dfr, nbins) if not fixedbinning else fixedbinning
     costh_means = get_bin_means(dfr, lambda d: d.costh_HX.abs(), costh_bins)
 
     bin_sel_info = {
         'costh_bins': costh_bins,
         'costh_means': costh_means,
+        'frame': frame
     }
     with open(bininfo_file, 'w') as info_file:
         json.dump(bin_sel_info, info_file, sort_keys=True, indent=2)
@@ -158,14 +157,14 @@ def rw_bin_sel_json(bininfo_file, datafile, updated_name=None):
     return costh_bins
 
 
-def run_fit(model, tree, costh_bins, datavars, outfile, refit=False):
+def run_fit(model, tree, costh_bins, datavars, outfile, refit=False, frame='HX'):
     """Import data, run fits and store the results"""
     wsp = r.RooWorkspace('ws_mass_fit')
     import_data(wsp, tree, datavars)
     model.define_model(wsp)
     wsp.Print()
 
-    do_binned_fits(model, wsp, costh_bins, refit)
+    do_binned_fits(model, wsp, costh_bins, refit,frame)
     wsp.writeToFile(outfile)
 
 
@@ -185,18 +184,21 @@ def run_chic_fit(args):
 
 
 def run_chib_fit(args):
+    import os
     """Setup everything and run the chic fits"""
     logging.info('Running chib fits')
-    cond_mkdir_file(args.outfile)
-    model = ChibMassModel(args.configfile)
-    fixedbinning=[] if not fixedbinning else [float(i) for i in args.fixedbinning.split(',')]
+    outpath=os.path.split(args.outfile)[0]
+    if not outpath: outpath='.'
+    cond_mkdir(outpath)
+    model = ChibMassModel(args.configfile, outpath)
+    fixedbinning = [] if not args.fixedbinning else [float(i) for i in args.fixedbinning.split(',')]
     costh_binning = create_bin_info_json('chib', args.nbins, args.datafile,
-                                         args.outfile, args.bin_info, fixedbinning)
+                                         args.outfile, args.bin_info, fixedbinning, args.frame)
 
-    dvars = get_ws_vars('chib', model)
+    dvars = get_ws_vars('chib', model, frame=args.frame)
     dataf = r.TFile.Open(args.datafile)
     tree = dataf.Get('data')
-    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit)
+    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit, args.frame)
 
 
 def run_jpsi_fit(args):
@@ -256,6 +258,7 @@ if __name__ == '__main__':
                              '(separated by commas, e.g. 0.1,0.2,0.4,-1), '
                              'if last bin equals -1, then the maximum costh value is taken',
                              type=str, default='')
+    chib_parser.add_argument('--frame', help='PX, CS or HX', default='HX')
     chib_parser.set_defaults(func=run_chib_fit)
 
     # Add the jpsi parser
