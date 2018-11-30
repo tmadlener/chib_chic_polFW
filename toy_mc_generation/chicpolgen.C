@@ -114,6 +114,9 @@ struct sel_config {
   bool muon_sel{false}; // apply the loose muon selection
   bool photon_sel{false}; // apply the photon selection
 
+  bool sampling{false}; // do an importance sampling of the generated events
+
+
   std::unique_ptr<Selector> getJpsiSelector() const {
     if (jpsi_sel) {
       if (psiRapMin == 0) {
@@ -141,6 +144,7 @@ struct sel_config {
   void print() const {
     std::cout << "==================================================\n";
     std::cout << "sel_config settings used for generation:\n"
+              << "importance sampling: " << sampling << "\n"
               << "apply loose muon selection: " << muon_sel << "\n"
               << "apply photon selection: " << photon_sel << "\n"
               << "apply J/psi selection: ";
@@ -215,7 +219,7 @@ void conditionalBranch(TTree* t, T& var, const char* branchName, const std::vect
 }
 
 
-const double PIG = TMath::Pi();
+constexpr double PIG = TMath::Pi();
 
 // tmadlener, 08.06.2018: no longer necessary setup for smearing according to MC distributions
 // constexpr auto residualMapFileName = "res_maps.root"; // The file containing the smearing maps for photons and muons
@@ -253,6 +257,18 @@ double func_pTM_gen(double* x, double*)
   const double gamma = 0.635858; // same as in MC generation from Alberto
   double pTM = x[0];
   return pTM * pow( 1. + 1./(beta - 2.) * pTM*pTM / gamma, -beta  );
+}
+
+/**
+ * Function used for sampling
+ * Currently an "inverted" Gaussian, i.e. 1 / Gauss(x), centered at 0
+ */
+double func_sampling_weight(double* x, double*)
+{
+  // constexpr double oversqrt2pi = 1 / std::sqrt(2 * M_PI);
+  constexpr double sigma = 0.5; // from some ad-hoc fits
+
+  return std::exp(0.5 * x[0]*x[0] / (sigma*sigma));
 }
 
 
@@ -455,6 +471,22 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 #endif
 
 
+  // sampling weight function, either a constant or whatever is described by func_sampling_weight
+  // NOTE: currently assuming that the sampling is done in costh only (i.e. fixed range to that)
+  // COULDDO: Make this more versatile
+  const TF1 samplingWeight = sel_config.sampling ? TF1("samplingWeight", func_sampling_weight, -1, 1, 0) : TF1("samplingWeight", "1", -1, 1);
+  const double max_sampling_kernel = samplingWeight.GetMaximum(-1, 1);
+
+
+  double w_sampling;
+  if (sel_config.sampling) {
+    // always store the sampling weight branch if sampling is enabled
+    conditionalBranch(tr, w_sampling, "w_sampling", store_config.storeBranches, true);
+  }
+
+
+
+
   if (!config.muonEffs.empty()) {
     // conditionalBranch(tr, lepP_eff, "lepP_eff", store_config.storeBranches, storeAllBranches);
     // conditionalBranch(tr, lepN_eff, "lepN_eff", store_config.storeBranches, storeAllBranches);
@@ -469,6 +501,7 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
   std::unordered_map<std::string, TH2D*> costhPhiHists;
   if (store_config.storeHists) {
+    costhPhiHists.reserve(18); // should be enough
     costhPhiHists.insert({"gen_HX", createHist("costh_phi_gen_HX", store_config.nBinsCosth, store_config.nBinsPhi)});
     costhPhiHists.insert({"gen_CS", createHist("costh_phi_gen_CS", store_config.nBinsCosth, store_config.nBinsPhi)});
     costhPhiHists.insert({"gen_PX", createHist("costh_phi_gen_PX", store_config.nBinsCosth, store_config.nBinsPhi)});
@@ -481,6 +514,22 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
       costhPhiHists.insert({"reco_HX", createHist("costh_phi_reco_HX", store_config.nBinsCosth, store_config.nBinsPhi)});
       costhPhiHists.insert({"reco_CS", createHist("costh_phi_reco_CS", store_config.nBinsCosth, store_config.nBinsPhi)});
       costhPhiHists.insert({"reco_PX", createHist("costh_phi_reco_PX", store_config.nBinsCosth, store_config.nBinsPhi)});
+    }
+
+
+    // add copies of the histograms that are created without the importance sampling
+    if (sel_config.sampling) {
+      std::vector<std::pair<std::string, TH2D*>> unweightHists;
+      unweightHists.reserve(9);
+      for (const auto& hist : costhPhiHists) {
+        const std::string key = "noweight_" + hist.first;
+        const std::string name = "noweight_" + std::string(hist.second->GetName());
+        unweightHists.push_back({key, createHist(name, store_config.nBinsCosth, store_config.nBinsPhi)});
+      }
+
+      for (const auto& hist : unweightHists) {
+        costhPhiHists.insert(hist);
+      }
     }
   }
 
@@ -751,7 +800,6 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
          if (angdistr > angdistr_max) { std::cout << "PASSED LIMIT" << std::endl; }
 
-         angdistr_rnd = angdistr_max * gRandom->Rndm();
 
 
 
@@ -961,6 +1009,12 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     lepN.SetPxPyPzE(-lepton_psi.Px(),-lepton_psi.Py(),-lepton_psi.Pz(),lepton_psi.E());
     lepN.Boost(psi_to_cm);
 
+    w_sampling = samplingWeight.Eval(costh_he);
+    angdistr *= w_sampling;
+
+
+    angdistr_rnd = angdistr_max * max_sampling_kernel * gRandom->Rndm();
+
     } while ( angdistr_rnd > angdistr );
 #if TIMING_INSTRUMENTATION == 1
     const auto endGen = chr::high_resolution_clock::now();
@@ -1051,11 +1105,15 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     costh_PX_sm = angles_PX.costh;
     phi_PX_sm = angles_PX.phi;
 
-    // fill the gen level histograms (i.e. without cuts on muons and photons)
     if (store_config.storeHists) {
-      costhPhiHists["gen_HX"]->Fill(costh_HX_sm, phi_HX_sm);
-      costhPhiHists["gen_CS"]->Fill(costh_CS_sm, phi_CS_sm);
-      costhPhiHists["gen_PX"]->Fill(costh_PX_sm, phi_PX_sm);
+      costhPhiHists["gen_HX"]->Fill(costh_HX_sm, phi_HX_sm, 1 / w_sampling);
+      costhPhiHists["gen_CS"]->Fill(costh_CS_sm, phi_CS_sm, 1 / w_sampling);
+      costhPhiHists["gen_PX"]->Fill(costh_PX_sm, phi_PX_sm, 1 / w_sampling);
+      if (sel_config.sampling) {
+        costhPhiHists["noweight_gen_HX"]->Fill(costh_HX_sm, phi_HX_sm);
+        costhPhiHists["noweight_gen_CS"]->Fill(costh_CS_sm, phi_CS_sm);
+        costhPhiHists["noweight_gen_PX"]->Fill(costh_PX_sm, phi_PX_sm);
+      }
     }
 
     // Now we can decide if we want to do the last few calculations as well or if we skip them, depending on the muon and photon selection
@@ -1065,10 +1123,17 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
     // If we are still here than fill the histograms
     if (store_config.storeHists) {
-      costhPhiHists["acc_HX"]->Fill(costh_HX_sm, phi_HX_sm);
-      costhPhiHists["acc_CS"]->Fill(costh_CS_sm, phi_CS_sm);
-      costhPhiHists["acc_PX"]->Fill(costh_PX_sm, phi_PX_sm);
+      costhPhiHists["acc_HX"]->Fill(costh_HX_sm, phi_HX_sm, 1 / w_sampling);
+      costhPhiHists["acc_CS"]->Fill(costh_CS_sm, phi_CS_sm, 1 / w_sampling);
+      costhPhiHists["acc_PX"]->Fill(costh_PX_sm, phi_PX_sm, 1 / w_sampling);
+
+      if (sel_config.sampling) {
+        costhPhiHists["noweight_acc_HX"]->Fill(costh_HX_sm, phi_HX_sm);
+        costhPhiHists["noweight_acc_CS"]->Fill(costh_CS_sm, phi_CS_sm);
+        costhPhiHists["noweight_acc_PX"]->Fill(costh_PX_sm, phi_PX_sm);
+      }
     }
+
 
     const auto Angles_HX = calcAnglesInFrame(smearedJpsi, smearedGamma, RefFrame::HX);
     cosTH_HX_sm = Angles_HX.costh;
@@ -1095,9 +1160,16 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
       // calculate the weight using and discard all events where one of the weights is below 0 (i.e. not determined)
       const double eff_weight = (lepP_eff_sm > 0) * lepP_eff_sm *\
         (lepN_eff_sm > 0) * lepN_eff_sm * (gamma_eff_sm > 0) * 0.01 * gamma_eff_sm;
-      costhPhiHists["reco_HX"]->Fill(costh_HX_sm, phi_HX_sm, eff_weight);
-      costhPhiHists["reco_CS"]->Fill(costh_CS_sm, phi_CS_sm, eff_weight);
-      costhPhiHists["reco_PX"]->Fill(costh_PX_sm, phi_PX_sm, eff_weight);
+
+      costhPhiHists["reco_HX"]->Fill(costh_HX_sm, phi_HX_sm, eff_weight / w_sampling);
+      costhPhiHists["reco_CS"]->Fill(costh_CS_sm, phi_CS_sm, eff_weight / w_sampling);
+      costhPhiHists["reco_PX"]->Fill(costh_PX_sm, phi_PX_sm, eff_weight / w_sampling);
+
+      if (sel_config.sampling) {
+        costhPhiHists["noweight_reco_HX"]->Fill(costh_HX_sm, phi_HX_sm, eff_weight);
+        costhPhiHists["noweight_reco_CS"]->Fill(costh_CS_sm, phi_CS_sm, eff_weight);
+        costhPhiHists["noweight_reco_PX"]->Fill(costh_PX_sm, phi_PX_sm, eff_weight);
+      }
     }
 
 

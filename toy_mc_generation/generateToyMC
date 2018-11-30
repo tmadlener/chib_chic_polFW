@@ -45,6 +45,10 @@ JPSI_MAXPT=20
 JPSI_MAXRAP=1.2
 JPSI_MINRAP=0 # min ABSOLUTE rapidity for selection
 
+# Do an importance sampling using the costh dimension using the function that is specified in chicpolgen.C
+# (in func_sampling_weight)
+SAMPLING=true
+
 # muon (loose) and photon selection
 # NOTE: If you only want to store costh phi histograms to determine correction maps from them make sure to enable these selections
 MUON_SEL=true
@@ -80,7 +84,7 @@ function persist_settings() {
 
     persist_vars=(NEVENTS NACCEPT N_JOBS MUON_EFFS PHOTON_EFFS USE_CS_FRAME STORE_ONLY_ANGLES STORE_EFFS\
                           GEN_DISTS RM_SOURCE JPSI_SEL JPSI_MINPT JPSI_MAXPT JPSI_MAXRAP MUON_SEL PHOTON_SEL\
-                          CHIC1_GENPTRANGE CHIC2_GENPTRANGE ADD_ARGS STORE_ONLY_HISTS)
+                          CHIC1_GENPTRANGE CHIC2_GENPTRANGE ADD_ARGS STORE_ONLY_HISTS SAMPLING)
     persist_arrays=(CHIC1_HELICITIES CHIC2_HELICITIES)
 
     for var in ${persist_vars[@]}; do print_var ${var} >> ${outfile}; done
@@ -92,7 +96,7 @@ function persist_settings() {
 mkdir -p ${OUTBASEDIR}
 persist_settings ${OUTBASEDIR}
 
-ADD_ARGS=${ADD_ARGS}"--muonSel "${MUON_SEL}" --photonSel "${PHOTON_SEL}" --jpsiSel "${JPSI_SEL}
+ADD_ARGS=${ADD_ARGS}"--muonSel "${MUON_SEL}" --photonSel "${PHOTON_SEL}" --jpsiSel "${JPSI_SEL}" --sampling "${SAMPLING}
 if [[ ${GEN_DISTS} -eq 1 ]]; then
     ADD_ARGS=${ADD_ARGS}" --create-dists"
 
