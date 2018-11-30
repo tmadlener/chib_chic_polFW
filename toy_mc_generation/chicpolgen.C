@@ -444,10 +444,8 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
 
 #if TIMING_INSTRUMENTATION == 1
-  int t_gen; // time in ns spent in generation
+  int t_gen; // time in ns spent in generation (including decay)
   conditionalBranch(tr, t_gen, "t_gen", store_config.storeBranches, storeAllBranches);
-  int t_dec; // time in ns spent in decay
-  conditionalBranch(tr, t_dec, "t_dec", store_config.storeBranches, storeAllBranches);
   int n_gen; // number of times the generation has to be repeated in order for an event to be accepted
   conditionalBranch(tr, n_gen, "n_gen", store_config.storeBranches, storeAllBranches);
   int t_smear; // time in ns spent in smearing
@@ -592,6 +590,9 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     const auto startGen = chr::high_resolution_clock::now();
     n_gen = 0;
 #endif
+
+    // have to declare some TLorentzVectors that are used outside of the generation loop as "quasi-globals" here
+    TLorentzVector psi, gamma, lepP, lepN;
 
     do {
 #if TIMING_INSTRUMENTATION == 1
@@ -752,12 +753,8 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
          angdistr_rnd = angdistr_max * gRandom->Rndm();
 
-    } while ( angdistr_rnd > angdistr );
 
 
-#if TIMING_INSTRUMENTATION == 1
-    const auto endGen = chr::high_resolution_clock::now();
-#endif
 
  // psi 4-momentum in the chi rest frame, wrt the chosen chi_c polarization axes:
 
@@ -828,8 +825,7 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
 
  // boost psi from the chic rest frame into the proton-proton CM frame:
-
-    TLorentzVector psi = psi_chi;
+    psi = psi_chi;
     psi.Boost(chi_to_cm);
 
 
@@ -841,8 +837,7 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
 
  // boost gamma from the chic rest frame into the proton-proton CM frame:
-
-    TLorentzVector gamma = gamma_chi;
+    gamma = gamma_chi;
     gamma.Boost(chi_to_cm);
 
 
@@ -960,20 +955,25 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
   // leptons in the laboratory: using the above-defined
   // TVector3 psi_to_cm = psi.BoostVector();
 
-    TLorentzVector lepP = lepton_psi;
+    lepP = lepton_psi;
     lepP.Boost(psi_to_cm);
-    pT_lepP = lepP.Perp();
-    eta_lepP = lepP.PseudoRapidity();
 
-    TLorentzVector lepN;
     lepN.SetPxPyPzE(-lepton_psi.Px(),-lepton_psi.Py(),-lepton_psi.Pz(),lepton_psi.E());
     lepN.Boost(psi_to_cm);
+
+    } while ( angdistr_rnd > angdistr );
+#if TIMING_INSTRUMENTATION == 1
+    const auto endGen = chr::high_resolution_clock::now();
+#endif
+
+
+
     pT_lepN = lepN.Perp();
     eta_lepN = lepN.PseudoRapidity();
 
-#if TIMING_INSTRUMENTATION == 1
-    const auto endDec = chr::high_resolution_clock::now();
-#endif
+
+    pT_lepP = lepP.Perp();
+    eta_lepP = lepP.PseudoRapidity();
 
 
   // accepted events:
@@ -1105,8 +1105,7 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 #if TIMING_INSTRUMENTATION == 1
     const auto endEff = chr::high_resolution_clock::now();
     t_gen = chr::duration_cast<chr::nanoseconds>(endGen - startGen).count();
-    t_dec = chr::duration_cast<chr::nanoseconds>(endDec - endGen).count();
-    t_smear = chr::duration_cast<chr::nanoseconds>(endSmear - endDec).count();
+    t_smear = chr::duration_cast<chr::nanoseconds>(endSmear - endGen).count();
     t_eff = chr::duration_cast<chr::nanoseconds>(endEff - endSmear).count();
 #endif
 
