@@ -324,7 +324,7 @@ def divide(num, denom, **kwargs):
         ratio (ROOT.TH1): Ratio histogram obtained from cloning num and then
             dividing it by denom
     """
-    ratio = num.Clone(kwargs.pop('name', ''))
+    ratio = num.Clone(kwargs.pop('name', create_random_str(8)))
     ratio.Divide(denom)
 
     set_labels(ratio, kwargs.pop('xlabel', ''), kwargs.pop('ylabel', ''))
