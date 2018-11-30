@@ -286,16 +286,16 @@ private:
   // costh values where the kernel switches to the next value of the kernelVals
   // below the first number it will use the first kernel value, between the two numbers it will use the second kernel value
   // before switching to the third kernel value above the second number
-  std::array<std::array<double, 2>, 8> costhBinning{{
-      {0.1, 0.2}, // below 8
-      {0.1, 0.25}, // 8 - 10
-      {0.15, 0.3}, // 10 - 12
-      {0.2, 0.4}, // 12 - 14
-      {0.3, 0.45}, // 14 - 16
-      {0.4, 0.55},  // 16 - 20
-      {0.4, 0.55} // above 20
+  std::array<std::array<double, 3>, 8> costhBinning{{
+      {0.1, 0.2, 0.65}, // below 8
+      {0.1, 0.25, 0.7}, // 8 - 10
+      {0.15, 0.3, 0.8}, // 10 - 12
+      {0.2, 0.4, 0.85}, // 12 - 14
+      {0.3, 0.45, 0.9}, // 14 - 16
+      {0.4, 0.55, 0.95},  // 16 - 20
+      {0.4, 0.55, 0.975} // above 20
   }};
-  std::array<double, 3> kernelVals{{0.05, 0.8, 0.9}};
+  std::array<double, 4> kernelVals{{0.02, 0.9, 0.95, 0.1}};
 };
 
 
@@ -1051,7 +1051,6 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
     w_sampling = samplingWeight.Eval(costh_he, pT);
     angdistr *= w_sampling;
-
 
     angdistr_rnd = angdistr_max * max_sampling_kernel * gRandom->Rndm();
 
