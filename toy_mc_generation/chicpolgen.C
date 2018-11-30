@@ -27,6 +27,13 @@
 #define GENRAPIDITY 1 // set to zero to generate the chic eta instead of the chic rapidity
 #define GENPTM 1 // set to zero to generate the pT/M distribution instead of pT
 
+#define TIMING_INSTRUMENTATION 0 // set to 0 if you do not want some basic profiling information
+
+#if TIMING_INSTRUMENTATION == 1
+#include <chrono>
+namespace chr = std::chrono;
+#endif
+
 
 /** * Configuration and settings for the generation
  *
@@ -161,9 +168,9 @@ struct store_config {
     }
     std::cout << "\nstore histograms: " << storeHists;
     if (storeHists) {
-      std::cout << "bins in costh: " << nBinsCosth << ", bins in phi: " << nBinsPhi << "\n";
+      std::cout << "bins in costh: " << nBinsCosth << ", bins in phi: " << nBinsPhi;
     }
-    std::cout << "++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
+    std::cout << "\n++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
   }
 };
 
@@ -435,6 +442,21 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
   // double gamma_eff;
   double gamma_eff_sm;
 
+
+#if TIMING_INSTRUMENTATION == 1
+  int t_gen; // time in ns spent in generation
+  conditionalBranch(tr, t_gen, "t_gen", store_config.storeBranches, storeAllBranches);
+  int t_dec; // time in ns spent in decay
+  conditionalBranch(tr, t_dec, "t_dec", store_config.storeBranches, storeAllBranches);
+  int n_gen; // number of times the generation has to be repeated in order for an event to be accepted
+  conditionalBranch(tr, n_gen, "n_gen", store_config.storeBranches, storeAllBranches);
+  int t_smear; // time in ns spent in smearing
+  conditionalBranch(tr, t_smear, "t_smear", store_config.storeBranches, storeAllBranches);
+  int t_eff; // time in ns spent after smearing (up unto filling of TTree). Includes evaluation of effs and filling of histograms (if applicable)
+  conditionalBranch(tr, t_eff, "t_eff", store_config.storeBranches, storeAllBranches);
+#endif
+
+
   if (!config.muonEffs.empty()) {
     // conditionalBranch(tr, lepP_eff, "lepP_eff", store_config.storeBranches, storeAllBranches);
     // conditionalBranch(tr, lepN_eff, "lepN_eff", store_config.storeBranches, storeAllBranches);
@@ -566,7 +588,16 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     double cosphi_chihe = 100.;
 
 
+#if TIMING_INSTRUMENTATION == 1
+    const auto startGen = chr::high_resolution_clock::now();
+    n_gen = 0;
+#endif
+
     do {
+#if TIMING_INSTRUMENTATION == 1
+      n_gen++;
+#endif
+
          cosTH_psi = -1. + 2. * gRandom->Rndm();
               // direction of the PSI in the CHI rest frame (wrt to a reference frame, HE or CS, chosen afterwards)
               // PHI_psi is the second coordinate, generated outside the loop
@@ -724,6 +755,9 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     } while ( angdistr_rnd > angdistr );
 
 
+#if TIMING_INSTRUMENTATION == 1
+    const auto endGen = chr::high_resolution_clock::now();
+#endif
 
  // psi 4-momentum in the chi rest frame, wrt the chosen chi_c polarization axes:
 
@@ -923,8 +957,6 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     phi_he = lepton_psi_rotated.Phi() * 180. / PIG;
     // if ( phi_he < 0. ) phi_he = 360. + phi_he;
 
-
-
   // leptons in the laboratory: using the above-defined
   // TVector3 psi_to_cm = psi.BoostVector();
 
@@ -938,6 +970,10 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     lepN.Boost(psi_to_cm);
     pT_lepN = lepN.Perp();
     eta_lepN = lepN.PseudoRapidity();
+
+#if TIMING_INSTRUMENTATION == 1
+    const auto endDec = chr::high_resolution_clock::now();
+#endif
 
 
   // accepted events:
@@ -956,6 +992,9 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     const auto smearedJpsi = smearedLepP + smearedLepN;
     const auto smearedChi = smearedJpsi + smearedGamma;
 
+#if TIMING_INSTRUMENTATION == 1
+    const auto endSmear = chr::high_resolution_clock::now();
+#endif
 
     // // apply the selectors (as soon as possible in this case)
     // if (!(jpsiSelector->accept(smearedJpsi) &&
@@ -1060,6 +1099,16 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
       costhPhiHists["reco_CS"]->Fill(costh_CS_sm, phi_CS_sm, eff_weight);
       costhPhiHists["reco_PX"]->Fill(costh_PX_sm, phi_PX_sm, eff_weight);
     }
+
+
+
+#if TIMING_INSTRUMENTATION == 1
+    const auto endEff = chr::high_resolution_clock::now();
+    t_gen = chr::duration_cast<chr::nanoseconds>(endGen - startGen).count();
+    t_dec = chr::duration_cast<chr::nanoseconds>(endDec - endGen).count();
+    t_smear = chr::duration_cast<chr::nanoseconds>(endSmear - endDec).count();
+    t_eff = chr::duration_cast<chr::nanoseconds>(endEff - endSmear).count();
+#endif
 
     if(tr) tr->Fill();
     accepted++;
