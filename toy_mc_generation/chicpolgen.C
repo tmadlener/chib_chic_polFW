@@ -23,6 +23,7 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <array>
 
 #define GENRAPIDITY 1 // set to zero to generate the chic eta instead of the chic rapidity
 #define GENPTM 1 // set to zero to generate the pT/M distribution instead of pT
@@ -259,6 +260,45 @@ double func_pTM_gen(double* x, double*)
   return pTM * pow( 1. + 1./(beta - 2.) * pTM*pTM / gamma, -beta  );
 }
 
+
+/** struct for doing a "stepwise" sampling of the |costh| range in bins of pt */
+struct StepSamplingKernel {
+  double operator()(double* x, double*) {
+    const size_t ptbin = findBin(x[1], ptBinning);
+    const size_t cbin = findBin(std::abs(x[0]), costhBinning[ptbin]);
+    // std::cout << "pt = " << x[1] << " -> bin " << ptbin << ". costh = " << std::abs(x[0]) << " -> bin " << cbin << ". kernelval = " << kernelVals[cbin] << "\n";
+    return kernelVals[cbin];
+  }
+
+private:
+  template<typename A>
+  size_t findBin(double val, const A& binning) const {
+    size_t bin = 0;
+    for (const auto v : binning) {
+      if (v > val) break;
+      ++bin;
+    }
+    return bin;
+  }
+
+  std::array<double, 6> ptBinning{{8, 10, 12, 14, 16, 20}};
+
+  // costh values where the kernel switches to the next value of the kernelVals
+  // below the first number it will use the first kernel value, between the two numbers it will use the second kernel value
+  // before switching to the third kernel value above the second number
+  std::array<std::array<double, 2>, 8> costhBinning{{
+      {0.1, 0.2}, // below 8
+      {0.1, 0.25}, // 8 - 10
+      {0.15, 0.3}, // 10 - 12
+      {0.2, 0.4}, // 12 - 14
+      {0.3, 0.45}, // 14 - 16
+      {0.4, 0.55},  // 16 - 20
+      {0.4, 0.55} // above 20
+  }};
+  std::array<double, 3> kernelVals{{0.05, 0.8, 0.9}};
+};
+
+
 /**
  * Function used for sampling
  * Currently an "inverted" Gaussian, i.e. 1 / Gauss(x), centered at 0
@@ -474,7 +514,7 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
   // sampling weight function, either a constant or whatever is described by func_sampling_weight
   // NOTE: currently assuming that the sampling is done in costh only (i.e. fixed range to that)
   // COULDDO: Make this more versatile
-  const TF1 samplingWeight = sel_config.sampling ? TF1("samplingWeight", func_sampling_weight, -1, 1, 0) : TF1("samplingWeight", "1", -1, 1);
+  const TF1 samplingWeight = sel_config.sampling ? TF1("samplingWeight", StepSamplingKernel{}, -1, 1, 0) : TF1("samplingWeight", "1", -1, 1);
   const double max_sampling_kernel = samplingWeight.GetMaximum(-1, 1);
 
 
@@ -1009,7 +1049,7 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     lepN.SetPxPyPzE(-lepton_psi.Px(),-lepton_psi.Py(),-lepton_psi.Pz(),lepton_psi.E());
     lepN.Boost(psi_to_cm);
 
-    w_sampling = samplingWeight.Eval(costh_he);
+    w_sampling = samplingWeight.Eval(costh_he, pT);
     angdistr *= w_sampling;
 
 
