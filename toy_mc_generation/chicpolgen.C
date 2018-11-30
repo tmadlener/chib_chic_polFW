@@ -261,8 +261,9 @@ double func_pTM_gen(double* x, double*)
 }
 
 
-/** struct for doing a "stepwise" sampling of the |costh| range in bins of pt */
+/** struct for doing a "step wise" sampling of the |costh| range in bins of pt */
 struct StepSamplingKernel {
+  /** Interface that conforms to the one that TF1 is expecting */
   double operator()(double* x, double*) {
     const size_t ptbin = findBin(x[1], ptBinning);
     const size_t cbin = findBin(std::abs(x[0]), costhBinning[ptbin]);
@@ -285,17 +286,17 @@ private:
 
   // costh values where the kernel switches to the next value of the kernelVals
   // below the first number it will use the first kernel value, between the two numbers it will use the second kernel value
-  // before switching to the third kernel value above the second number
-  std::array<std::array<double, 3>, 8> costhBinning{{
-      {0.1, 0.2, 0.65}, // below 8
-      {0.1, 0.25, 0.7}, // 8 - 10
-      {0.15, 0.3, 0.8}, // 10 - 12
-      {0.2, 0.4, 0.85}, // 12 - 14
-      {0.3, 0.45, 0.9}, // 14 - 16
-      {0.4, 0.55, 0.95},  // 16 - 20
-      {0.4, 0.55, 0.975} // above 20
+  // before switching to the last kernel value above the last number
+  std::array<std::array<double, 4>, 8> costhBinning{{
+      {0.1, 0.2, 0.25, 0.65}, // below 8
+      {0.1, 0.15, 0.25, 0.7}, // 8 - 10
+      {0.15, 0.2, 0.3, 0.8}, // 10 - 12
+      {0.2, 0.3, 0.4, 0.85}, // 12 - 14
+      {0.3, 0.4, 0.475, 0.9}, // 14 - 16
+      {0.4, 0.475, 0.575, 0.95},  // 16 - 20
+      {0.4, 0.475, 0.575, 0.975} // above 20
   }};
-  std::array<double, 4> kernelVals{{0.02, 0.9, 0.95, 0.1}};
+  std::array<double, 5> kernelVals{{0.005, 0.01, 0.1, 0.95, 0.01}};
 };
 
 
@@ -517,6 +518,7 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
   const TF1 samplingWeight = sel_config.sampling ? TF1("samplingWeight", StepSamplingKernel{}, -1, 1, 0) : TF1("samplingWeight", "1", -1, 1);
   const double max_sampling_kernel = samplingWeight.GetMaximum(-1, 1);
 
+  std::cout << max_sampling_kernel << "\n";
 
   double w_sampling;
   if (sel_config.sampling) {
