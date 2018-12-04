@@ -15,7 +15,10 @@ import numpy as np
 import numpy.testing as npt
 import pandas.util.testing as pdt
 
+from utils.data_handling import apply_selections
+
 import utils.misc_helpers as mh
+
 
 def same_binning(bin1, bin2):
     """
@@ -531,6 +534,55 @@ class TestReplaceAll(unittest.TestCase):
         self.assertEqual(test_string,
                          mh.replace_all(mh.replace_all(test_string, repl_pairs),
                                         repl_pairs, reverse=True))
+
+
+class TestParseSelExpr(unittest.TestCase):
+    def setUp(self):
+        self.dfr = pd.DataFrame({
+            'x': np.random.uniform(-1, 1, 100000)
+        })
+
+
+    def test_parse_sel_expr_double_sel(self):
+        """Test that a double sided expression can be parsed"""
+        sel_expr = '-0.2 < x < 0.3'
+        exp_sel = lambda d: (d.x > -0.2) & (d.x < 0.3)
+        sel = mh.parse_sel_expr(sel_expr)
+        pdt.assert_frame_equal(apply_selections(self.dfr, sel),
+                               apply_selections(self.dfr, exp_sel))
+
+        sel_expr = '0.1 < abs(x) < 0.2'
+        exp_sel = lambda d: (d.x.abs() > 0.1) & (d.x.abs() < 0.2)
+        sel = mh.parse_sel_expr(sel_expr)
+        sel_dfr = apply_selections(self.dfr, sel)
+        pdt.assert_frame_equal(apply_selections(self.dfr, sel),
+                               apply_selections(self.dfr, exp_sel))
+
+
+    def test_parse_sel_expr_left_sel(self):
+        """Test that selections with only a left condition can be parsed"""
+        sel_expr = '0.8 < x'
+        exp_sel = lambda d: d.x > 0.8
+        sel = mh.parse_sel_expr(sel_expr)
+        pdt.assert_frame_equal(apply_selections(self.dfr, sel),
+                               apply_selections(self.dfr, exp_sel))
+
+
+    def test_parse_sel_expr_right_sel(self):
+        """Test that selections with only a right condition can be parsed"""
+        sel_expr = 'x < 0.2'
+        exp_sel = lambda d: d.x < 0.2
+        sel = mh.parse_sel_expr(sel_expr)
+        pdt.assert_frame_equal(apply_selections(self.dfr, sel),
+                               apply_selections(self.dfr, exp_sel))
+
+
+    @patch('utils.misc_helpers.logging')
+    def test_parse_sel_expr_fails(self, mock_logger):
+        self.assertFalse(mh.parse_sel_expr('0.2 < x < 0.3 < 4'))
+        self.assertFalse(mh.parse_sel_expr('ABC < foo'))
+        self.assertFalse(mh.parse_sel_expr('1.2 < noValidFuncExpr(x)'))
+        self.assertFalse(mh.parse_sel_expr('0.3 > x'))
 
 
 if __name__ == '__main__':

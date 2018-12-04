@@ -685,3 +685,47 @@ def parse_func_var(expr):
     match = re.match(var_rgx, expr)
     if match:
         return expr, None
+
+
+def parse_sel_expr(expr):
+    """
+    Parse a selection expression of the form XY < funcExpr < YZ (where one of
+    the two values XY or YZ can also be omitted and funcExpr is an expression
+    that can be parsed by parse_func_var):
+
+    Args:
+        expr (string): Expression that defines a selection and should be parsed
+
+    Returns:
+        list or False: list of expression functions that can be passed to
+            apply_selections and select what is specified in the passed expr.
+            Returning False in case of failure should ensure that at least the
+            apply_selections call fails when this is used inline
+    """
+    parts = [s.strip() for s in expr.split('<')]
+
+    flt_rgx = re.compile(float_rgx())
+    if len(parts) == 3:
+        vmatch1, vmatch2 = flt_rgx.match(parts[0]), flt_rgx.match(parts[2])
+        if vmatch1 and vmatch2:
+            func = parse_func_var(parts[1])
+            if func is not None:
+                return lambda d: get_bin_cut_df(d, _get_var(d, *func),
+                                                float(parts[0]), float(parts[2]))
+
+    if len(parts) == 2:
+        # Need to find out whether the value or the expression comes first
+        vmatch1, vmatch2 = flt_rgx.match(parts[0]), flt_rgx.match(parts[1])
+        if vmatch1 and not vmatch2:
+            func = parse_func_var(parts[1])
+            if func is not None:
+                return lambda d: _get_var(d, *func) > float(parts[0])
+        if not vmatch1 and vmatch2:
+            func = parse_func_var(parts[0])
+            if func is not None:
+                return lambda d: _get_var(d, *func) < float(parts[1])
+
+    # If we are still here then we could not parse the expression
+    logging.error('Could not parse expression \'{}\' to extract a selection '
+                  'function'.format(expr))
+    return False
