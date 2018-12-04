@@ -226,6 +226,24 @@ class TestGetBinMeans(unittest.TestCase):
         npt.assert_allclose(means, bin_centers, atol=5e-3, rtol=0)
 
 
+    def test_get_bin_means_weighted(self):
+        # add weights to dataframe for easier handling
+        self.dfr['w'] = np.random.uniform(0, 1, 500000)
+        binning = [(lo, hi) for lo, hi in zip(np.linspace(0, 1, 5)[:-1],
+                                              np.linspace(0, 1, 5)[1:])]
+
+        exp_means = []
+        for lo, hi in binning:
+            sel_dfr = apply_selections(self.dfr, lambda d: (d.x > lo) & (d.x < hi))
+            w_sum = sel_dfr.w.sum()
+            wx_sum = np.sum(sel_dfr.x * sel_dfr.w)
+            exp_means.append(wx_sum / w_sum)
+
+        means = mh.get_bin_means(self.dfr, 'x', binning, weights=self.dfr.w)
+        npt.assert_allclose(means, np.array(exp_means))
+
+
+
 class TestUniqueWKey(unittest.TestCase):
     def test_unique_w_key(self):
         tuple_l = [(1, '1'), (2, '2'), (3, '1'), (4, '4'), (5, '5')]

@@ -301,7 +301,7 @@ def get_costh_binning(dfr, n_bins, full_range=False, selection=None):
     return binning
 
 
-def get_bin_means(dfr, get_var, bins, selection=None):
+def get_bin_means(dfr, get_var, bins, selection=None, weights=None):
     """
     Get the the mean value in all bins from the data
 
@@ -312,12 +312,16 @@ def get_bin_means(dfr, get_var, bins, selection=None):
             value of this will be used to calculate the mean in each bin
         bins (list of tuples): list of tuples containing the bin borders for
             each bin
-        selection (numpy.array, optional): Selection array that can be used in a
-            DataFrame indexing to select certain events, defaults to None, where
-            all entries are used
+        selection (numpy.array or list of functions, optional): Selection that
+            is valid in a call to apply_selections
+        weights(numpy.array, optional): If not none, the weighted average will
+            be returned
 
     Returns:
         list: list of mean values for each bin
+
+    See also:
+        apply_selections, numpy.average
     """
     from utils.data_handling import apply_selections
     sel_dfr = apply_selections(dfr, selection)
@@ -325,8 +329,15 @@ def get_bin_means(dfr, get_var, bins, selection=None):
     var = _get_var(sel_dfr, get_var)
     means = []
     for low, high in bins:
-        var_bin = var[(var > low) & (var < high)]
-        means.append(np.mean(var_bin))
+        bin_sel = (var > low) & (var < high)
+        var_bin = var[bin_sel]
+        w_bin = weights[bin_sel] if weights is not None else None
+        # NOTE: here we use the fact that np.sum(None) does't evaluate to 0
+        if np.sum(w_bin) != 0 and np.sum(bin_sel) != 0:
+            # Have to do this to avoid np.average raising a ZeroDivisionError
+            means.append(np.average(var_bin, weights=w_bin))
+        else:
+            means.append(np.nan)
 
     return means
 
