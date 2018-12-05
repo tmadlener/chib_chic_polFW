@@ -324,3 +324,92 @@ def _get_x_min_graph(graph):
     """
     min_vals = [np.min(np.array(g.GetX())) for g in make_iterable(graph)]
     return np.min(min_vals)
+
+
+def assign_x(graph, new_x):
+    """
+    Assign new x points for the passed graph and update errors accordingly
+
+    Args:
+        graph (ROOT.TGraphAsymmErrors): Graph for which the new x points should
+            be used
+        new_x (numpy.array): Array containing the same of x values as the graph
+            has points. (Note: this is not checked)
+
+    Returns:
+        ROOT.TGraphAsymmErrors: Graph that has the same y values and errors as
+            the input graph, but the x points have been updated to the passed
+            new_x points. The errors are calculated such that the interval
+            spanned by the input errors remains the same.
+    """
+    if not isinstance(graph, r.TGraphAsymmErrors):
+        logging.error('Can only reassign x-values and keep error interval '
+                      'intact for TGraphAsymmErrors')
+    x_vals, y_vals = np.array(graph.GetX()), np.array(graph.GetY())
+    xlo, xhi, ylo, yhi = get_errors(graph)
+
+    # shift central values and x errors according to delta between old and new
+    delta = x_vals - new_x
+    x_vals -= delta
+    xlo -= delta
+    xhi += delta
+    return r.TGraphAsymmErrors(len(x_vals), x_vals, y_vals, xlo, xhi, ylo, yhi)
+
+
+def calc_pulls(graph, shape):
+    """
+    Calculate pulls between a graph and a shape. Currently only
+    TGraphAsymmErrors are supported and the upper uncertainty will be used as
+    sigma in the pull calculation.
+
+    Args:
+        graph (ROOT.TGraphAsymmErrors): Graph
+        shape (ROOT.TF1 or ROOT.TH1): (Possibly predicted) shape for which the
+            deviation from the graph is of interest
+
+    Returns:
+        numpy.array: Array containing the pull values at each x-point of the
+            passed graph. If the uncertainty of one point is 0, then the pull
+            for that point will also be set to 0
+    """
+    def _pulls(graph, shape, eval_f):
+        """
+        Calculate pulls between graph and shape with a recipe on how to evaluate
+        the shape at the x-values of the graph
+        """
+        x_vals, y_vals = np.array(graph.GetX()), np.array(graph.GetY())
+        _, _, y_err, _ = get_errors(graph)
+        y_pred = np.array([eval_f(shape, x) for x in x_vals])
+
+        return np.divide((y_vals - y_pred), y_err, where=y_err!=0)
+
+    if isinstance(shape, r.TF1):
+        return _pulls(graph, shape, lambda s, x: s.Eval(x))
+    if isinstance(shape, r.TH1):
+        return _pulls(graph, shape, lambda h, x: h.GetBinContent(h.FindBin(x)))
+    logging.error('Passed shape could not be processed because it is neither a '
+                  'TF1 nor a TH1')
+
+
+def pull_graph(graph, shape):
+    """
+    Calculate the pulls between a graph and a shape and return the pulls as a TGraph
+
+    Args:
+        graph (ROOT.TGraphAsymmErrors): Graph
+        shape (ROOT.TF1 or ROOT.TH1): (Possibly predicted) shape for which the
+            deviation from the graph is of interest
+
+    Returns:
+        ROOT.TGraph: The graph with the same x-values as the passed input graph
+            and the pulls as y-values. (Infinite values in the pulls are not
+            added to the resulting graph)
+
+    See also:
+        calc_pulls
+    """
+    xvals = np.array(graph.GetX())
+    pulls = calc_pulls(graph, shape)
+    val_vals = np.abs(pulls) != 0
+
+    return r.TGraph(np.sum(val_vals), xvals[val_vals], pulls[val_vals])
