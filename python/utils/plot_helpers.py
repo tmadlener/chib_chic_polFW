@@ -213,7 +213,10 @@ def set_attributes(pltable, **kwargs):
         """
         arg = kwargs.pop(key, None)
         if arg is not None:
-            set_func(pltable, arg)
+            try:
+                set_func(pltable, arg)
+            except AttributeError:
+                pass
 
     arg_func_pairs = (
         ('color', set_color),
