@@ -150,7 +150,7 @@ struct sel_config {
               << "apply photon selection: " << photon_sel << "\n"
               << "apply J/psi selection: ";
     if (jpsi_sel) {
-      std::cout << psiPtMin << " < pT < " << psiPtMax << ", |y| < " << psiRapMax << "\n";
+      std::cout << psiPtMin << " < pT < " << psiPtMax << ", " << psiRapMin << " < |y| < " << psiRapMax << "\n";
     } else {
       std::cout << jpsi_sel << "\n";
     }
@@ -173,7 +173,7 @@ struct store_config {
     }
     std::cout << "\nstore histograms: " << storeHists;
     if (storeHists) {
-      std::cout << "bins in costh: " << nBinsCosth << ", bins in phi: " << nBinsPhi;
+      std::cout << "\nbins in costh: " << nBinsCosth << ", bins in phi: " << nBinsPhi;
     }
     std::cout << "\n++++++++++++++++++++++++++++++++++++++++++++++++++" << std::endl;
   }
