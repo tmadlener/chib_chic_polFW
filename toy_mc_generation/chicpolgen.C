@@ -17,6 +17,7 @@
 #include "TF1.h"
 #include "TFile.h"
 #include "THn.h"
+#include "TH3D.h"
 
 #include <iostream>
 #include <string>
@@ -184,6 +185,11 @@ TH2D* createHist(const std::string& name, const int nBinsCosth, const int nBinsP
   return new TH2D(name.c_str(), ";cos#vartheta;#varphi", nBinsCosth, -1, 1, nBinsPhi, -180, 180);
 }
 
+TH3D* createHistRap(const std::string& name, const int nBinsCosth, const int nBinsPhi, const int nBinsRap) {
+  return new TH3D(name.c_str(), ";cos#vartheta;#varphi;|y|", nBinsCosth, -1, 1,
+                  nBinsPhi, -180, 180, nBinsRap, 0, 1.2);
+}
+
 
 /**
  * Struct holding the width and the central value for a given state
@@ -282,7 +288,8 @@ private:
     return bin;
   }
 
-  std::array<double, 6> ptBinning{{8, 10, 12, 14, 16, 20}};
+  // std::array<double, 6> ptBinning{{8, 10, 12, 14, 16, 20}};
+  std::array<double, 6> ptBinning{{8, 10, 12, 15, 16, 20}};
 
   // costh values where the kernel switches to the next value of the kernelVals
   // below the first number it will use the first kernel value, between the two numbers it will use the second kernel value
@@ -292,7 +299,8 @@ private:
       {0.1, 0.15, 0.25, 0.7}, // 8 - 10
       {0.15, 0.2, 0.3, 0.8}, // 10 - 12
       {0.2, 0.3, 0.4, 0.85}, // 12 - 14
-      {0.3, 0.4, 0.475, 0.9}, // 14 - 16
+      // {0.3, 0.4, 0.475, 0.9}, // 14 - 16
+      {0.3, 0.425, 0.525, 0.825}, // 15 - 16 // NOTE: this one is just for testing
       {0.4, 0.475, 0.575, 0.95},  // 16 - 20
       {0.4, 0.475, 0.575, 0.975} // above 20
   }};
@@ -541,41 +549,62 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     conditionalBranch(tr, gamma_eff_sm, "gamma_eff_sm", store_config.storeBranches, storeAllBranches);
   }
 
-  std::unordered_map<std::string, TH2D*> costhPhiHists;
+  // std::unordered_map<std::string, TH2D*> costhPhiHists;
+  std::unordered_map<std::string, TH3D*> costhPhiRapHists;
   if (store_config.storeHists) {
-    costhPhiHists.reserve(18); // should be enough
-    costhPhiHists.insert({"gen_HX", createHist("costh_phi_gen_HX", store_config.nBinsCosth, store_config.nBinsPhi)});
-    costhPhiHists.insert({"gen_CS", createHist("costh_phi_gen_CS", store_config.nBinsCosth, store_config.nBinsPhi)});
-    costhPhiHists.insert({"gen_PX", createHist("costh_phi_gen_PX", store_config.nBinsCosth, store_config.nBinsPhi)});
+    // costhPhiHists.reserve(18); // should be enough
+    // costhPhiHists.insert({"gen_HX", createHist("costh_phi_gen_HX", store_config.nBinsCosth, store_config.nBinsPhi)});
+    // costhPhiHists.insert({"gen_CS", createHist("costh_phi_gen_CS", store_config.nBinsCosth, store_config.nBinsPhi)});
+    // costhPhiHists.insert({"gen_PX", createHist("costh_phi_gen_PX", store_config.nBinsCosth, store_config.nBinsPhi)});
 
-    costhPhiHists.insert({"acc_HX", createHist("costh_phi_acc_HX", store_config.nBinsCosth, store_config.nBinsPhi)});
-    costhPhiHists.insert({"acc_CS", createHist("costh_phi_acc_CS", store_config.nBinsCosth, store_config.nBinsPhi)});
-    costhPhiHists.insert({"acc_PX", createHist("costh_phi_acc_PX", store_config.nBinsCosth, store_config.nBinsPhi)});
+    // costhPhiHists.insert({"acc_HX", createHist("costh_phi_acc_HX", store_config.nBinsCosth, store_config.nBinsPhi)});
+    // costhPhiHists.insert({"acc_CS", createHist("costh_phi_acc_CS", store_config.nBinsCosth, store_config.nBinsPhi)});
+    // costhPhiHists.insert({"acc_PX", createHist("costh_phi_acc_PX", store_config.nBinsCosth, store_config.nBinsPhi)});
+
+    // if (muonEffs && photonEffs) {
+    //   costhPhiHists.insert({"reco_HX", createHist("costh_phi_reco_HX", store_config.nBinsCosth, store_config.nBinsPhi)});
+    //   costhPhiHists.insert({"reco_CS", createHist("costh_phi_reco_CS", store_config.nBinsCosth, store_config.nBinsPhi)});
+    //   costhPhiHists.insert({"reco_PX", createHist("costh_phi_reco_PX", store_config.nBinsCosth, store_config.nBinsPhi)});
+    // }
+
+    costhPhiRapHists.reserve(18);
+    costhPhiRapHists.insert({"gen_HX", createHistRap("costh_phi_gen_HX", store_config.nBinsCosth, store_config.nBinsPhi, 2)});
+    costhPhiRapHists.insert({"gen_CS", createHistRap("costh_phi_gen_CS", store_config.nBinsCosth, store_config.nBinsPhi, 2)});
+    costhPhiRapHists.insert({"gen_PX", createHistRap("costh_phi_gen_PX", store_config.nBinsCosth, store_config.nBinsPhi, 2)});
+
+    costhPhiRapHists.insert({"acc_HX", createHistRap("costh_phi_acc_HX", store_config.nBinsCosth, store_config.nBinsPhi, 2)});
+    costhPhiRapHists.insert({"acc_CS", createHistRap("costh_phi_acc_CS", store_config.nBinsCosth, store_config.nBinsPhi, 2)});
+    costhPhiRapHists.insert({"acc_PX", createHistRap("costh_phi_acc_PX", store_config.nBinsCosth, store_config.nBinsPhi, 2)});
 
     if (muonEffs && photonEffs) {
-      costhPhiHists.insert({"reco_HX", createHist("costh_phi_reco_HX", store_config.nBinsCosth, store_config.nBinsPhi)});
-      costhPhiHists.insert({"reco_CS", createHist("costh_phi_reco_CS", store_config.nBinsCosth, store_config.nBinsPhi)});
-      costhPhiHists.insert({"reco_PX", createHist("costh_phi_reco_PX", store_config.nBinsCosth, store_config.nBinsPhi)});
-    }
+      costhPhiRapHists.insert({"reco_HX", createHistRap("costh_phi_reco_HX", store_config.nBinsCosth, store_config.nBinsPhi, 2)});
+      costhPhiRapHists.insert({"reco_CS", createHistRap("costh_phi_reco_CS", store_config.nBinsCosth, store_config.nBinsPhi, 2)});
+      costhPhiRapHists.insert({"reco_PX", createHistRap("costh_phi_reco_PX", store_config.nBinsCosth, store_config.nBinsPhi, 2)});
 
+  }
 
     // add copies of the histograms that are created without the importance sampling
     if (sel_config.sampling) {
-      std::vector<std::pair<std::string, TH2D*>> unweightHists;
+      // std::vector<std::pair<std::string, TH2D*>> unweightHists;
+      std::vector<std::pair<std::string, TH3D*>> unweightHists;
       unweightHists.reserve(9);
-      for (const auto& hist : costhPhiHists) {
+      // for (const auto& hist : costhPhiHists) {
+      for (const auto& hist : costhPhiRapHists) {
         const std::string key = "noweight_" + hist.first;
         const std::string name = "noweight_" + std::string(hist.second->GetName());
-        unweightHists.push_back({key, createHist(name, store_config.nBinsCosth, store_config.nBinsPhi)});
+        // unweightHists.push_back({key, createHist(name, store_config.nBinsCosth, store_config.nBinsPhi)});
+        unweightHists.push_back({key, createHistRap(name, store_config.nBinsCosth, store_config.nBinsPhi, 2)});
       }
 
       for (const auto& hist : unweightHists) {
-        costhPhiHists.insert(hist);
+        // costhPhiHists.insert(hist);
+        costhPhiRapHists.insert(hist);
       }
     }
   }
 
-  for (const auto& hist : costhPhiHists) {
+  // for (const auto& hist : costhPhiHists) {
+  for (const auto& hist : costhPhiRapHists) {
     hist.second->Sumw2();
     hist.second->SetStats(0);
   }
@@ -1147,13 +1176,21 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     phi_PX_sm = angles_PX.phi;
 
     if (store_config.storeHists) {
-      costhPhiHists["gen_HX"]->Fill(costh_HX_sm, phi_HX_sm, 1 / w_sampling);
-      costhPhiHists["gen_CS"]->Fill(costh_CS_sm, phi_CS_sm, 1 / w_sampling);
-      costhPhiHists["gen_PX"]->Fill(costh_PX_sm, phi_PX_sm, 1 / w_sampling);
+      // costhPhiHists["gen_HX"]->Fill(costh_HX_sm, phi_HX_sm, 1 / w_sampling);
+      // costhPhiHists["gen_CS"]->Fill(costh_CS_sm, phi_CS_sm, 1 / w_sampling);
+      // costhPhiHists["gen_PX"]->Fill(costh_PX_sm, phi_PX_sm, 1 / w_sampling);
+
+      costhPhiRapHists["gen_HX"]->Fill(costh_HX_sm, phi_HX_sm, y_jpsi_sm, 1 / w_sampling);
+      costhPhiRapHists["gen_CS"]->Fill(costh_CS_sm, phi_CS_sm, y_jpsi_sm, 1 / w_sampling);
+      costhPhiRapHists["gen_PX"]->Fill(costh_PX_sm, phi_PX_sm, y_jpsi_sm, 1 / w_sampling);
       if (sel_config.sampling) {
-        costhPhiHists["noweight_gen_HX"]->Fill(costh_HX_sm, phi_HX_sm);
-        costhPhiHists["noweight_gen_CS"]->Fill(costh_CS_sm, phi_CS_sm);
-        costhPhiHists["noweight_gen_PX"]->Fill(costh_PX_sm, phi_PX_sm);
+        // costhPhiHists["noweight_gen_HX"]->Fill(costh_HX_sm, phi_HX_sm);
+        // costhPhiHists["noweight_gen_CS"]->Fill(costh_CS_sm, phi_CS_sm);
+        // costhPhiHists["noweight_gen_PX"]->Fill(costh_PX_sm, phi_PX_sm);
+
+        costhPhiRapHists["noweight_gen_HX"]->Fill(costh_HX_sm, phi_HX_sm, y_jpsi_sm);
+        costhPhiRapHists["noweight_gen_CS"]->Fill(costh_CS_sm, phi_CS_sm, y_jpsi_sm);
+        costhPhiRapHists["noweight_gen_PX"]->Fill(costh_PX_sm, phi_PX_sm, y_jpsi_sm);
       }
     }
 
@@ -1164,14 +1201,19 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
     // If we are still here than fill the histograms
     if (store_config.storeHists) {
-      costhPhiHists["acc_HX"]->Fill(costh_HX_sm, phi_HX_sm, 1 / w_sampling);
-      costhPhiHists["acc_CS"]->Fill(costh_CS_sm, phi_CS_sm, 1 / w_sampling);
-      costhPhiHists["acc_PX"]->Fill(costh_PX_sm, phi_PX_sm, 1 / w_sampling);
-
+      // costhPhiHists["acc_HX"]->Fill(costh_HX_sm, phi_HX_sm, 1 / w_sampling);
+      // costhPhiHists["acc_CS"]->Fill(costh_CS_sm, phi_CS_sm, 1 / w_sampling);
+      // costhPhiHists["acc_PX"]->Fill(costh_PX_sm, phi_PX_sm, 1 / w_sampling);
+      costhPhiRapHists["acc_HX"]->Fill(costh_HX_sm, phi_HX_sm, y_jpsi_sm, 1 / w_sampling);
+      costhPhiRapHists["acc_CS"]->Fill(costh_CS_sm, phi_CS_sm, y_jpsi_sm, 1 / w_sampling);
+      costhPhiRapHists["acc_PX"]->Fill(costh_PX_sm, phi_PX_sm, y_jpsi_sm, 1 / w_sampling);
       if (sel_config.sampling) {
-        costhPhiHists["noweight_acc_HX"]->Fill(costh_HX_sm, phi_HX_sm);
-        costhPhiHists["noweight_acc_CS"]->Fill(costh_CS_sm, phi_CS_sm);
-        costhPhiHists["noweight_acc_PX"]->Fill(costh_PX_sm, phi_PX_sm);
+        // costhPhiHists["noweight_acc_HX"]->Fill(costh_HX_sm, phi_HX_sm);
+        // costhPhiHists["noweight_acc_CS"]->Fill(costh_CS_sm, phi_CS_sm);
+        // costhPhiHists["noweight_acc_PX"]->Fill(costh_PX_sm, phi_PX_sm);
+        costhPhiRapHists["noweight_acc_HX"]->Fill(costh_HX_sm, phi_HX_sm, y_jpsi_sm);
+        costhPhiRapHists["noweight_acc_CS"]->Fill(costh_CS_sm, phi_CS_sm, y_jpsi_sm);
+        costhPhiRapHists["noweight_acc_PX"]->Fill(costh_PX_sm, phi_PX_sm, y_jpsi_sm);
       }
     }
 
@@ -1202,14 +1244,19 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
       const double eff_weight = (lepP_eff_sm > 0) * lepP_eff_sm *\
         (lepN_eff_sm > 0) * lepN_eff_sm * (gamma_eff_sm > 0) * 0.01 * gamma_eff_sm;
 
-      costhPhiHists["reco_HX"]->Fill(costh_HX_sm, phi_HX_sm, eff_weight / w_sampling);
-      costhPhiHists["reco_CS"]->Fill(costh_CS_sm, phi_CS_sm, eff_weight / w_sampling);
-      costhPhiHists["reco_PX"]->Fill(costh_PX_sm, phi_PX_sm, eff_weight / w_sampling);
-
+      // costhPhiHists["reco_HX"]->Fill(costh_HX_sm, phi_HX_sm, eff_weight / w_sampling);
+      // costhPhiHists["reco_CS"]->Fill(costh_CS_sm, phi_CS_sm, eff_weight / w_sampling);
+      // costhPhiHists["reco_PX"]->Fill(costh_PX_sm, phi_PX_sm, eff_weight / w_sampling);
+      costhPhiRapHists["reco_HX"]->Fill(costh_HX_sm, phi_HX_sm, y_jpsi_sm, eff_weight / w_sampling);
+      costhPhiRapHists["reco_CS"]->Fill(costh_CS_sm, phi_CS_sm, y_jpsi_sm, eff_weight / w_sampling);
+      costhPhiRapHists["reco_PX"]->Fill(costh_PX_sm, phi_PX_sm, y_jpsi_sm, eff_weight / w_sampling);
       if (sel_config.sampling) {
-        costhPhiHists["noweight_reco_HX"]->Fill(costh_HX_sm, phi_HX_sm, eff_weight);
-        costhPhiHists["noweight_reco_CS"]->Fill(costh_CS_sm, phi_CS_sm, eff_weight);
-        costhPhiHists["noweight_reco_PX"]->Fill(costh_PX_sm, phi_PX_sm, eff_weight);
+        // costhPhiHists["noweight_reco_HX"]->Fill(costh_HX_sm, phi_HX_sm, eff_weight);
+        // costhPhiHists["noweight_reco_CS"]->Fill(costh_CS_sm, phi_CS_sm, eff_weight);
+        // costhPhiHists["noweight_reco_PX"]->Fill(costh_PX_sm, phi_PX_sm, eff_weight);
+        costhPhiRapHists["noweight_reco_HX"]->Fill(costh_HX_sm, phi_HX_sm, eff_weight, y_jpsi_sm);
+        costhPhiRapHists["noweight_reco_CS"]->Fill(costh_CS_sm, phi_CS_sm, eff_weight, y_jpsi_sm);
+        costhPhiRapHists["noweight_reco_PX"]->Fill(costh_PX_sm, phi_PX_sm, eff_weight, y_jpsi_sm);
       }
     }
 
