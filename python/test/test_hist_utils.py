@@ -288,5 +288,67 @@ class TestFromArray(unittest.TestCase):
         npt.assert_equal(hu.get_binning(hist, 'X'), np.arange(0, 11, 1))
 
 
+class TestProject(unittest.TestCase):
+    def test_project_3d_to_2d(self):
+        hist_3d = _get_hist(3)
+        val3d, err3d = hu.get_array(hist_3d), hu.get_array(hist_3d, errors=True)
+
+        hist_xy = hu.project(hist_3d, 'xy')
+        val, err = hu.get_array(hist_xy), hu.get_array(hist_xy, errors=True)
+        npt.assert_equal(val, np.sum(val3d, axis=2))
+        npt.assert_equal(err, np.sqrt(np.sum(err3d**2, axis=2)))
+
+        hist_yz = hu.project(hist_3d, 'yz')
+        val, err = hu.get_array(hist_yz), hu.get_array(hist_yz, errors=True)
+        npt.assert_equal(val, np.sum(val3d, axis=0))
+        npt.assert_equal(err, np.sqrt(np.sum(err3d**2, axis=0)))
+
+        hist_zx = hu.project(hist_3d, 'zx')
+        val, err = hu.get_array(hist_zx), hu.get_array(hist_zx, errors=True)
+        npt.assert_equal(val, np.sum(val3d, axis=1).T)
+        npt.assert_equal(err, np.sqrt(np.sum(err3d**2, axis=1)).T)
+
+        hist_yx = hu.project(hist_3d, 'yx')
+        val, err = hu.get_array(hist_yx), hu.get_array(hist_yx, errors=True)
+        npt.assert_equal(val, np.sum(val3d, axis=2).T)
+        npt.assert_equal(err, np.sqrt(np.sum(err3d**2, axis=2)).T)
+
+
+    def test_project_3d_to_1d(self):
+        hist3d = _get_hist(3)
+        val3d, err3d = hu.get_array(hist3d), hu.get_array(hist3d, errors=True)
+
+        hist_x = hu.project(hist3d, 'x')
+        val, err = hu.get_array(hist_x), hu.get_array(hist_x, errors=True)
+        npt.assert_equal(val, np.sum(val3d, axis=(1,2)))
+        npt.assert_equal(err, np.sqrt(np.sum(err3d**2, axis=(1,2))))
+
+        hist_y = hu.project(hist3d, 'y')
+        val, err = hu.get_array(hist_y), hu.get_array(hist_y, errors=True)
+        npt.assert_equal(val, np.sum(val3d, axis=(0,2)))
+        npt.assert_equal(err, np.sqrt(np.sum(err3d**2, axis=(0,2))))
+
+        hist_z = hu.project(hist3d, 'z')
+        val, err = hu.get_array(hist_z), hu.get_array(hist_z, errors=True)
+        npt.assert_equal(val, np.sum(val3d, axis=(0,1)))
+        npt.assert_equal(err, np.sqrt(np.sum(err3d**2, axis=(0,1))))
+
+
+    def test_project_2d_to_1d(self):
+        hist2d = _get_hist(2)
+        val2d, err2d = hu.get_array(hist2d), hu.get_array(hist2d, errors=True)
+
+        hist_x = hu.project(hist2d, 'x')
+        val, err = hu.get_array(hist_x), hu.get_array(hist_x, errors=True)
+        npt.assert_equal(val, np.sum(val2d, axis=1))
+        npt.assert_equal(err, np.sqrt(np.sum(err2d**2, axis=1)))
+
+
+        hist_y = hu.project(hist2d, 'y')
+        val, err = hu.get_array(hist_y), hu.get_array(hist_y, errors=True)
+        npt.assert_equal(val, np.sum(val2d, axis=0))
+        npt.assert_equal(err, np.sqrt(np.sum(err2d**2, axis=0)))
+
+
 if __name__ == '__main__':
     unittest.main()

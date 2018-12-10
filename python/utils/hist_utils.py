@@ -793,3 +793,50 @@ def from_array(array, binning, **kwargs):
         array2hist(array, hist, errors=uncer)
 
     return hist
+
+
+def project(hist, axis):
+    """
+    Project the passed histogram onto any direction (or combination thereof)
+
+    Args:
+        hist (ROOT.TH3 or ROOT.TH2): Histogram that should be projected onto a
+            direction
+        axis (str): string containing the direction(s) onto which hist should be
+            projected. E.g. 'xy', to get the projection onto the x and y axis
+
+    Returns:
+        ROOT.TH1 or ROOT.TH2: Depending on the input and the axis onto which the
+            projection happened.
+    """
+    axis_idcs = {'x': 0, 'y': 1, 'z': 2, 'X': 0, 'Y': 1, 'Z': 2}
+    if isinstance(hist, r.TH3):
+        all_axes = 'xyz'
+        isTH3 = True
+        if len(axis) != 1 and len(axis) != 2:
+            logging.error('Can only project onto one or two directions')
+    elif isinstance(hist, r.TH2):
+        all_axes = 'xy'
+        isTH3 = False
+        if len(axis) != 1:
+            logging.error('Can only project onto one direction')
+    else:
+        logging.error('hist is not of type TH[2|3]. Cannot get a projection')
+        return None
+
+    axis = axis.lower()
+    sum_axes = tuple(axis_idcs[c] for c in all_axes if c.lower() not in axis)
+
+    binning = np.array([get_binning(hist, c.upper()) for c in axis])
+    val, err = get_array(hist), get_array(hist, errors=True)
+    sum_val = np.sum(val, axis=sum_axes)
+    sum_err = np.sqrt(np.sum(err**2, axis=sum_axes))
+
+    if isTH3 and len(axis) > 1:
+        # In this case we have to check if we have to swap some axis, since
+        # combinations like z vs x are allowed
+        if axis[0] > axis[1]:
+            sum_val = sum_val.T
+            sum_err = sum_err.T
+
+    return from_array(sum_val, binning, errors=sum_err)
