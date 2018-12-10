@@ -742,6 +742,8 @@ def from_array(array, binning, **kwargs):
             binning = np.array([binning])
         else:
             raise_err = True
+            # Necessary to have shape defined for all possible (in)valid inputs
+            shape = binning.shape
     else:
         shape = [len(b) + 1 for b in binning] # include under- and overflow
 
@@ -753,7 +755,7 @@ def from_array(array, binning, **kwargs):
 
     if raise_err:
         raise ValueError('Invalid binning for passed array: {} vs {}'
-                         .format(array.shape, binning.shape))
+                         .format(array.shape, shape))
 
     uncer = kwargs.pop('errors', None)
     if uncer is not None:
