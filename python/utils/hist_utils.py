@@ -13,7 +13,7 @@ logging.basicConfig(level=logging.INFO,
 
 from collections import OrderedDict
 from itertools import chain
-from root_numpy import fill_hist, array2hist
+from root_numpy import fill_hist, array2hist, hist2array
 from root_numpy import __version__ as rnp_version
 
 from utils.misc_helpers import (
@@ -653,28 +653,21 @@ def get_array(hist, overflow=False, errors=False):
             into the array will return the same value as doing
             hist.GetBinContent() with the up-to 3 dimensional indices
     """
+    if not errors:
+        return hist2array(hist, include_overflow=overflow)
+
+    # Errors are currently not handled by hist2array, so we roll our own
     shape = _get_nbins(hist)
     # The iterator over the TH1 spits out the overflow and underflow bins
     of_shape = tuple(reversed([s + 2 for s in shape]))
     # Transpose the reshaped array to match how the iterator of the TH1 spits
     # the values out
-    if not errors:
-        vals = np.reshape(np.array([b for b in hist]), of_shape).T
-    else:
-        vals = np.reshape(np.array(
-            [hist.GetBinError(i) for i in xrange(np.prod(of_shape))]),
-                          of_shape).T
+    vals = np.sqrt(np.ndarray(buffer=hist.GetSumw2().GetArray(),
+                              shape=of_shape).T, dtype='f8')
 
-    # Removing the overflow bins requires knowledge about the dimension
-    # (At least I can't think of anything different)
-    ndim = len(shape)
+    # Shave of the overflow bins in each direction if desired
     if not overflow:
-        if ndim == 1:
-            return vals[1:-1]
-        if ndim == 2:
-            return vals[1:-1, 1:-1]
-        if ndim == 3:
-            return vals[1:-1, 1:-1, 1:-1]
+        vals = vals[tuple([slice(1, -1) for _ in xrange(vals.ndim)])]
 
     return vals
 
