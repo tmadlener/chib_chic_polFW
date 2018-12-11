@@ -12,6 +12,8 @@ import numpy.testing as npt
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 
+from root_numpy import fill_hist
+
 import utils.hist_utils as hu
 
 from utils.misc_helpers import create_random_str
@@ -291,6 +293,9 @@ class TestFromArray(unittest.TestCase):
 class TestProject(unittest.TestCase):
     def test_project_3d_to_2d(self):
         hist_3d = _get_hist(3)
+        # populate overflow bins to make sure that they are treated as expected
+        fill_hist(hist_3d, np.random.uniform(-1, 0, (100, 3)))
+        fill_hist(hist_3d, np.random.uniform(1, 2, (100, 3)))
         val3d, err3d = hu.get_array(hist_3d), hu.get_array(hist_3d, errors=True)
 
         hist_xy = hu.project(hist_3d, 'xy')
@@ -316,6 +321,9 @@ class TestProject(unittest.TestCase):
 
     def test_project_3d_to_1d(self):
         hist3d = _get_hist(3)
+        # populate overflow bins to make sure that they are treated as expected
+        fill_hist(hist3d, np.random.uniform(-1, 0, (100, 3)))
+        fill_hist(hist3d, np.random.uniform(1, 2, (100, 3)))
         val3d, err3d = hu.get_array(hist3d), hu.get_array(hist3d, errors=True)
 
         hist_x = hu.project(hist3d, 'x')
@@ -336,6 +344,9 @@ class TestProject(unittest.TestCase):
 
     def test_project_2d_to_1d(self):
         hist2d = _get_hist(2)
+        # populate overflow bins to make sure that they are treated as expected
+        fill_hist(hist2d, np.random.uniform(-1, 0, (100, 2)))
+        fill_hist(hist2d, np.random.uniform(1, 2, (100, 2)))
         val2d, err2d = hu.get_array(hist2d), hu.get_array(hist2d, errors=True)
 
         hist_x = hu.project(hist2d, 'x')
