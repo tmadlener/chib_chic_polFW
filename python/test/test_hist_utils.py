@@ -29,6 +29,14 @@ def _get_hist(ndim):
     if ndim == 1:
         return hu.create_histogram(np.random.uniform(0, 1, 10000),
                                    (10, 0, 1))
+    if ndim >= 4:
+        hist = r.THnD('hist4d', '', ndim, np.arange(2, ndim + 2, 1, dtype='i4'),
+                      np.zeros(ndim), np.ones(ndim))
+        fill_vals = np.random.uniform(0, 1, (10000, ndim))
+        for i in xrange(len(fill_vals)):
+            hist.Fill(fill_vals[i, :])
+        hist.Sumw2()
+        return hist
 
 
 
@@ -60,6 +68,14 @@ class TestGetArray(unittest.TestCase):
                         self.assertAlmostEqual(array[i + off, j + off, k + off],
                                                getattr(hist, cfunc)(i, j, k))
 
+        if ndim == 4:
+            for i in xrange(start, hist.GetAxis(0).GetNbins() + end + 1):
+                for j in xrange(start, hist.GetAxis(1).GetNbins() + end + 1):
+                    for k in xrange(start, hist.GetAxis(2).GetNbins() + end + 1):
+                        for l in xrange(start, hist.GetAxis(3).GetNbins() + end + 1):
+                            self.assertAlmostEqual(array[i+off, j+off, k+off, l+off],
+                                                   getattr(hist, cfunc)(np.array([i,j,k,l], dtype='i4')))
+
 
     def test_get_array_1dim(self):
         hist = _get_hist(1)
@@ -85,6 +101,18 @@ class TestGetArray(unittest.TestCase):
         self._comp_array_hist(arr, hist)
 
 
+    def test_get_array_4dim(self):
+        """Test if THns also work"""
+        hist = _get_hist(4)
+
+        arr = hu.get_array(hist)
+        self.assertEqual(arr.shape[0], hist.GetAxis(0).GetNbins())
+        self.assertEqual(arr.shape[1], hist.GetAxis(1).GetNbins())
+        self.assertEqual(arr.shape[2], hist.GetAxis(2).GetNbins())
+        self.assertEqual(arr.shape[3], hist.GetAxis(3).GetNbins())
+        self._comp_array_hist(arr, hist)
+
+
     def test_get_array_w_overflow(self):
         hist = _get_hist(1)
         arr = hu.get_array(hist, overflow=True)
@@ -104,6 +132,14 @@ class TestGetArray(unittest.TestCase):
         self.assertEqual(arr.shape[0], hist.GetNbinsX() + 2)
         self.assertEqual(arr.shape[1], hist.GetNbinsY() + 2)
         self.assertEqual(arr.shape[2], hist.GetNbinsZ() + 2)
+        self._comp_array_hist(arr, hist, True)
+
+        hist = _get_hist(4)
+        arr = hu.get_array(hist, overflow=True)
+        self.assertEqual(arr.shape[0], hist.GetAxis(0).GetNbins() + 2)
+        self.assertEqual(arr.shape[1], hist.GetAxis(1).GetNbins() + 2)
+        self.assertEqual(arr.shape[2], hist.GetAxis(2).GetNbins() + 2)
+        self.assertEqual(arr.shape[3], hist.GetAxis(3).GetNbins() + 2)
         self._comp_array_hist(arr, hist, True)
 
 
@@ -128,6 +164,15 @@ class TestGetArray(unittest.TestCase):
         self.assertEqual(arr.shape[2], hist.GetNbinsZ() + 2)
         self._comp_array_hist(arr, hist, True, True)
 
+        hist = _get_hist(4)
+        arr = hu.get_array(hist, overflow=True, errors=True)
+        self.assertEqual(arr.shape[0], hist.GetAxis(0).GetNbins() + 2)
+        self.assertEqual(arr.shape[1], hist.GetAxis(1).GetNbins() + 2)
+        self.assertEqual(arr.shape[2], hist.GetAxis(2).GetNbins() + 2)
+        self.assertEqual(arr.shape[3], hist.GetAxis(3).GetNbins() + 2)
+        self._comp_array_hist(arr, hist, True, True)
+
+
 
     def test_get_array_w_errors_no_overflow(self):
         hist = _get_hist(1)
@@ -147,6 +192,15 @@ class TestGetArray(unittest.TestCase):
         self.assertEqual(arr.shape[1], hist.GetNbinsY())
         self.assertEqual(arr.shape[2], hist.GetNbinsZ())
         self._comp_array_hist(arr, hist, error=True)
+
+        hist = _get_hist(4)
+        arr = hu.get_array(hist, errors=True)
+        self.assertEqual(arr.shape[0], hist.GetAxis(0).GetNbins())
+        self.assertEqual(arr.shape[1], hist.GetAxis(1).GetNbins())
+        self.assertEqual(arr.shape[2], hist.GetAxis(2).GetNbins())
+        self.assertEqual(arr.shape[3], hist.GetAxis(3).GetNbins())
+        self._comp_array_hist(arr, hist, error=True)
+
 
 
 class TestFindBin(unittest.TestCase):

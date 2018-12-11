@@ -639,8 +639,11 @@ def _get_nbins(hist):
         return hist.GetNbinsX(), hist.GetNbinsY()
     if hist.InheritsFrom('TH1'):
         return hist.GetNbinsX(),
+    if hist.InheritsFrom('THn'):
+        ndim = hist.GetNdimensions()
+        return tuple(hist.GetAxis(i).GetNbins() for i in xrange(ndim))
 
-    logging.error('{} does not seem to inherit from TH1. Cannot get shape!'
+    logging.error('{} does not seem to inherit from TH1 or THn. Cannot get shape!'
                   .format(hist.GetName()))
 
 
@@ -667,14 +670,26 @@ def get_array(hist, overflow=False, errors=False):
     if not errors:
         return hist2array(hist, include_overflow=overflow)
 
-    # Errors are currently not handled by hist2array, so we roll our own
+    # Errors are currently not (yet) handled by hist2array, so we roll our own
+    # There is a PR pending, but it is not apparent why it has not been merged
+    # for so long
     shape = _get_nbins(hist)
-    # The iterator over the TH1 spits out the overflow and underflow bins
-    of_shape = tuple(reversed([s + 2 for s in shape]))
-    # Transpose the reshaped array to match how the iterator of the TH1 spits
-    # the values out
-    vals = np.sqrt(np.ndarray(buffer=hist.GetSumw2().GetArray(),
-                              shape=of_shape).T, dtype='f8')
+    if not isinstance(hist, r.THn):
+        # Transpose the reshaped array afterwards to comply with the layout
+        # of the buffer
+        of_shape = tuple(reversed([s + 2 for s in shape]))
+        vals = np.sqrt(np.ndarray(buffer=hist.GetSumw2().GetArray(),
+                                  shape=of_shape).T, dtype='f8')
+    else:
+        # There is apparently no other way to do this since ROOT does not expose
+        # the fSumw2 array for THn, so we have to go about it in this way
+
+        # For THn iterating over the bins apparently has a different layout, so
+        # that do not have to play the same trick as above
+        of_shape = tuple([s + 2 for s in shape])
+        vals = np.reshape(np.array(
+            [hist.GetBinError(i) for i in xrange(np.prod(of_shape))]),
+                          of_shape)
 
     # Shave of the overflow bins in each direction if desired
     if not overflow:
