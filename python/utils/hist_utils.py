@@ -172,20 +172,31 @@ def get_binning(hist, axis='X'):
     Get the binning of the passed histogram along the passed axis
 
     Args:
-        hist (ROOT.TH1 or inheriting): Histogram for which the binning is of
-            interest
-        axis (char): Either 'X', 'Y' or 'Z' (depending on the passed hist not
-            all are possible!). Defines for which axis the binning is desired
+        hist (ROOT.TH1 or inheriting or ROOT.THn): Histogram for which the
+            binning is of interest
+        axis (char or int): char if hist inherits from TH1, int if it inherits
+            from THn. For TH1 type histograms 'X', 'Y' or 'Z' are possible.
+            Depending on the dimensions of the passed histogram different values
+            are valid/invalid.
 
     Returns:
-        np.array: The array with the bin eges
+        np.array: The array with the bin edges
     """
-    n_bins = getattr(hist, 'GetNbins' + axis)()
-    # first check if the histogram has non-uniform binning
-    # TODO: Check if there is a direct way to check if the edges buffer is null
-    # instead of going through the try-except machinery
-    axis = getattr(hist, 'Get' + axis + 'axis')()
-    edges = axis.GetXbins().GetArray()
+    if isinstance(hist, r.TH1):
+        # Be a little bit more permissive for TH1s by doing the "translation"
+        # to the axis label from int to char here
+        if isinstance(axis, int):
+            axis = {0: 'X', 1: 'Y', 2: 'Z'}[axis]
+        n_bins = getattr(hist, 'GetNbins' + axis)()
+        axis = getattr(hist, 'Get' + axis + 'axis')()
+        edges = axis.GetXbins().GetArray()
+    elif isinstance(hist, r.THn):
+        axis = getattr(hist, 'GetAxis')(axis)
+        n_bins = axis.GetNbins()
+        edges = axis.GetXbins().GetArray()
+        # first check if the histogram has non-uniform binning
+        # TODO: Check if there is a direct way to check if the edges buffer is
+        # null instead of going through the try-except machinery
     try:
         return get_vals_from_rwbuffer(edges, n_bins + 1)
     except IndexError:
