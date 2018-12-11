@@ -518,15 +518,15 @@ def hist3d(varx, vary, varz, **kwargs):
         x_sett = _get_hist_sett(varx, kwargs.pop('nbinsx', None),
                                 kwargs.pop('minx', None),
                                 kwargs.pop('maxx', None),
-                                kwargs.pop('x_hist_sett'), None)
+                                kwargs.pop('x_hist_sett', None))
         y_sett = _get_hist_sett(vary, kwargs.pop('nbinsy', None),
                                 kwargs.pop('miny', None),
                                 kwargs.pop('maxy', None),
-                                kwargs.pop('y_hist_sett'), None)
+                                kwargs.pop('y_hist_sett', None))
         z_sett = _get_hist_sett(varz, kwargs.pop('nbinsz', None),
                                 kwargs.pop('minz', None),
                                 kwargs.pop('maxz', None),
-                                kwargs.pop('z_hist_sett'), None)
+                                kwargs.pop('z_hist_sett', None))
         hist_sett = x_sett + y_sett + z_sett
 
     # use the name of the variables if they have one and nothing else is set
@@ -617,7 +617,6 @@ def get_slices(hist, direction, binning, basename=None):
             the histograms
     """
     hists = OrderedDict()
-    n_bins = len(binning) - 1
     slice_axis = getattr(hist, 'Get' + OTHER_AXIS[direction] + 'axis')()
     # get the corresponding bin indices and clean them of duplicates
     bin_idcs = list(set([slice_axis.FindBin(b) for b in binning]))
