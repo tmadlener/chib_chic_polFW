@@ -6,6 +6,9 @@ Tests for EfficiencyProvider classes
 import unittest
 from mock import patch
 
+import ROOT as r
+r.PyConfig.IgnoreCommandLineOptions = True
+
 import numpy as np
 import numpy.testing as npt
 
@@ -101,7 +104,6 @@ class TestAcceptanceCorrectionProvider(unittest.TestCase):
         npt.assert_equal((corr_prov.corr_map == -1).astype(bool), mask | zero_masked_bins)
 
 
-
     def test_masking_init(self):
         """
         Test if masking also works when finding zero bins and using precision
@@ -156,22 +158,37 @@ class TestAcceptanceCorrectionProvider(unittest.TestCase):
         npt.assert_allclose(corrs, exp_corrs)
 
 
+    def test_eval_4d(self):
+        acc_map4 = r.THnD('', '', 4, np.array([10, 10, 5, 5], dtype='i4'),
+                          np.zeros(4), np.ones(4))
+        fill_vals = np.random.uniform(0, 1, (100000, 4))
+        for i in xrange(fill_vals.shape[0]):
+            acc_map4.Fill(fill_vals[i, :])
+        acc_map4.Scale(1.0 / acc_map4.ComputeIntegral())
+
+        map_4d = AcceptanceCorrectionProvider(acc_map4)
+        test_ps = np.random.uniform(0, 1, (10000, 4))
+        corrs = map_4d.eval(test_ps[:, 0], test_ps[:, 1], test_ps[:, 2], test_ps[:, 3])
+
+        exp_corrs = np.array(
+            [1.0 / acc_map4.GetBinContent(acc_map4.GetBin(v))
+             for v in test_ps]
+        )
+        npt.assert_allclose(corrs, exp_corrs)
+
+
+
     @patch('utils.EfficiencyProvider.logging')
     def test_eval_warnings(self, mock_logger):
         corr_map2d = AcceptanceCorrectionProvider(self.acc_map)
         test_ps = np.random.uniform(0, 1, (10, 3))
         corr_map2d.eval(test_ps[:, 0], test_ps[:, 1], test_ps[:, 2])
-        mock_logger.warning.assert_called_with('Ignoring third variable for 2d corrections')
+        mock_logger.error.assert_called_with('Correction map has dimension 2 but'
+                                             ' trying to evaluate it with 3')
 
         corr_map2d.eval(test_ps[:, 0], test_ps[:-1, 1])
-        mock_logger.error.assert_called_with('Need same number of costh and phi values')
-
-        corr_map3d = AcceptanceCorrectionProvider(self.acc_map3)
-        corr_map3d.eval(test_ps[:, 0], test_ps[:, 1])
-        mock_logger.error.assert_called_with('Need third variable for 3d corrections')
-
-        corr_map3d.eval(test_ps[:, 0], test_ps[:, 1], test_ps[:-1, 2])
-        mock_logger.error.assert_called_with('Need the same number of var and costh and phi values')
+        mock_logger.error.assert_called_with('All input values need to have the'
+                                             ' same shape')
 
 
 if __name__ == '__main__':
