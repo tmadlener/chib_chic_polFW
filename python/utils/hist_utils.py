@@ -17,7 +17,7 @@ from root_numpy import fill_hist, array2hist, hist2array
 from root_numpy import __version__ as rnp_version
 
 from utils.misc_helpers import (
-    make_iterable, create_random_str, get_vals_from_rwbuffer
+    make_iterable, create_random_str, get_vals_from_rwbuffer, replace_all
 )
 
 def draw_var_to_hist(tree, hist, var, cut='', weight=None):
@@ -820,48 +820,95 @@ def from_array(array, binning, **kwargs):
     return hist
 
 
-def project(hist, axis):
+def project(hist, axes):
     """
-    Project the passed histogram onto any direction (or combination thereof)
+    Project the passed histogram onto any direction (or combination thereof).
+
+    The overflow bins in the axes that are integrated over are ignored.
 
     Args:
-        hist (ROOT.TH3 or ROOT.TH2): Histogram that should be projected onto a
-            direction
-        axis (str): string containing the direction(s) onto which hist should be
-            projected. E.g. 'xy', to get the projection onto the x and y axis
+        hist (ROOT.TH3, ROOT.TH2 or ROOT.THn): Histogram that should be
+            projected onto a direction
+        axes (str or list of int): string containing the direction(s) onto which
+            hist should be projected. E.g. 'xy', to get the projection onto the
+            x and y axes for a TH3D or [1, 2] to get a projection onto the
+            second and third axis for a THn
 
     Returns:
-        ROOT.TH1 or ROOT.TH2: Depending on the input and the axis onto which the
-            projection happened.
+        ROOT.TH1, ROOT.TH2 or ROOT.THn: Depending on the input and the axis onto
+            which the projection happened.
     """
-    axis_idcs = {'x': 0, 'y': 1, 'z': 2, 'X': 0, 'Y': 1, 'Z': 2}
-    if isinstance(hist, r.TH3):
-        all_axes = 'xyz'
-        isTH3 = True
-        if len(axis) != 1 and len(axis) != 2:
-            logging.error('Can only project onto one or two directions')
-    elif isinstance(hist, r.TH2):
-        all_axes = 'xy'
-        isTH3 = False
-        if len(axis) != 1:
-            logging.error('Can only project onto one direction')
-    else:
-        logging.error('hist is not of type TH[2|3]. Cannot get a projection')
-        return None
+    def _project_TH1(hist, axes):
+        """
+        Internal function for TH2 and TH3.
+        For these I simply do not understand how to put the options to get what
+        I want (especially for TH3.Project3D)
+        """
+        axis_idcs = {'x': 0, 'y': 1, 'z': 2, 'X': 0, 'Y': 1, 'Z': 2}
+        if isinstance(hist, r.TH3):
+            all_axes = 'xyz'
+            isTH3 = True
+            if len(axes) != 1 and len(axes) != 2:
+                logging.error('Can only project onto one or two directions')
+        elif isinstance(hist, r.TH2):
+            all_axes = 'xy'
+            isTH3 = False
+            if len(axes) != 1:
+                logging.error('Can only project onto one direction')
+        else:
+            logging.error('hist is not of type TH[2|3]. Cannot get a projection')
+            return None
 
-    axis = axis.lower()
-    sum_axes = tuple(axis_idcs[c] for c in all_axes if c.lower() not in axis)
+        axes = axes.lower()
+        sum_axes = tuple(axis_idcs[c] for c in all_axes if c.lower() not in axes)
 
-    binning = np.array([get_binning(hist, c.upper()) for c in axis])
-    val, err = get_array(hist), get_array(hist, errors=True)
-    sum_val = np.sum(val, axis=sum_axes)
-    sum_err = np.sqrt(np.sum(err**2, axis=sum_axes))
+        binning = np.array([get_binning(hist, c.upper()) for c in axes])
+        val, err = get_array(hist), get_array(hist, errors=True)
+        sum_val = np.sum(val, axis=sum_axes)
+        sum_err = np.sqrt(np.sum(err**2, axis=sum_axes))
 
-    if isTH3 and len(axis) > 1:
-        # In this case we have to check if we have to swap some axis, since
-        # combinations like z vs x are allowed
-        if axis[0] > axis[1]:
-            sum_val = sum_val.T
-            sum_err = sum_err.T
+        if isTH3 and len(axes) > 1:
+            # In this case we have to check if we have to swap some axis, since
+            # combinations like z vs x are allowed
+            if axes[0] > axes[1]:
+                sum_val = sum_val.T
+                sum_err = sum_err.T
 
-    return from_array(sum_val, binning, errors=sum_err)
+        return from_array(sum_val, binning, errors=sum_err)
+
+    def _project_THn(hist, axes):
+        """
+        Internal function for THn projections.
+        For these it should be more straight forward to get the expected
+        behavior from ROOT
+        """
+        axes = np.array(list(make_iterable(axes)), dtype='i8')
+        all_axes = list(xrange(hist.GetNdimensions()))
+
+        sum_axes = tuple(a for a in all_axes if a not in axes)
+        # Set ranges for axes that are integrated over to not include overflow
+        for ax_idx in sum_axes:
+            axis = hist.GetAxis(ax_idx)
+            axis.SetRange(1, axis.GetNbins())
+
+        # create a name that does not interfere with the options
+        name = replace_all(create_random_str(),
+                           (('e', '_'), ('E', '_'),
+                            ('a', '_'), ('A', '_'),
+                            ('o', '_'), ('O', '_')))
+
+        # If at all possible return a TH1 (because they are easier to handle)
+        if len(axes) == 3:
+            return hist.Projection(axes[0], axes[1], axes[2], "E_" + name)
+        if len(axes) == 2:
+            return hist.Projection(axes[0], axes[1], "E_" + name)
+        if len(axes) == 1:
+            return hist.Projection(axes[0], "E_" + name)
+
+        return hist.ProjectionND(axes.shape[0], axes.astype('i4'), "E_" + name)
+
+
+    if isinstance(hist, r.TH1):
+        return _project_TH1(hist, axes.lower())
+    if isinstance(hist, r.THn):
+        return _project_THn(hist, axes)

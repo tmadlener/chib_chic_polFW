@@ -415,5 +415,65 @@ class TestProject(unittest.TestCase):
         npt.assert_equal(err, np.sqrt(np.sum(err2d**2, axis=0)))
 
 
+    def test_project_4d_to_3d(self):
+        # Fill a test histogram
+        hist4d = _get_hist(4)
+        val4d, err4d = hu.get_array(hist4d), hu.get_array(hist4d, errors=True)
+
+        hist_123 = hu.project(hist4d, [1, 2, 3])
+        self.assertTrue(isinstance(hist_123, r.TH3))
+        val, err = hu.get_array(hist_123), hu.get_array(hist_123, errors=True)
+        npt.assert_allclose(val, np.sum(val4d, axis=0))
+        npt.assert_allclose(err, np.sqrt(np.sum(err4d**2, axis=0)))
+
+        hist_021 = hu.project(hist4d, [0, 2, 1])
+        self.assertTrue(isinstance(hist_021, r.TH3))
+        val, err = hu.get_array(hist_021), hu.get_array(hist_021, errors=True)
+        npt.assert_allclose(val, np.swapaxes(np.sum(val4d, axis=3), 1, 2))
+        npt.assert_allclose(err, np.swapaxes(np.sqrt(np.sum(err4d**2, axis=3)), 1, 2))
+
+
+    def test_project_4d_to_2d(self):
+        hist4d = _get_hist(4)
+        val4d, err4d = hu.get_array(hist4d), hu.get_array(hist4d, errors=True)
+
+        hist_01 = hu.project(hist4d, [0, 1])
+        self.assertTrue(isinstance(hist_01, r.TH2))
+        val, err = hu.get_array(hist_01), hu.get_array(hist_01, errors=True)
+        # For some reason the sum does not give the expected shape here,
+        # However transposing helps
+        # But the projected histogram has the expected shape and contens
+        # TODO: investigate why
+        npt.assert_allclose(val, np.sum(val4d, axis=(2, 3)).T)
+        npt.assert_allclose(err, np.sqrt(np.sum(err4d**2, axis=(2, 3))).T)
+
+
+    def test_project_4d_to_1d(self):
+        hist4d = _get_hist(4)
+        val4d, err4d = hu.get_array(hist4d), hu.get_array(hist4d, errors=True)
+
+        hist_0 = hu.project(hist4d, 0)
+        self.assertTrue(isinstance(hist_0, r.TH1))
+        val, err = hu.get_array(hist_0), hu.get_array(hist_0, errors=True)
+        npt.assert_allclose(val, np.sum(val4d, axis=(1, 2, 3)))
+        npt.assert_allclose(err, np.sqrt(np.sum(err4d**2, axis=(1,2,3))))
+
+
+    def test_project_5d_to_4d(self):
+        """Test that also returning into a THn works"""
+        hist5d = _get_hist(5)
+        val5d, err5d = hu.get_array(hist5d), hu.get_array(hist5d, errors=True)
+
+        hist_0234 = hu.project(hist5d, [0, 2, 3, 4])
+        val, err = hu.get_array(hist_0234), hu.get_array(hist_0234, errors=True)
+        npt.assert_allclose(val, np.sum(val5d, axis=1))
+        npt.assert_allclose(err, np.sqrt(np.sum(err5d**2, axis=1)))
+
+        hist_0314 = hu.project(hist5d, [0, 3, 1, 4])
+        val, err = hu.get_array(hist_0314), hu.get_array(hist_0314, errors=True)
+        npt.assert_allclose(val, np.swapaxes(np.sum(val5d, axis=2), 1, 2))
+        npt.assert_allclose(err, np.swapaxes(np.sqrt(np.sum(err5d**2, axis=2)), 1, 2))
+
+
 if __name__ == '__main__':
     unittest.main()
