@@ -814,7 +814,7 @@ def from_array(array, binning, **kwargs):
 
 
     if rnp_version == '4.7.3':
-        logging.info('Using root_numpys capabilities of setting the errors')
+        logging.debug('Using root_numpys capabilities of setting the errors')
         array2hist(array, hist, errors=uncer)
 
     return hist
