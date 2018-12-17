@@ -182,8 +182,9 @@ class AcceptanceCorrectionProvider(object):
             if mask_prec is not None:
                 if isinstance(mask_prec, float):
                     acc_errs = get_array(self.hist, errors=True)
-                    rel_uncer = np.divide(acc_errs, acc_values,
-                                          where=acc_values!=0)
+                    rel_uncer = np.zeros_like(acc_errs)
+                    np.divide(acc_errs, acc_values, out=rel_uncer,
+                              where=acc_values!=0)
                     mask_uncer = (rel_uncer > mask_prec).astype(bool)
                     logging.debug('Minimum precision = {}: Masking {} bins'
                                   .format(mask_prec, np.sum(mask_uncer)))

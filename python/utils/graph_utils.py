@@ -381,7 +381,9 @@ def calc_pulls(graph, shape):
         _, _, y_err, _ = get_errors(graph)
         y_pred = np.array([eval_f(shape, x) for x in x_vals])
 
-        return np.divide((y_vals - y_pred), y_err, where=y_err!=0)
+        pulls = np.zeros_like(y_vals)
+        np.divide((y_vals - y_pred), y_err, out=pulls, where=y_err!=0)
+        return pulls
 
     if isinstance(shape, r.TF1):
         return _pulls(graph, shape, lambda s, x: s.Eval(x))
