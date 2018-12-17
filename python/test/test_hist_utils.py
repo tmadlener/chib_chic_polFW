@@ -475,5 +475,25 @@ class TestProject(unittest.TestCase):
         npt.assert_allclose(err, np.swapaxes(np.sqrt(np.sum(err5d**2, axis=2)), 1, 2))
 
 
+class TestUncerHist(unittest.TestCase):
+    def test_abs_uncer(self):
+        for i in xrange(1, 4):
+            hist = _get_hist(i)
+            uncer_hist = hu.uncer_hist(hist, abs_uncer=True)
+            npt.assert_allclose(np.sqrt(hu.get_array(hist)),
+                                hu.get_array(uncer_hist))
+
+
+    def test_rel_uncer(self):
+        for i in xrange(1, 4):
+            hist = _get_hist(i)
+            uncer_hist = hu.uncer_hist(hist)
+            vals = hu.get_array(hist)
+            exp_uncers = np.zeros_like(vals)
+            np.divide(1, np.sqrt(vals), out=exp_uncers, where=vals!=0)
+            npt.assert_allclose(exp_uncers, hu.get_array(uncer_hist))
+
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -912,3 +912,28 @@ def project(hist, axes):
         return _project_TH1(hist, axes.lower())
     if isinstance(hist, r.THn):
         return _project_THn(hist, axes)
+
+
+def uncer_hist(hist, abs_uncer=False):
+    """
+    Get the (relative) uncertainties as histogram from the passed histogram.
+
+    Args:
+        hist (ROOT.TH1): Histogram for which the uncertainties are of interest
+        abs_uncer (bool, optional, default=False): By default the function
+            returns the relative uncertainty in each bin. Setting this to True
+            will instead return the absolute uncertainties.
+
+    Returns:
+        ROOT.TH1: Histogram with same dimensions as input histogram, but with the
+            (relative) uncertainties as bin contents
+    """
+    vals, errs = get_array(hist), get_array(hist, errors=True)
+    binning = np.array([get_binning(hist, i) for i in xrange(vals.ndim)])
+    if abs_uncer:
+        return from_array(errs, binning)
+    # Initialize the array with zeros to guarantee that values where there are
+    # no entries will also be zero in the output
+    rel_errs = np.zeros_like(errs)
+    np.divide(errs, vals, out=rel_errs, where=vals!=0)
+    return from_array(rel_errs, binning)
