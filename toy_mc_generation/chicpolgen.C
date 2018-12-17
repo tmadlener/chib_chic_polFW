@@ -166,7 +166,7 @@ struct store_config {
   int nBinsCosth{128};
   int nBinsPhi{192};
   int nBinsPt{12};
-  int nBinsRap{4};
+  int nBinsRap{2};
 
   std::array<int, 4> getNBins() const { return {nBinsCosth, nBinsPhi, nBinsPt, nBinsRap}; }
   std::array<double, 4> getLowEdges() const { return {-1, -180, 8, 0}; }
@@ -562,7 +562,7 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     costhPhiHists.Init("costh_phi_JpsiPt_JpsiRap", sel_config.sampling, photonEffs && muonEffs,
                          store_config.getNBins(), store_config.getLowEdges(), store_config.getHighEdges());
 
-    costhPhiHists.setSamplingWeightF([&w_sampling]() { return w_sampling; });
+    costhPhiHists.setSamplingWeightF([&w_sampling]() { return 1.0 / w_sampling; });
 
     costhPhiHists.setHXFillF([&costh_HX_sm, &phi_HX_sm, &pT_jpsi_sm, &y_jpsi_sm]() {
         return std::array<double, 4>{costh_HX_sm, phi_HX_sm, pT_jpsi_sm, std::abs(y_jpsi_sm)};
