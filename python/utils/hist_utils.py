@@ -319,13 +319,17 @@ def get_quantiles(hist, quantiles):
     return [x_axis.GetBinUpEdge(b + 1) for b in q_bins]
 
 
-def divide(num, denom, **kwargs):
+def divide(num, denom, option='', **kwargs):
     """
     Divide to histograms and return the ratio
 
     Args:
         num (ROOT.TH1): numerator histogram
         denom (ROOT.TH1): denominator histogram
+        option (str, optional): Option string that will be passed to the Divide
+            function. Only meaningful value is 'B', in which case Binomial
+            uncertainties will be calculated instead of (uncorrelated) Poisson
+            uncertainties.
 
     Keyword Args:
         name (str): If not empty this will be set as the name of the ratio TH1
@@ -336,7 +340,7 @@ def divide(num, denom, **kwargs):
             dividing it by denom
     """
     ratio = num.Clone(kwargs.pop('name', create_random_str(8)))
-    ratio.Divide(denom)
+    ratio.Divide(num, denom, 1, 1, option)
 
     set_labels(ratio, kwargs.pop('xlabel', ''), kwargs.pop('ylabel', ''))
 
