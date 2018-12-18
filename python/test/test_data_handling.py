@@ -5,6 +5,7 @@ Tests for the data_handling module
 
 import os
 import unittest
+from mock import patch
 
 import numpy as np
 import pandas as pd
@@ -23,7 +24,8 @@ class TestApplySelection(unittest.TestCase):
         dfr = pd.DataFrame({'A': self.dummy_list, 'B': self.dummy_list2})
         self.dfr = pd.get_dummies(dfr, prefix=['colA', 'colB'])
 
-    def test_not_all_callable(self):
+    @patch('utils.data_handling.logging')
+    def test_not_all_callable(self, mock_logger):
         with self.assertRaises(TypeError):
             apply_selections(pd.DataFrame(), [lambda x: x, np.array([0])])
 
@@ -74,8 +76,8 @@ class TestGetTreename(unittest.TestCase):
             os.environ['CHIB_CHIC_POLFW_DIR'], 'python', 'test', 'test_data'
         )
 
-
-    def test_return_none_mult_trees(self):
+    @patch('utils.data_handling.logging')
+    def test_return_none_mult_trees(self, mock_logger):
         """Test if None is returned on multiple TTrees"""
         mult_tree_files = [
             'multiple_trees.root',
@@ -83,10 +85,14 @@ class TestGetTreename(unittest.TestCase):
         ]
         for filen in mult_tree_files:
             full_path = os.path.join(self.test_data_dir, filen)
+            exp_warning = 'Found more than one TTrees in {}: {}'\
+                          .format(full_path, ['tree1', 'tree2'])
             self.assertTrue(get_treename(full_path) is None)
+            mock_logger.warning.assert_called_with(exp_warning)
 
 
-    def test_return_none_no_trees(self):
+    @patch('utils.data_handling.logging')
+    def test_return_none_no_trees(self, mock_logger):
         """Test if None is returned on no found TTrees"""
         no_tree_files = [
             'no_tree.root',
@@ -94,7 +100,9 @@ class TestGetTreename(unittest.TestCase):
         ]
         for filen in no_tree_files:
             full_path = os.path.join(self.test_data_dir, filen)
+            exp_warning = 'Found no TTrees in {}'.format(full_path)
             self.assertTrue(get_treename(full_path) is None)
+            mock_logger.warning.assert_called_with(exp_warning)
 
 
     def test_return_tree_name(self):
@@ -105,7 +113,7 @@ class TestGetTreename(unittest.TestCase):
         ]
         for filen in one_tree_files:
             full_path = os.path.join(self.test_data_dir, filen)
-            # NOTE: 'tree' is hardcoded here as it is in the creation scrip:t
+            # NOTE: 'tree' is hardcoded here as it is in the creation script
             self.assertEqual(get_treename(full_path), 'tree')
 
 
