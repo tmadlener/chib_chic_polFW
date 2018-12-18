@@ -903,13 +903,26 @@ def project(hist, axes):
 
         # If at all possible return a TH1 (because they are easier to handle)
         if len(axes) == 3:
-            return hist.Projection(axes[0], axes[1], axes[2], "E_" + name)
-        if len(axes) == 2:
-            return hist.Projection(axes[0], axes[1], "E_" + name)
-        if len(axes) == 1:
-            return hist.Projection(axes[0], "E_" + name)
+            proj_hist = hist.Projection(axes[0], axes[1], axes[2], "E_" + name)
+        elif len(axes) == 2:
+            proj_hist =  hist.Projection(axes[0], axes[1], "E_" + name)
+        elif len(axes) == 1:
+            proj_hist = hist.Projection(axes[0], "E_" + name)
+        else:
+            proj_hist = hist.ProjectionND(axes.shape[0], axes.astype('i4'),
+                                          "E_" + name)
 
-        return hist.ProjectionND(axes.shape[0], axes.astype('i4'), "E_" + name)
+        # Make sure that the uncertainties are set / calculated
+        # For some reason this seems to work when a TH1 is returned, but for THn
+        # this status is somehow "lost", which can lead to trouble later
+        if isinstance(proj_hist, r.TH1):
+            if proj_hist.GetSumw2().fN == 0:
+                proj_hist.Sumw2()
+        if isinstance(proj_hist, r.THnBase):
+            if not proj_hist.GetCalculateErrors():
+                proj_hist.Sumw2()
+
+        return proj_hist
 
 
     if isinstance(hist, r.TH1):
