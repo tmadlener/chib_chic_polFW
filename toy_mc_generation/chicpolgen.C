@@ -625,55 +625,17 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     Mpsi = getMass(jpsiMassDist);
     Mchi = Mchic - MdimuonPDG + Mpsi;
 
-    // Have to differentiate between generating the rapidity according to the rapidity distribution or
-    // generating eta according to the rapidity distribution
-    TLorentzVector chi;
-    // Phi:
-    const double Phi_chi   = 2. * PIG * gRandom->Rndm(); // needed for any of the two cases
 
-    // pT:
-#if GENPTM == 0
-    pT_chi = pT_distr->GetRandom();
-#else
-    pT_chi = pTM_distr->GetRandom() * Mchi;
-#endif
 
-#if GENRAPIDITY == 1
-    // pL:
-    double rap_sign = gRandom->Uniform(-1., 1.); rap_sign /= fabs(rap_sign);
-    y_chi = rap_distr->GetRandom() * rap_sign;
-
-    double mT = sqrt( Mchi*Mchi + pT_chi*pT_chi );
-    double pL1 = 0.5 *mT * exp(y_chi);
-    double pL2 = - 0.5 *mT * exp(-y_chi);
-    pL_chi = pL1 + pL2;
-
-    chi.SetXYZM( pT_chi * cos(Phi_chi) , pT_chi * sin(Phi_chi), pL_chi, Mchi );
-#else
-    const bool eta_sign = gRandom->Uniform(-1., 1) > 0;
-    const double genEta = rap_distr->GetRandom() * (1 - 2 * eta_sign);
-
-    chi.SetPtEtaPhiM(pT_chi, genEta, Phi_chi, Mchi);
-    y_chi = chi.Rapidity();
-#endif
-
-  // generation of full angular distribution
 
 
     const double angdistr_max = 0.02;
-
-
     double angdistr_rnd;
+
     // initialize this to the max double value, so that a printout appears if an invalid setting for
     // chic_state has been chosen
     // NOTE: this also makes the macro go into an infinite loop
     double angdistr = std::numeric_limits<double>::max();
-
-
-    double sinTH_psi  = 100.;
-    const double PHI_psi = 2. * PIG * gRandom->Rndm();
-    double sinth_chihe = 100.;
-    double cosphi_chihe = 100.;
 
 
 #if TIMING_INSTRUMENTATION == 1
@@ -682,12 +644,58 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 #endif
 
     // have to declare some TLorentzVectors that are used outside of the generation loop as "quasi-globals" here
-    TLorentzVector psi, gamma, lepP, lepN;
+    TLorentzVector chi, psi, gamma, lepP, lepN;
+
+    // generation of full angular distribution
 
     do {
 #if TIMING_INSTRUMENTATION == 1
       n_gen++;
 #endif
+
+
+      // Phi:
+      const double Phi_chi   = 2. * PIG * gRandom->Rndm(); // needed for any of the two cases
+
+      // pT:
+#if GENPTM == 0
+      pT_chi = pT_distr->GetRandom();
+#else
+      pT_chi = pTM_distr->GetRandom() * Mchi;
+#endif
+
+      // Have to differentiate between generating the rapidity according to the rapidity distribution or
+      // generating eta according to the rapidity distribution
+#if GENRAPIDITY == 1
+      // pL:
+      double rap_sign = gRandom->Uniform(-1., 1.); rap_sign /= fabs(rap_sign);
+      y_chi = rap_distr->GetRandom() * rap_sign;
+
+      double mT = sqrt( Mchi*Mchi + pT_chi*pT_chi );
+      double pL1 = 0.5 *mT * exp(y_chi);
+      double pL2 = - 0.5 *mT * exp(-y_chi);
+      pL_chi = pL1 + pL2;
+
+      chi.SetXYZM( pT_chi * cos(Phi_chi) , pT_chi * sin(Phi_chi), pL_chi, Mchi );
+#else
+      const bool eta_sign = gRandom->Uniform(-1., 1) > 0;
+      const double genEta = rap_distr->GetRandom() * (1 - 2 * eta_sign);
+
+      chi.SetPtEtaPhiM(pT_chi, genEta, Phi_chi, Mchi);
+      y_chi = chi.Rapidity();
+#endif
+
+
+
+
+      // double sinTH_psi  = 100.;
+      const double PHI_psi = 2. * PIG * gRandom->Rndm();
+      // double sinth_chihe = 100.;
+      // double cosphi_chihe = 100.;
+
+
+
+
 
          cosTH_psi = -1. + 2. * gRandom->Rndm();
               // direction of the PSI in the CHI rest frame (wrt to a reference frame, HE or CS, chosen afterwards)
@@ -703,13 +711,13 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
          const double costh2_chihe = costh_chihe*costh_chihe;
          const double sinth2_chihe = 1 - costh2_chihe;
 
-         sinTH_psi   = sqrt( 1. -   cosTH2_psi );
-         sinth_chihe = sqrt( sinth2_chihe );
+         const double sinTH_psi   = sqrt( 1. -   cosTH2_psi );
+         const double sinth_chihe = sqrt( sinth2_chihe );
 
          const double sin2TH_psi   = 2.*sinTH_psi*cosTH_psi;
          const double sin2th_chihe = 2.*sinth_chihe*costh_chihe;
 
-         cosphi_chihe = cos( phi_chihe * PIG/180. );
+         const double cosphi_chihe = cos( phi_chihe * PIG/180. );
          const double cos2phi_chihe = 2.*cosphi_chihe*cosphi_chihe -1.;
 
 
