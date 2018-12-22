@@ -122,8 +122,8 @@ def default_colors():
     return _color_indices
 
 
-def default_attributes(diff_markers=True, size=2, linewidth=2,
-                       open_markers=False, **kwargs):
+def default_attributes(diff_markers=True, size=1, linewidth=2,
+                       open_markers=True, **kwargs):
     """
     Get a list of some sensible default attributes
 
@@ -139,7 +139,7 @@ def default_attributes(diff_markers=True, size=2, linewidth=2,
             argument of plot_on_canvas
     """
     if kwargs.pop('unique_colors', None) is not None:
-        logging.warn('\'unique_colors \' is a keyword arg without effect')
+        logging.warning('\'unique_colors \' is a keyword arg without effect')
 
     dcols = default_colors()
     if diff_markers:
