@@ -104,11 +104,14 @@ void StorageHistograms<N>::Init(const std::string& basename, const bool sampling
 template<size_t N>
 StorageHistograms<N>::~StorageHistograms()
 {
-  for (auto* h : m_genHists) h->Write();
-  for (auto* h : m_accHists) h->Write();
-  for (auto* h : m_recoHists) h->Write();
-  if (m_sampling) {
-    for (auto* h : m_noWeightHists) h->Write();
+  if (m_filling) {
+    for (auto* h : m_genHists) h->Write();
+    for (auto* h : m_accHists) h->Write();
+    for (auto* h : m_recoHists) h->Write();
+
+    if (m_sampling) {
+      for (auto* h : m_noWeightHists) h->Write();
+    }
   }
 }
 
