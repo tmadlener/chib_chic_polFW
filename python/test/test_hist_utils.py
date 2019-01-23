@@ -494,6 +494,63 @@ class TestUncerHist(unittest.TestCase):
             npt.assert_allclose(exp_uncers, hu.get_array(uncer_hist))
 
 
+class TestRebin(unittest.TestCase):
+    """
+    Tests for checking rebinning of histograms. Since all the heavy lifting
+    in these cases is done by ROOT (and hopefully tested) there, only some basic
+    checks are done here:
+
+    - Input histogram remains unchanged
+    - The number of bins corresponds to the ones that are expected
+    - Errors are caught and reported correctly
+    """
+    def test_rebin_4d(self):
+        hist = _get_hist(4)
+        # NOTE: only very limited possibilities to do an actual rebinning
+        # here
+        re_hist = hu.rebin(hist, [(0, 1), (2, 2)])
+        # check original hist is unchanged
+        self.assertEqual(hu._get_nbins(hist), (2, 3, 4, 5))
+        self.assertEqual(hu._get_nbins(re_hist), (1, 3, 2, 5))
+
+
+    def test_rebin_3d(self):
+        hist = _get_hist(3)
+        # some more possibilities here
+        re_hist = hu.rebin(hist, [(0, 2), (1, 5), (2, 6)])
+
+        self.assertEqual(hu._get_nbins(hist), (10, 20, 30))
+        self.assertEqual(hu._get_nbins(re_hist), (2, 5, 6))
+
+        # check that char indices work
+        re_hist = hu.rebin(hist, [('x', 5), ('Y', 2), ('z', 3)])
+        self.assertEqual(hu._get_nbins(hist), (10, 20, 30))
+        self.assertEqual(hu._get_nbins(re_hist), (5, 2, 3))
+
+        # check that in principle also mixed indices work
+        re_hist = hu.rebin(hist, [('x', 5), ('Y', 2), (2, 3)])
+        self.assertEqual(hu._get_nbins(hist), (10, 20, 30))
+        self.assertEqual(hu._get_nbins(re_hist), (5, 2, 3))
+
+
+    def test_rebin_2d(self):
+        hist = _get_hist(2)
+        # only checking the basic case here, since basically only the return
+        # statement is different from the 3d case
+        re_hist = hu.rebin(hist, [(0, 2), (1, 4)])
+        self.assertEqual(hu._get_nbins(hist), (10, 20))
+        self.assertEqual(hu._get_nbins(re_hist), (2, 4))
+
+
+    def test_rebin_1d(self):
+        hist = _get_hist(1)
+        # only checking the basic case here, since basically only the return
+        # statement is different from the 3d case
+        re_hist = hu.rebin(hist, [('x', 2)])
+        self.assertEqual(hu._get_nbins(hist), (10,))
+        self.assertEqual(hu._get_nbins(re_hist), (2,))
+
+
 
 if __name__ == '__main__':
     unittest.main()

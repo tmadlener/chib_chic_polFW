@@ -740,3 +740,22 @@ def parse_sel_expr(expr):
     logging.error('Could not parse expression \'{}\' to extract a selection '
                   'function'.format(expr))
     return False
+
+
+def is_divisable(dividend, divisor):
+    """
+    Check if the dividend is (evenly) divisable by the passed divisor and return
+    the result if it is
+
+    Args:
+        dividend (int)
+        divisor int)
+
+    Returns:
+        ratio (int) or None: If number is evenly divisable by factor then the
+            ratio is returned otherwise None
+    """
+    ratio = dividend / divisor
+    if ratio * divisor == dividend:
+        return ratio
+    logging.warning('{} is not a divisor of {}'.format(divisor, dividend))

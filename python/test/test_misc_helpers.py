@@ -603,5 +603,15 @@ class TestParseSelExpr(unittest.TestCase):
         self.assertFalse(mh.parse_sel_expr('0.3 > x'))
 
 
+class TestIsDivisable(unittest.TestCase):
+    def test_is_divisable(self):
+        self.assertEqual(mh.is_divisable(10, 5), 2)
+        self.assertEqual(mh.is_divisable(60, 12), 5)
+
+    @patch('utils.misc_helpers.logging')
+    def test_is_not_divisable(self, mock_logger):
+        self.assertEqual(mh.is_divisable(31, 3), None)
+        mock_logger.warning.assert_called_with('3 is not a divisor of 31')
+
 if __name__ == '__main__':
     unittest.main()

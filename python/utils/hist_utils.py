@@ -17,7 +17,8 @@ from root_numpy import fill_hist, array2hist, hist2array
 from root_numpy import __version__ as rnp_version
 
 from utils.misc_helpers import (
-    make_iterable, create_random_str, get_vals_from_rwbuffer, replace_all
+    make_iterable, create_random_str, get_vals_from_rwbuffer, replace_all,
+    is_divisable
 )
 
 def draw_var_to_hist(tree, hist, var, cut='', weight=None):
@@ -824,11 +825,19 @@ def from_array(array, binning, **kwargs):
     return hist
 
 
+"""Axis labels to integer indices"""
+AXIS_IDCS = {'x': 0, 'X': 0, 'y': 1, 'Y': 1, 'z': 2, 'Z': 2}
+
+"""Integer indices to axis labels"""
+IDCS_AXIS = {0: 'X', 1: 'Y', 2: 'Z'}
+
+
 def project(hist, axes):
     """
     Project the passed histogram onto any direction (or combination thereof).
 
-    The overflow bins in the axes that are integrated over are ignored.
+    The under- and overflow bins in the axes that are integrated over are
+    ignored.
 
     Args:
         hist (ROOT.TH3, ROOT.TH2 or ROOT.THn): Histogram that should be
@@ -848,7 +857,6 @@ def project(hist, axes):
         For these I simply do not understand how to put the options to get what
         I want (especially for TH3.Project3D)
         """
-        axis_idcs = {'x': 0, 'y': 1, 'z': 2, 'X': 0, 'Y': 1, 'Z': 2}
         if isinstance(hist, r.TH3):
             all_axes = 'xyz'
             isTH3 = True
@@ -864,7 +872,7 @@ def project(hist, axes):
             return None
 
         axes = axes.lower()
-        sum_axes = tuple(axis_idcs[c] for c in all_axes if c.lower() not in axes)
+        sum_axes = tuple(AXIS_IDCS[c] for c in all_axes if c.lower() not in axes)
 
         binning = np.array([get_binning(hist, c.upper()) for c in axes])
         val, err = get_array(hist), get_array(hist, errors=True)
@@ -954,3 +962,51 @@ def uncer_hist(hist, abs_uncer=False):
     rel_errs = np.zeros_like(errs)
     np.divide(errs, vals, out=rel_errs, where=vals!=0)
     return from_array(rel_errs, binning)
+
+
+def rebin(hist, targ_bins):
+    """
+    Rebin the passed histogram to the desired binning with the possibility to
+    fix the number of desired bins along each axis.
+
+    Args:
+        hist (ROOT.TH1 or ROOT.THn): Histogram that should be rebinned
+        targ_bins (list of tuples): Each tuple contains an axis identifier as
+            first element and the desired number of bins as second element. Axis
+            identifiers can either be labels (i.e. chars) or indices for TH1 or
+            or integer indices for THn.
+
+    Returns:
+        ROOT.TH1 or ROOT.THn: Histogram of the same type as the input histogram
+            but with different number of bins along some axis.
+    """
+    orig_bins = _get_nbins(hist)
+    ndims = len(orig_bins)
+    rebin_factors = np.ones(ndims, dtype='i4')
+    for axl, nbins in targ_bins:
+        if axl in AXIS_IDCS:
+            axl = AXIS_IDCS[axl]
+        fact = is_divisable(orig_bins[axl], nbins)
+        if fact is None:
+            logging.error('Cannot rebin axis {} to {} bins, because it is not '
+                          'a divisor of {}'.format(axl, nbins, orig_bins[axl]))
+            return None
+        rebin_factors[axl] = fact
+
+    if isinstance(hist, r.THn):
+        return hist.Rebin(rebin_factors)
+
+    # for the cases where the hist is a TH1, we can also set the name to avoid
+    # modifying the passed-in histogram
+    name = hist.GetName() + '_rebin_' + create_random_str(4)
+
+    # have to change types here to match the signature that ROOT expects
+    # (Could be connected to the indexing into the array?)
+    rebin_factors = rebin_factors.astype(int)
+    if isinstance(hist, r.TH3):
+        return hist.Rebin3D(rebin_factors[0], rebin_factors[1], rebin_factors[2],
+                            name)
+    if isinstance(hist, r.TH2):
+        return hist.Rebin2D(rebin_factors[0], rebin_factors[1], name)
+
+    return hist.Rebin(rebin_factors[0], name)
