@@ -16,6 +16,21 @@ from utils.roofit_utils import (
 from utils.misc_helpers import create_random_str
 from utils.plot_helpers import setup_latex, put_on_latex
 
+
+def set_var(wsp, varname, val):
+    """
+    Set the passed value to the variable in the workspace. If the variable is
+    not already present, create it first.
+    """
+    var = get_var(wsp, varname)
+    if var is None:
+        logging.debug('Variable \'{}\' not already present in workspace'
+                      .format(varname))
+        wsp.factory("{}[{}]".format(varname, val))
+    else:
+        var.setVal(val)
+
+
 class FitModel(object):
     """
     Base class for different models for fitting
@@ -47,7 +62,7 @@ class FitModel(object):
                                   'class')
 
 
-    def fit(self, wsp, savename, add_cut=''):
+    def fit(self, wsp, savename, add_cut='', weighted_fit=False):
         """
         Fit the defined model to the data present in the workspace (under name
         'full_data').
@@ -62,21 +77,36 @@ class FitModel(object):
             add_cut(str, optional): Additional cut to apply to the dataset
                 before fitting. NOTE: all used variables have to be present in
                 the dataset.
+            weighted_fit (boolean, optional): Use the weight variable (that has)
+                to be already present in the passed RooDataSet in the workspace
+                as weight in the fit.
         """
         fit_data = wsp.data('full_data')
         if add_cut:
             fit_data = fit_data.reduce(add_cut)
 
-        fit_results = wsp.pdf(self.full_model).fitTo(fit_data,
-                                                     rf.Minos(True),
-                                                     rf.NumCPU(4),
-                                                     rf.Save(True),
-                                                     rf.Extended(True),
-                                                     rf.Offset(False))
+        fit_args = (
+            rf.Minos(True),
+            rf.NumCPU(4),
+            rf.Save(True),
+            rf.Extended(True),
+            rf.Offset(False)
+        )
+
+        if weighted_fit:
+            # Choosing the SumW2Error(True) option here should give errors on
+            # the fitted parameters that reflect the available statistics of the
+            # sample (at least according to the RooFit documentation)
+            fit_args += (rf.SumW2Error(True),)
+
+        fit_results = wsp.pdf(self.full_model).fitTo(fit_data, *fit_args)
 
         fit_results.Print()
         logging.info('Fit status = {}, covQual = {}'
                      .format(fit_results.status(), fit_results.covQual()))
+
+        set_var(wsp, '__fit_status__', fit_results.status())
+        set_var(wsp, '__cov_qual__', fit_results.covQual())
 
         wsp.saveSnapshot('snap_{}'.format(savename), wsp.allVars())
         fit_results.SetName('fit_res_{}'.format(savename))
@@ -100,6 +130,8 @@ class FitModel(object):
 
         Keyword Args:
             logy (bool): Set log on y scale of distribution plot
+            weighted_fit (bool): Assume that the fit has done using weights and
+                calculate the data uncertainties using these weights.
         """
         fitresname = None
         if snapname:
@@ -123,7 +155,12 @@ class FitModel(object):
 
         leg = self._setup_legend()
 
-        plot_data.plotOn(frame, rf.MarkerSize(0.8), rf.Name('data_hist'))
+        if kwargs.pop('weighted_fit', True):
+            plot_data.plotOn(frame, rf.MarkerSize(0.8), rf.Name('data_hist'),
+                             rf.DataError(r.RooAbsData.SumW2))
+        else:
+            plot_data.plotOn(frame, rf.MarkerSize(0.8), rf.Name('data_hist'))
+
         full_pdf.plotOn(frame, rf.LineWidth(2),
                         # rf.ProjWData(plot_data),
                         rf.Name('full_pdf_curve'))

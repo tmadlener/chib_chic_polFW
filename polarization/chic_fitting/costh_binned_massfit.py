@@ -29,7 +29,7 @@ from utils.chib_fitting import ChibMassModel
 from utils.config_fitting import ConfigFitModel
 
 
-def get_ws_vars(state, massmodel=None):
+def get_ws_vars(state, massmodel=None, weights=None):
     """
     Get the workspace variables for the given state (jpsi or chic)
     """
@@ -50,6 +50,9 @@ def get_ws_vars(state, massmodel=None):
             '{}[{}, {}]'.format(massmodel.mname, massmodel.fitvarmin, massmodel.fitvarmax),
             'costh_HX[-1, 1]'
         ]
+
+    if weights is not None:
+        wsvars[state] += ['{}[0, 1e5]'.format(weights)]
 
     return wsvars[state]
 
@@ -77,7 +80,7 @@ def get_shape_params(wsp, savename, mass_model):
     return all_params
 
 
-def import_data(wsp, datatree, datavars):
+def import_data(wsp, datatree, datavars, weights=None):
     """
     Import all data that is necessary to the workspace
     """
@@ -100,11 +103,16 @@ def import_data(wsp, datatree, datavars):
         sub_set = r.RooArgSet(*varl)
         var_argset.add(sub_set)
 
-    data = r.RooDataSet('full_data', 'full_data', datatree, var_argset)
+    if weights is None:
+        data = r.RooDataSet('full_data', 'full_data', datatree, var_argset)
+    else:
+        data = r.RooDataSet('full_data', 'full_data', datatree, var_argset, '',
+                            weights)
+
     ws_import(wsp, data)
 
 
-def do_binned_fits(mass_model, wsp, costh_bins, refit=False):
+def do_binned_fits(mass_model, wsp, costh_bins, refit=False, weighted_fit=False):
     """
     Do the fits in all costh bins
     """
@@ -113,7 +121,7 @@ def do_binned_fits(mass_model, wsp, costh_bins, refit=False):
                      .format(ibin, *ctbin))
         bin_sel = get_bin_cut_root('TMath::Abs(costh_HX)', *ctbin)
         savename = 'costh_bin_{}'.format(ibin)
-        mass_model.fit(wsp, savename, bin_sel)
+        mass_model.fit(wsp, savename, bin_sel, weighted_fit)
         if refit:
             # fix all but the event number variables to their current values
             # in the workspace and refit them leaving only the event numbers
@@ -121,7 +129,7 @@ def do_binned_fits(mass_model, wsp, costh_bins, refit=False):
             shape_par = get_shape_params(wsp, savename, mass_model)
             mass_model.fix_params(wsp, [(sp, None) for sp in shape_par])
             refit_sn = 'refit_costh_bin_{}'.format(ibin)
-            mass_model.fit(wsp, refit_sn, bin_sel)
+            mass_model.fit(wsp, refit_sn, bin_sel, weighted_fit)
             mass_model.release_params(wsp, shape_par)
 
 
@@ -141,7 +149,7 @@ def create_bin_info_json(state, bin_str, datafile, fitfile, bininfo_file=None):
     else:
         binning = parse_binning(bin_str)
         if len(binning) == 0:
-           sys.exit(1) # bail out, there is nothing we can do here
+            sys.exit(1) # bail out, there is nothing we can do here
         costh_bins = zip(binning[:-1], binning[1:])
 
     costh_means = get_bin_means(dfr, lambda d: d.costh_HX.abs(), costh_bins)
@@ -181,10 +189,10 @@ def rw_bin_sel_json(bininfo_file, datafile, updated_name=None):
 
 
 def run_fit(model, tree, costh_bins, datavars, outfile, refit=False,
-            fix_shape=False):
+            fix_shape=False, weights=None):
     """Import data, run fits and store the results"""
     wsp = r.RooWorkspace('ws_mass_fit')
-    import_data(wsp, tree, datavars)
+    import_data(wsp, tree, datavars, weights)
     model.define_model(wsp)
     wsp.Print()
 
@@ -195,7 +203,7 @@ def run_fit(model, tree, costh_bins, datavars, outfile, refit=False,
         shape_pars = get_shape_params(wsp, 'costh_integrated', model)
         model.fix_params(wsp, [(sp, None) for sp in shape_pars])
 
-    do_binned_fits(model, wsp, costh_bins, refit)
+    do_binned_fits(model, wsp, costh_bins, refit, weights is not None)
     wsp.writeToFile(outfile)
 
 
@@ -263,17 +271,16 @@ def run_config_fit(args):
                                   'fit_model.json'))
     except shutil.Error as err:
         logging.warn(str(err))
-        pass
 
     model = ConfigFitModel(args.configfile)
     costh_binning = create_bin_info_json('chic', args.binning, args.datafile,
                                          args.outfile, args.bin_info)
 
-    dvars = get_ws_vars('chic')
+    dvars = get_ws_vars('chic', weights=args.weight)
     dataf = r.TFile.Open(args.datafile)
     tree = dataf.Get('chic_tuple')
     run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit,
-            args.fix_shape)
+            args.fix_shape, args.weight)
 
 
 if __name__ == '__main__':
@@ -312,6 +319,9 @@ if __name__ == '__main__':
                                '\'BEGIN:END,NSTEPS\'), or \'auto:N\' (default '
                                'N=4) which will bin the data into N equally '
                                'populated bins', default='auto:4')
+    global_parser.add_argument('-w', '--weight', default=None, help='Use the '
+                               'weight with the passed name present in the input'
+                               ' data as per-event weight in the fit')
 
     # Add the chic parser
     chic_parser = subparsers.add_parser('chic', description='Run the fits using'

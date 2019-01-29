@@ -144,7 +144,7 @@ def main(args):
                        args.state, outdir, logy=args.logy,
                        configfile=args.configfile, ppars=args.print_pars,
                        corr_matrix=args.corr_matrix, refit=args.refit,
-                       fix_shape=args.fix_shape)
+                       fix_shape=args.fix_shape, weighted_fit=args.weight)
 
     if args.graphs:
         outfile = '/'.join([outdir, 'free_fit_param_graphs.root'])
@@ -179,6 +179,9 @@ if __name__ == '__main__':
     parser.add_argument('-g', '--graphs', help='Create graphs of the free fit '
                         'parameters vs costh and store them into a root file in'
                         'the output directory', action='store_true',
+                        default=False)
+    parser.add_argument('-w', '--weight', help='Assume that the fit has been '
+                        'done using weights.', action='store_true',
                         default=False)
 
     state_sel = parser.add_mutually_exclusive_group()

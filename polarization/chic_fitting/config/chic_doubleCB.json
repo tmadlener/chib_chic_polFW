@@ -8,13 +8,13 @@
   "sub_models": [
     {
       "name": "M_chic1",
-      "event_yield": "Nchic1[10000, 0, 200000]",
+      "event_yield": "Nchic1[10000, 0, 50000000]",
       "expression": "RooDoubleCB::{}({}, CBmass1, CBsigma1, CBalpha1_1, CBn1_1, CBalpha1_2, CBn1_2)",
       "plot_config": [7, 417, "#chi_{c1}"]
     },
     {
       "name": "M_chic2",
-      "event_yield": "Nchic2[10000, 0, 200000]",
+      "event_yield": "Nchic2[10000, 0, 50000000]",
       "expression": "RooDoubleCB::{}({}, CBmass2, CBsigma2, CBalpha2_1, CBn2_1, CBalpha2_2, CBn2_2)",
       "plot_config": [7, 632, "#chi_{c2}"]
     }
