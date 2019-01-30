@@ -208,7 +208,7 @@ class FitModel(object):
             pdfname = pdfname.replace('mass_fit', 'mass_fit_log')
         frame.Draw()
         leg.Draw()
-        put_on_latex(latex, info_text)
+        put_on_latex(latex, info_text, ndc=True)
 
 
         can.cd()
