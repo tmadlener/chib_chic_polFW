@@ -261,11 +261,34 @@ def jpsi_kin_sel(*args, **kwargs):
                          gen=kwargs.pop('gen', False))
 
 
+@deprecated_soon('state_sel')
 def chic_state_sel(df, state):
     """(On MC) select either chic1 or chic2 using the pdgId"""
     pdgId = {'chic1': 20443, 'chic2': 445}
     return df.pdgId == pdgId[state]
 chic_state_sel.requires = ['pdgId']
+
+
+def state_sel(state):
+    """
+    Select a given state by string (using the pdgId in the end)
+    """
+    class StateSel(object):
+        """Internal helper class"""
+        def __init__(self, state):
+            self.pdgId = {
+                'chic1': 20443,
+                'chic2': 445
+            }[state]
+            self.requires = ['pdgId']
+
+
+        def __call__(self, dfr):
+            return dfr.pdgId == self.pdgId
+
+
+    return StateSel(state)
+
 
 def flat_pt(pt, eta):
     """Helper function to return a flat pt-eta cut in 2D coords"""
