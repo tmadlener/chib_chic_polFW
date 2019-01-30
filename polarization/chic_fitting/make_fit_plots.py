@@ -144,7 +144,8 @@ def main(args):
                        args.state, outdir, logy=args.logy,
                        configfile=args.configfile, ppars=args.print_pars,
                        corr_matrix=args.corr_matrix, refit=args.refit,
-                       fix_shape=args.fix_shape, weighted_fit=args.weight)
+                       fix_shape=args.fix_shape, weighted_fit=args.weight,
+                       verbose=args.verbose)
 
     if args.graphs:
         outfile = '/'.join([outdir, 'free_fit_param_graphs.root'])
@@ -182,6 +183,9 @@ if __name__ == '__main__':
                         default=False)
     parser.add_argument('-w', '--weight', help='Assume that the fit has been '
                         'done using weights.', action='store_true',
+                        default=False)
+    parser.add_argument('-v', '--verbose', help='Put some more status info from '
+                        'the fit onto the plots', action='store_true',
                         default=False)
 
     state_sel = parser.add_mutually_exclusive_group()

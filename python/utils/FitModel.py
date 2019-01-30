@@ -132,6 +132,8 @@ class FitModel(object):
             logy (bool): Set log on y scale of distribution plot
             weighted_fit (bool): Assume that the fit has done using weights and
                 calculate the data uncertainties using these weights.
+            verbose (bool): Put information on the fit status and the covariance
+                matrix quality onto the fit
         """
         fitresname = None
         if snapname:
@@ -180,6 +182,13 @@ class FitModel(object):
                                      'data_hist')
             info_text.append((0.15, 0.875,
                               '#chi^{{2}}/ndf = {:.1f} / {}'.format(chi2, ndf)))
+
+        if kwargs.pop('verbose', False):
+            status = get_var(wsp, '__fit_status__').getVal()
+            cov_qual = get_var(wsp, '__cov_qual__').getVal()
+            info_text.append((0.15, 0.825,
+                             'status = {}, covQual = {}'.format(int(status),
+                                                                int(cov_qual))))
 
         pull_frame = mvar.frame(rf.Bins(80))
         hpull = frame.pullHist('data_hist', 'full_pdf_curve', True)
