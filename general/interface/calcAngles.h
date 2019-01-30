@@ -105,4 +105,41 @@ Angles calcAnglesInFrame(TLorentzVector muMinus, TLorentzVector muPlus,
 }
 
 
+/**
+ * fold the angles as following:
+ *  if phi >= -90 and phi < 0:
+ *       phi = -1 * phi
+ *  elif phi >= 90 and phi < 180::
+ *      phi = 180 - phi
+ *      costh = -1 * costh
+ *  elif phi >= -180 and phi < -90:
+ *      phi = 180 + phi
+ *      costh = -1 * costh
+ *
+ */
+Angles calcFoldAngles(const Angles& unfoldAngles)
+{
+  double foldPhi = unfoldAngles.phi;
+  double foldCosth = unfoldAngles.costh;
+  if (unfoldAngles.phi >= -90 && unfoldAngles.phi < 0) {
+    foldPhi *= -1;
+  } else if (unfoldAngles.phi >= 90 && unfoldAngles.phi < 180) {
+    foldPhi = 180 - unfoldAngles.phi;
+    foldCosth *= -1;
+  } else if (unfoldAngles.phi >= -180 && unfoldAngles.phi < -90) {
+    foldPhi = 180 + unfoldAngles.phi;
+    foldCosth *= -1;
+  }
+
+  return Angles{foldCosth, foldPhi, unfoldAngles.cosalpha};
+}
+
+/**
+ * Overload that takes only costh and phi as double values
+ */
+Angles calcFoldAngles(const double costh, const double phi) {
+  return calcFoldAngles(Angles{costh, phi, 0});
+}
+
+
 #endif
