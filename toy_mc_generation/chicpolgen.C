@@ -328,6 +328,48 @@ double func_sampling_weight(double* x, double*)
 }
 
 
+std::unique_ptr<EffProv> getEfficiency(const std::string& effFile, const std::string& effName)
+{
+  if (effFile.empty()) {
+    return std::unique_ptr<EffProv>(nullptr);
+  }
+
+  std::cout << "Getting efficiencies from \'" << effFile << "\'\n";
+
+  // We have to peek into the file to see what the type is to decide which type of efficiencies we have
+  // (i.e. either TF1 or a TGraphAsymmErrors)
+  auto file = TFile::Open(effFile.c_str());
+  auto nextKey = TIter(file->GetListOfKeys());
+
+  std::string className = "";
+
+  TKey* key = nullptr;
+  while((key = static_cast<TKey*>(nextKey()))) {
+    const std::string keyName = key->GetName();
+    // since all have to be of the same type we can stop after we have found the first
+    if (keyName.find(effName) != std::string::npos) {
+      className = key->GetClassName();
+      break;
+    }
+  }
+
+  file->Close();
+
+  std::cout << "Found " << className << " efficiencies\n";
+
+  if (className == "TF1") {
+    return std::make_unique<EfficiencyProvider<TF1>>(effFile, effName, RangeFromFit{});
+  }
+  if (className == "TGraphAsymmErrors") {
+    return std::make_unique<EfficiencyProvider<TGraphAsymmErrors>>(effFile, effName, RangeFromGraph{});
+  }
+
+  std::cout << "Could not find an efficiency with the name \'" << effName << "\' in \'" << effFile << "\' that can be handled!"
+            << " No efficiencies will be used" << std::endl;
+
+  return std::unique_ptr<EffProv>(nullptr);
+}
+
 void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_config = sel_config{}, const store_config& store_config = store_config{}){
   gROOT->SetBatch();
   config.print(true);
@@ -351,22 +393,9 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
   const bool check_accept = config.n_accepted > 0;
 
-  EffProv *muonEffs = nullptr;
-  EffProv *photonEffs = nullptr;
-
-  if (!config.muonEffs.empty()) {
-    std::cout << "Reading muon efficiencies\n";
-    // non-parametrized single muon efficiencies
-    // muonEffs = new EfficiencyProvider<TGraphAsymmErrors>(config.muonEffs, "muon_eff_pt", RangeFromGraph{});
-    // parametrized single muon efficiencies
-    muonEffs = new EfficiencyProvider<TF1>(config.muonEffs, "muon_eff_pt", RangeFromFit{});
-  }
-  if (!config.photonEffs.empty()) {
-    std::cout << "Reading photon efficiencies\n";
-    // using a fixed range for the photon efficiencies since they are parametrized in the region from 400 MeV to 7 GeV
-    // photonEffs = new EfficiencyProvider<TF1>(config.photonEffs, "photon_eff_pt", FixedRange<TF1>{0.4, 7});
-    photonEffs = new EfficiencyProvider<TF1>(config.photonEffs, "photon_eff_pt", RangeFromFit{});
-  }
+  // muon and photon efficiencies
+  const auto muonEffs = getEfficiency(config.muonEffs, "muon_eff_pt");
+  const auto photonEffs = getEfficiency(config.photonEffs, "photon_eff_pt");
 
   // Selectors to act on the smeared variables
   const auto jpsiSelector = sel_config.getJpsiSelector();
