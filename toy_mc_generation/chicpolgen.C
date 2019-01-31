@@ -190,16 +190,6 @@ struct store_config {
 
 
 
-TH2D* createHist(const std::string& name, const int nBinsCosth, const int nBinsPhi) {
-  return new TH2D(name.c_str(), ";cos#vartheta;#varphi", nBinsCosth, -1, 1, nBinsPhi, -180, 180);
-}
-
-TH3D* createHistRap(const std::string& name, const int nBinsCosth, const int nBinsPhi, const int nBinsRap) {
-  return new TH3D(name.c_str(), ";cos#vartheta;#varphi;|y|", nBinsCosth, -1, 1,
-                  nBinsPhi, -180, 180, nBinsRap, 0, 1.2);
-}
-
-
 /**
  * Struct holding the width and the central value for a given state
  */
@@ -604,6 +594,31 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
       });
 
     costhPhiHists.setRecoEffWeightF([&lepP_eff_sm, &lepN_eff_sm, &gamma_eff_sm]() {
+        return 0.01 * gamma_eff_sm * lepP_eff_sm * lepN_eff_sm;
+      });
+  }
+
+  StorageHistograms<3> foldCosthPhiHists;
+  if (store_config.storeHists) {
+    foldCosthPhiHists.Init("fold_costh_phi_JpsiPt_JpsiRap", sel_config.sampling, photonEffs && muonEffs,
+                           {128, 192, 12}, {-1, 0, 8}, {1, 90, 20});
+
+    foldCosthPhiHists.setSamplingWeightF([&w_sampling]() { return 1.0 / w_sampling; });
+
+    foldCosthPhiHists.setHXFillF([&costh_HX_sm, &phi_HX_sm, &pT_jpsi_sm, &y_jpsi_sm]() {
+        const auto foldAngles = calcFoldAngles(costh_HX_sm, phi_HX_sm);
+        return std::array<double, 3>{foldAngles.costh, foldAngles.phi, pT_jpsi_sm};
+      });
+    foldCosthPhiHists.setPXFillF([&costh_PX_sm, &phi_PX_sm, &pT_jpsi_sm, &y_jpsi_sm]() {
+        const auto foldAngles = calcFoldAngles(costh_PX_sm, phi_PX_sm);
+        return std::array<double, 3>{foldAngles.costh, foldAngles.phi, pT_jpsi_sm};
+      });
+    foldCosthPhiHists.setCSFillF([&costh_CS_sm, &phi_CS_sm, &pT_jpsi_sm, &y_jpsi_sm]() {
+        const auto foldAngles = calcFoldAngles(costh_CS_sm, phi_CS_sm);
+        return std::array<double, 3>{foldAngles.costh, foldAngles.phi, pT_jpsi_sm};
+      });
+
+    foldCosthPhiHists.setRecoEffWeightF([&lepP_eff_sm, &lepN_eff_sm, &gamma_eff_sm]() {
         return 0.01 * gamma_eff_sm * lepP_eff_sm * lepN_eff_sm;
       });
   }
@@ -1184,6 +1199,7 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
     // Now we can fill the histograms, since all the variables are computed
     costhPhiHists.fillGen();
+    foldCosthPhiHists.fillGen();
 
     // Now we can decide if we want to do the last few calculations as well or if we skip them, depending on the muon and photon selection
     if (!(muonSelector->accept(smearedLepP) && muonSelector->accept(smearedLepN) && photonSelector->accept(smearedGamma))) {
@@ -1192,6 +1208,7 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
     // No need for new variables
     costhPhiHists.fillAcc();
+    foldCosthPhiHists.fillAcc();
 
     const auto Angles_HX = calcAnglesInFrame(smearedJpsi, smearedGamma, RefFrame::HX);
     cosTH_HX_sm = Angles_HX.costh;
@@ -1218,6 +1235,7 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
       // check if all efficiencies are positive (i.e. valid) and only then fill the reco histograms
       if (lepP_eff_sm > 0 && lepN_eff_sm > 0 && gamma_eff_sm > 0) {
         costhPhiHists.fillReco();
+        foldCosthPhiHists.fillReco();
       }
     }
 
