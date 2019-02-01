@@ -63,9 +63,17 @@ class ConfigFitModel(FitModel):
         sub_models = config["sub_models"]
         for model in sub_models:
             name = model['name']
-            self.expression_strings.append(model['event_yield'])
-            # strip the range from the variable name
-            self.nevent_yields.append(model['event_yield'].split('[')[0])
+
+            # check if the event yield has to be created in the workspace or if
+            # it should already be present. If there are no brackets in the
+            # expression, then assume that it is already present
+            try:
+                ev_yield, y_range = model['event_yield'].split('[')
+                self.expression_strings.append(model['event_yield'])
+            except ValueError:
+                ev_yield = model['event_yield']
+
+            self.nevent_yields.append(ev_yield)
 
             plot_config = model['plot_config']
 
@@ -100,6 +108,10 @@ class ConfigFitModel(FitModel):
         Args:
             wsp (ROOT.RooWorkspace): Workspace into which the model should be
                 constructed
+
+        Returns:
+            success (boolean): True if all of the expressions were succesfully
+                imported, False if at least one of them failed
         """
         # first make sure to define all variables in the expression strings,
         # since the models might depend on them. Afterwards build the submodels
@@ -113,8 +125,10 @@ class ConfigFitModel(FitModel):
         success.append(_try_factory(wsp, self.full_model_expr))
 
         self.fix_params(wsp, self.fix_vars)
-        wsp.Print()
 
         if not all(success):
             logging.error('Could not succesfully define the model in the '
                           'workspace')
+            return False
+
+        return True
