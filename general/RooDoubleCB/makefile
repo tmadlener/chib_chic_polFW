@@ -1,5 +1,6 @@
 ROOTLIBS=$(shell $(ROOT_CONFIG_BIN) --libs)
 ROOTCXXFLAGS=$(shell $(ROOT_CONFIG_BIN) --cflags)
+ROOTINCS=-I$(shell $(ROOT_CONFIG_BIN) --incdir)
 
 CXXFLAGS=-std=c++14 -Wall -Wextra -Wpedantic -Wshadow -O3
 ROOTFITLIBS=-lRooFit -lRooFitCore
