@@ -199,7 +199,7 @@ def run_fit(model, tree, costh_bins, datavars, outfile, refit=False,
     if fix_shape:
         # Refitting doesn't make sense if we already fixed the shapes beforehand
         refit = False
-        model.fit(wsp, 'costh_integrated')
+        model.fit(wsp, 'costh_integrated', weighted_fit=weights is not None)
         shape_pars = get_shape_params(wsp, 'costh_integrated', model)
         model.fix_params(wsp, [(sp, None) for sp in shape_pars])
 
