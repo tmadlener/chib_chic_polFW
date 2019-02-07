@@ -113,8 +113,8 @@ class TestGetTreename(unittest.TestCase):
         ]
         for filen in one_tree_files:
             full_path = os.path.join(self.test_data_dir, filen)
-            # NOTE: 'tree' is hardcoded here as it is in the creation script
-            self.assertEqual(get_treename(full_path), 'tree')
+            # NOTE: 'tree1' is hardcoded here as it is in the creation script
+            self.assertEqual(get_treename(full_path), 'tree1')
 
 
 if __name__ == '__main__':

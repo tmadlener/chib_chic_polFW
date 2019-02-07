@@ -37,14 +37,14 @@ def create_root_file_mixed_contents(filename, tree_names, other_contents):
 def main():
     """Main"""
     create_root_file_trees('multiple_trees.root', ['tree1', 'tree2'])
-    create_root_file_trees('one_tree.root', ['tree'])
+    create_root_file_trees('one_tree.root', ['tree1'])
     create_root_file_trees('no_tree.root', [])
 
     create_root_file_mixed_contents('multiple_trees_plus_others.root',
                                     ['tree1', 'tree2'],
                                     [('TH1D', 'hist1'), ('TH1D', 'hist2')])
     create_root_file_mixed_contents('one_tree_plus_others.root',
-                                    ['tree'],
+                                    ['tree1'],
                                     [('TH1D', 'hist1'), ('TH1D', 'hist2')])
     create_root_file_mixed_contents('no_tree_plus_others.root',
                                     [],
