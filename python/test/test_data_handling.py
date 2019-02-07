@@ -7,6 +7,9 @@ import os
 import unittest
 from mock import patch
 
+import ROOT as r
+r.PyConfig.IgnoreCommandLineOptions = True
+
 import numpy as np
 import pandas as pd
 import pandas.testing as pdt
@@ -14,7 +17,9 @@ import pandas.testing as pdt
 import logging
 logging.basicConfig(level=logging.FATAL) # disable the error messages from logging
 
-from utils.data_handling import apply_selections, get_treename
+from utils.data_handling import (
+    apply_selections, get_treename, list_obj, common_obj
+)
 
 class TestApplySelection(unittest.TestCase):
     def setUp(self):
@@ -115,6 +120,106 @@ class TestGetTreename(unittest.TestCase):
             full_path = os.path.join(self.test_data_dir, filen)
             # NOTE: 'tree1' is hardcoded here as it is in the creation script
             self.assertEqual(get_treename(full_path), 'tree1')
+
+
+class TestListObj(unittest.TestCase):
+    def setUp(self):
+        self.test_data_dir = os.path.join(
+            os.environ['CHIB_CHIC_POLFW_DIR'], 'python', 'test', 'test_data'
+        )
+
+
+    def test_list_all(self):
+        # NOTE: Only checking one file here
+        tfile = r.TFile.Open(os.path.join(self.test_data_dir,
+                                          'multiple_trees_plus_others.root'))
+
+        elements = list(list_obj(tfile))
+        for elem in ['tree1', 'tree2', 'hist1', 'hist2']:
+            self.assertTrue(elem in elements)
+
+
+    def test_list_type(self):
+        # NOTE: Only checking one file here
+        tfile = r.TFile.Open(os.path.join(self.test_data_dir,
+                                          'one_tree_plus_others.root'))
+
+        elements = list(list_obj(tfile, 'TTree'))
+        self.assertEqual(elements, ['tree1'])
+
+
+    def test_list_filter(self):
+        tfile = r.TFile.Open(os.path.join(self.test_data_dir,
+                                          'multiple_trees_plus_others.root'))
+
+        elements = list(list_obj(tfile, filter_str='1'))
+        for elem in ['tree1', 'hist1']:
+            self.assertTrue(elem in elements)
+        self.assertEqual(len(elements), 2)
+
+
+    def test_list_type_filter(self):
+        tfile = r.TFile.Open(os.path.join(self.test_data_dir,
+                                          'multiple_trees_plus_others.root'))
+
+        elements = list(list_obj(tfile, 'TTree', '1'))
+        self.assertEqual(['tree1'], elements)
+
+
+class TestCommonObj(unittest.TestCase):
+    def setUp(self):
+        self.test_data_dir = os.path.join(
+            os.environ['CHIB_CHIC_POLFW_DIR'], 'python', 'test', 'test_data'
+        )
+
+
+    def test_common_nofilters(self):
+        files = [r.TFile.Open(os.path.join(self.test_data_dir, f)) for f in [
+            'multiple_trees_plus_others.root', 'multiple_trees.root'
+        ]]
+
+        # only trees in common in this case
+        objs = common_obj(files)
+        for elem in ['tree1', 'tree2']:
+            self.assertTrue(elem in objs)
+
+        # nothing in common by name returns empty list
+        files = [r.TFile.Open(os.path.join(self.test_data_dir, f)) for f in [
+            'multiple_trees.root', 'no_tree_plus_others.root'
+        ]]
+        self.assertEqual([], common_obj(files))
+
+
+    def test_common_filter_type(self):
+        files = [r.TFile.Open(os.path.join(self.test_data_dir, f)) for f in [
+            'multiple_trees_plus_others.root', 'multiple_trees.root'
+        ]]
+        # no type match so empty list here
+        objs = common_obj(files, 'TH1')
+        self.assertEqual([], objs)
+
+        files = [r.TFile.Open(os.path.join(self.test_data_dir, f)) for f in [
+            'multiple_trees_plus_others.root', 'one_tree_plus_others.root'
+        ]]
+        # there are trees in this file but we only want the TH1
+        objs = common_obj(files, 'TH1')
+        for elem in ['hist1', 'hist2']:
+            self.assertTrue(elem in objs)
+        self.assertEqual(len(objs), 2)
+
+
+    def test_common_string_filter(self):
+        files = [r.TFile.Open(os.path.join(self.test_data_dir, f)) for f in [
+            'multiple_trees_plus_others.root', 'one_tree_plus_others.root'
+        ]]
+
+        objs = common_obj(files, filter_str='1')
+        for elem in ['tree1', 'hist1']:
+            self.assertTrue(elem in objs)
+        self.assertEqual(len(objs), 2)
+
+        objs = common_obj(files, filter_str='this_is_certainly_not_in_any_file')
+        self.assertEqual([], objs)
 
 
 if __name__ == '__main__':

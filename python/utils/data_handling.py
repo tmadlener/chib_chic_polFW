@@ -214,17 +214,19 @@ def get_treename(filename):
     return None
 
 
-def list_obj(rfile, obj_type, filter_str=None):
+def list_obj(rfile, obj_type='', filter_str=None):
     """
     Get a list (i.e. generator) of the names of all the objects in a root files
 
     Args:
         rfile (ROOT.TFile): root file
-        obj_type (str): Name of a root class from which the objects have to
-            inherit
+        obj_type (str, optional): Name of a root class from which the objects
+            have to inherit. If no string is passed than all classes are valid.
         filter_str (str, regex, or None, optional): if not None, the names have
             to match this to be considered
-
+    Returns:
+        generator: A generator yielding all the names of the objects in the file
+            that satisfy the criteria stated by the arguments
     """
     if filter_str is None:
         match_f = lambda x: True
@@ -232,6 +234,32 @@ def list_obj(rfile, obj_type, filter_str=None):
         filter_rgx = re.compile(filter_str)
         match_f = lambda x: re.search(filter_rgx, x)
 
+    inherits = lambda k: rfile.Get(k.GetName()).InheritsFrom(obj_type)
+    if not obj_type:
+        inherits = lambda k: True
+
     return (k.GetName() for k in rfile.GetListOfKeys()
-            if match_f(k.GetName()) and
-            rfile.Get(k.GetName()).InheritsFrom(obj_type))
+            if match_f(k.GetName()) and inherits(k))
+
+
+def common_obj(files, obj_type='', filter_str=None):
+    """
+    Get a list of the names of all objects that are common to all root files.
+
+    Args:
+        files (list of ROOT.TFile): root files
+        obj_type (str, optional): Name of a root class from which the objects
+            have to inherit. If no string is passed than all classes are valid.
+        filter_str (str, regex or None, optional): If not None, the names have
+            to match this to be considered
+
+    Returns:
+        list: A list with all names that are common to all files after
+            considering the additional constraints that are posed by the input
+            arguments.
+    """
+    file_obj = [list_obj(f, obj_type, filter_str) for f in files]
+    common_obj = set(file_obj[0])
+    for obj in file_obj[1:]:
+        common_obj.intersection_update(obj)
+    return list(common_obj)
