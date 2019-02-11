@@ -9,7 +9,7 @@ import numpy as np
 from random import choice
 from string import ascii_letters, digits
 from collections import Iterable
-from decorator import decorator
+from decorator import decorator, decorate
 
 import logging
 logging.basicConfig(level=logging.WARNING,
@@ -759,3 +759,26 @@ def is_divisable(dividend, divisor):
     if ratio * divisor == dividend:
         return ratio
     logging.warning('{} is not a divisor of {}'.format(divisor, dividend))
+
+
+def memoize(func):
+    """
+    Rather simple memoize implementation supporting arbitrary signature function
+    calls. Since it simply appends a caching dict to the function, it is neither
+    optimal in performance, nor does it cover all edge cases.
+
+    Implementation is shamelessly stolen from:
+    https://decorator.readthedocs.io/en/latest/tests.documentation.html#the-solution
+    """
+    def _memoize(func, *args, **kwargs):
+        if kwargs:
+            key = args, frozenset(kwargs.items())
+        else:
+            key = args
+        cache = func.cache
+        if key not in cache:
+            cache[key] = func(*args, **kwargs)
+        return cache[key]
+
+    func.cache = {}
+    return decorate(func, _memoize)

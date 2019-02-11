@@ -21,7 +21,7 @@ import numpy as np
 
 import ROOT as r
 
-from utils.misc_helpers import create_random_str, make_iterable
+from utils.misc_helpers import create_random_str, make_iterable, memoize
 from utils.hist_utils import (
     divide, _get_y_min_hist, _get_y_max_hist, _get_x_min_hist, _get_x_max_hist
 )
@@ -122,6 +122,7 @@ def default_colors():
     return _color_indices
 
 
+@memoize
 def default_attributes(diff_markers=True, size=1, linewidth=2,
                        open_markers=True, **kwargs):
     """
