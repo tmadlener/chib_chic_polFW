@@ -278,11 +278,14 @@ def plot_on_canvas(can, plots, **kwargs):
     can.cd()
 
     attributes = kwargs.pop('attr', None)
+    colors = kwargs.pop('colors', None)
     if attributes is None:
-        colors = kwargs.pop('colors', default_colors())
-        attributes = []
-        for col in colors:
-            attributes.append({'color': col})
+        if colors is None:
+            attributes = default_attributes(size=1.0, open_markers=True)
+        else:
+            attributes = []
+            for col in colors:
+                attributes.append({'color': col})
 
     get_att = lambda i: attributes[ i % len(attributes) ]
 
