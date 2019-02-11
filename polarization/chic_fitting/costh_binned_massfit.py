@@ -67,7 +67,14 @@ def get_shape_params(wsp, savename, mass_model):
     event_params = mass_model.nevent_yields
 
     for evpar in event_params:
-        all_params.remove(evpar)
+        # it is possible that the event yields are somehow fixed via another
+        # variable. In that case they will not appear as floating parameters and
+        # will also not be in the all_params list.
+        # NOTE: In that case it is the responsibility of the user to make sure
+        # that the parameters governing the yields are not accidentally fixing
+        # it somehow.
+        if evpar in all_params:
+            all_params.remove(evpar)
 
     for float_par in mass_model.floating_costh:
         if not float_par in all_params:

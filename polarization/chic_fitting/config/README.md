@@ -26,7 +26,10 @@ Each of the models in the list is an object which has the following fields:
 - `name`: The name of the `RooAbsPdf` that is used in the workspace
 - `event_yield`: The number of events that will be obtained in the fit for this
 model. This has to be a valid expression that defines this variable in the
-`RooWorkspace` when it is used in the `RooWorkspace::factory`.
+`RooWorkspace` when it is used in the `RooWorkspace::factory` unless the
+variable is already present (i.e. it is defined with some other expression; see
+[`expression strings`](#expression_strings)). If the variable is not defined
+directly here, than the name of the variable is enough.
 - `expression`: The expression string describing this model, which is directly
 passed to the `RooWorkspace::factory` after substituting the fit variable (see
 above) and the name of the model (using `.format(fit_variable, name)` on the
@@ -65,4 +68,7 @@ A list of variable names that define the variables that are left to float in a
 costh binned fit even after other parameters have been fixed to a costh
 integrated fit. Each of the variables used here has to be already present in the
 `RooWorkspace`. **NOTE:** The event yields of the `sub_models` will be left to
-float automatically and do not have to go here.
+float automatically and do not have to go here. The only exception to this is
+when the event yields depend on some other variable. Then the variable(s) that
+are the ones that are floating in the fit have to be put here, otherwise the
+yield variable will not be floating.
