@@ -149,9 +149,10 @@ def _get_var_vals(wsp, var, snapshots):
     central = []
     err_low = []
     err_high = []
+    wvar = get_var(wsp, var)
+
     for snap in snapshots:
         wsp.loadSnapshot(snap)
-        wvar = get_var(wsp, var)
 
         central.append(wvar.getVal())
         err_low.append(-wvar.getErrorLo())
@@ -166,7 +167,14 @@ def get_var_graph(wsp, snap_base, var, n_bins, binning=None, bin_means=None,
     Get the graph of a variable for all snapshots results matching fit_res_base
     """
     snapshots = [snap_base.format(i) for i in xrange(n_bins)]
-    if fit_res_base:
+    dependent = isinstance(get_var(wsp, var), r.RooFormulaVar)
+    if dependent and not fit_res_base:
+        logging.error('{} is a dependent variable but no base name for the fit '
+                      'results is passed. Cannot calculate uncertainties'
+                      .format(var))
+        return None
+
+    if dependent:
         fitresults = [fit_res_base.format(i) for i in xrange(n_bins)]
         vals = []
         errs = []

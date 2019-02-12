@@ -24,21 +24,12 @@ from utils.roofit_utils import get_var_graph, get_args, get_var
 from common_func import get_bin_sel_info
 
 
-def make_fit_res_plots(wsp, costh_bins, state, outdir, **kwargs):
+def make_fit_res_plots(wsp, costh_bins, state, outdir, mass_model, **kwargs):
     """
     Make the plots with the fit results
 
     kwargs forwarded to FitModel.plot
     """
-    if state == 'chic':
-        mass_model = ChicMassModel('chicMass')
-    elif state == 'chib':
-        mass_model = ChibMassModel(kwargs.pop("configfile"))
-    elif state == 'config':
-        mass_model = ConfigFitModel(kwargs.pop('configfile'))
-    else:
-        mass_model = JpsiMassModel('JpsiMass')
-
     if kwargs.pop('fix_shape', False):
         snapname = 'snap_costh_integrated'
         pdfname = '/'.join([outdir, 'mass_fit_{}_costh_integrated.pdf'
@@ -90,17 +81,23 @@ def make_fit_res_plots(wsp, costh_bins, state, outdir, **kwargs):
                                             pdfname.replace('.pdf', '_corrmat.pdf'))
 
 
-def get_free_params(wsp):
+def get_free_params(wsp, mass_model):
     """
     Get the names of the free parameters
     """
     # NOTE: simply assuming here that all the bins have the same amount of free
     # parameters
     fit_res = wsp.genobj('fit_res_costh_bin_0')
-    return [v.GetName() for v in get_args(fit_res.floatParsFinal())]
+    float_pars = [v.GetName() for v in get_args(fit_res.floatParsFinal())]
+    # The yields and the ratio should always be produced
+    for par in mass_model.nevent_yields + ['r_chic2_chic1']:
+        if par not in float_pars:
+            float_pars.append(par)
+
+    return float_pars
 
 
-def store_graphs(wsp, outfile, bin_info):
+def store_graphs(wsp, outfile, bin_info, mass_model):
     """
     Create and store the graphs for all the free parameters and store them
     into the (newly created) outfile
@@ -108,20 +105,14 @@ def store_graphs(wsp, outfile, bin_info):
     costh_binning = get_bin_edges(bin_info['costh_bins'])
     n_bins = len(costh_binning) - 1
     costh_means = np.array(bin_info['costh_means'])
-    params = get_free_params(wsp)
+    params = get_free_params(wsp, mass_model)
 
     outf = r.TFile.Open(outfile, 'recreate')
     for param in params:
         graph = get_var_graph(wsp, 'snap_costh_bin_{}', param, n_bins,
-                              costh_binning, costh_means)
-        graph.SetName('_'.join([param, 'v', 'costh']))
-        graph.Write('', r.TObject.kWriteDelete)
-
-    if get_var(wsp, 'r_chic2_chic1') is not None:
-        graph = get_var_graph(wsp, 'snap_costh_bin_{}', 'r_chic2_chic1', n_bins,
-                              binning=costh_binning, bin_means=costh_means,
+                              costh_binning, costh_means,
                               fit_res_base='fit_res_costh_bin_{}')
-        graph.SetName('_'.join(['r_chic2_chic1', 'v', 'costh']))
+        graph.SetName('_'.join([param, 'v', 'costh']))
         graph.Write('', r.TObject.kWriteDelete)
 
     outf.Write('', r.TObject.kWriteDelete)
@@ -140,8 +131,18 @@ def main(args):
         outdir = dirname(args.fitfile)
     cond_mkdir(outdir)
 
+    if args.state == 'chic':
+        mass_model = ChicMassModel('chicMass')
+    elif args.state == 'chib':
+        mass_model = ChibMassModel(args.configfile)
+    elif args.state == 'config':
+        mass_model = ConfigFitModel(args.configfile)
+    else:
+        mass_model = JpsiMassModel('JpsiMass')
+
     make_fit_res_plots(ws, bin_sel_info['costh_bins'],
-                       args.state, outdir, logy=args.logy,
+                       args.state, outdir, mass_model,
+                       logy=args.logy,
                        configfile=args.configfile, ppars=args.print_pars,
                        corr_matrix=args.corr_matrix, refit=args.refit,
                        fix_shape=args.fix_shape, weighted_fit=args.weight,
@@ -149,7 +150,8 @@ def main(args):
 
     if args.graphs:
         outfile = '/'.join([outdir, 'free_fit_param_graphs.root'])
-        store_graphs(ws, outfile, bin_sel_info)
+
+        store_graphs(ws, outfile, bin_sel_info, mass_model)
 
 
 if __name__ == '__main__':
