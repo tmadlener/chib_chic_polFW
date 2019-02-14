@@ -147,11 +147,22 @@ class FitModel(object):
         plot_data = wsp.data('full_data')
         if add_cut:
             plot_data = plot_data.reduce(add_cut)
-        frame = mvar.frame(rf.Bins(80))
+
+        # TODO: find a better heuristic to do this here
+        nbins = 80
+        nevents_data = plot_data.numEntries()
+        logging.debug('Number of events in reduced sample: {}'
+                      .format(nevents_data))
+        while nevents_data / nbins < 50:
+            nbins /= 2
+
+        frame = mvar.frame(rf.Bins(nbins))
+
+
         frame.SetTitle("")
         frame.GetYaxis().SetTitleOffset(1.3)
         frame.GetYaxis().SetTitle('Events / {:.1f} MeV'
-                                  .format((mvar.getMax() - mvar.getMin()) / 80 * 1000))
+                                  .format((mvar.getMax() - mvar.getMin()) / nbins * 1000))
 
         full_pdf = wsp.pdf(self.full_model)
 
@@ -190,7 +201,7 @@ class FitModel(object):
                              'status = {}, covQual = {}'.format(int(status),
                                                                 int(cov_qual))))
 
-        pull_frame = mvar.frame(rf.Bins(80))
+        pull_frame = mvar.frame(rf.Bins(nbins))
         hpull = frame.pullHist('data_hist', 'full_pdf_curve', True)
         hpull.SetMarkerSize(0.8)
         pull_frame.addPlotable(hpull, 'P')
