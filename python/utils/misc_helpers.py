@@ -342,6 +342,27 @@ def get_bin_means(dfr, get_var, bins, selection=None, weights=None):
     return means
 
 
+def deprecated_soon(replacement=None):
+    """
+    Decorator to inform the user that this function will soon be deprecated
+    offering the possibility to point out a replacement.
+    """
+    @decorator
+    def _deprecated(func, *args, **kwargs):
+        """
+        Inform the user that this function will soon be deprecated.
+        """
+        message = '\'{}\' will soon be deprecated.'.format(func.__name__)
+        if replacement is not None:
+            message += ' You should start to use the replacement \'{}\''.format(replacement)
+        logging.warn(message)
+
+        return func(*args, **kwargs)
+
+    return _deprecated
+
+
+@deprecated_soon('select_bin')
 def get_bin_cut_df(dfr, bin_var, bin_low, bin_up):
     """
     Get the binning selection for a variable in a format suitable for dataframes
@@ -361,6 +382,50 @@ def get_bin_cut_df(dfr, bin_var, bin_low, bin_up):
     """
     var = _get_var(dfr, bin_var)
     return (var > bin_low) & (var < bin_up)
+
+
+def select_bin(var, low, high):
+    """
+    Create a function that selects events within a given bin for a variable
+
+    Args:
+        var (str or function): The variable for which the bin should be defined.
+            This can either be a function that returns the variable from the
+            DataFrame, or a string that can be parsed by parse_func_val
+        low (float): lower edge of bin
+        high (float): upper edge of bin
+
+    Returns:
+        function: A function that takes a DataFrame as only argument and returns
+            an array of boolean values that can then be used to retrieve only
+            the selected elements from the DataFrame, e.g. in apply_selections
+
+    See also:
+        parse_func_val, apply_selections
+    """
+    class BinSelection(object):
+        """
+        Internal helper class that captures everything that is necessary to get
+        the selection function
+        """
+        def __init__(self, var_exp, b_lo, b_hi):
+            # have to check here whether we have a function or a string to parse
+            if hasattr(var_exp, '__call__'):
+                self.var = (var_exp, None)
+            else:
+                self.var = parse_func_var(var_exp)
+
+            self.low = b_lo
+            self.high = b_hi
+
+
+        def __call__(self, dfr):
+            var = _get_var(dfr, *self.var)
+            return (var > self.low) & (var < self.high)
+
+
+    return BinSelection(var, low, high)
+
 
 
 def get_bin_cut_root(bin_var, bin_low, bin_up):
@@ -639,26 +704,6 @@ def parse_binning(binning_str):
     return np.array([])
 
 
-def deprecated_soon(replacement=None):
-    """
-    Decorator to inform the user that this function will soon be deprecated
-    offering the possibility to point out a replacement.
-    """
-    @decorator
-    def _deprecated(func, *args, **kwargs):
-        """
-        Inform the user that this function will soon be deprecated.
-        """
-        message = '\'{}\' will soon be deprecated.'.format(func.__name__)
-        if replacement is not None:
-            message += ' You should start to use the replacement \'{}\''.format(replacement)
-        logging.warn(message)
-
-        return func(*args, **kwargs)
-
-    return _deprecated
-
-
 def float_rgx(char_separated=False):
     rgx = r'([-+]?\d*\.?\d+)'
     if char_separated:
@@ -719,10 +764,7 @@ def parse_sel_expr(expr):
     if len(parts) == 3:
         vmatch1, vmatch2 = flt_rgx.match(parts[0]), flt_rgx.match(parts[2])
         if vmatch1 and vmatch2:
-            func = parse_func_var(parts[1])
-            if func is not None:
-                return lambda d: get_bin_cut_df(d, _get_var(d, *func),
-                                                float(parts[0]), float(parts[2]))
+            return select_bin(parts[1], float(parts[0]), float(parts[2]))
 
     if len(parts) == 2:
         # Need to find out whether the value or the expression comes first

@@ -15,7 +15,7 @@ logging.basicConfig(level=logging.WARNING,
 
 
 from utils.misc_helpers import (
-    get_bin_cut_df, get_full_trigger, _get_var, deprecated_soon, make_iterable
+    select_bin, get_full_trigger, _get_var, deprecated_soon, make_iterable
 )
 from utils.data_handling import apply_selections
 
@@ -224,7 +224,7 @@ deta_sel.requires = ['photonEta', 'gen_photonEta']
 
 def chic_mass_sel(df, min_mass=3.325, max_mass=3.725):
     """Select only those events with a chic mass between min_mass and max_mass"""
-    return get_bin_cut_df(df, 'chicMass', min_mass, max_mass)
+    return select_bin('chicMass', min_mass, max_mass)(df)
 chic_mass_sel.requires = ['chicMass']
 
 def jpsi_kin_sel_(min_pt=8, max_pt=20, max_rap=1.2, gen=False):
@@ -244,8 +244,7 @@ def jpsi_kin_sel_(min_pt=8, max_pt=20, max_rap=1.2, gen=False):
 
         def __call__(self, dfr):
             jpsi_name = get_gen_name('Jpsi', self.gen)
-            return (get_bin_cut_df(dfr, jpsi_name + 'Pt',
-                                   self.min_pt, self.max_pt)) & \
+            return (select_bin(jpsi_name + 'Pt', self.min_pt, self.max_pt))(dfr) & \
                                    (dfr[jpsi_name + 'Rap'].abs() < self.max_rap)
 
 
