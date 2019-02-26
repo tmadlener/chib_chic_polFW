@@ -57,6 +57,73 @@ def get_eta_binning(effs):
     return uniq_bin_bord
 
 
+def _sanitize_w(weights):
+    """
+    Function that sanitizes (and possibly logs) weights by removing all
+    negative weights
+
+    Args:
+        weight (np.array, pd.Series): Weights to be sanitized
+
+    Returns:
+        np.array, pd.Series: The sanitized weights, where all values below 0 are
+            set to 0
+    """
+    n_all = weights.size
+    valid = weights > 0
+
+    if np.sum(valid) != n_all:
+        logging.warning('Found {} negative weights in {} total weights'
+                        .format(np.sum(valid), n_all))
+
+    return weights * valid
+
+
+def eval_fold_costh_phi_HX_pt(data):
+    """
+    Get the folded costh and phi variables in the HX frame as well as the pT of
+    the Jpsi from the passed data frame
+
+    Args:
+        data (pd.DataFrame)
+
+    Returns:
+        tuple: tuple containing a pd.Series for the folded costh and phi and the
+            Jpsi pT.
+    """
+    return data.costh_HX_fold, data.phi_HX_fold, data.JpsiPt
+
+
+def eval_corrmap(corrmap, eval_args_f=eval_fold_costh_phi_HX_pt):
+    """
+    Create a function to evaluate the passed correction map allowing for
+    arbitrary usages of variables in the corrmap.
+
+    Args:
+        corrmap (AcceptanceCorrectionProvider): Correction map provider that
+            should be evaluated.
+        eval_args_f (function, optional): Function that takes a DataFrame as
+            single argument and returns a tuple of pandas.Series or
+            numpy.arrays of equal length that will be expanded into the
+            corrmap.eval function call. Basically this is used to tell the
+            correction map which arguments should be used. Defaults to the
+            folded costh, phi and JpsiPt dependent correction maps in the HX
+            frame.
+
+    Returns:
+        function: Function taking a DataFrame as single argument evaluating the
+            correction map at the events in the DataFrame.
+
+    """
+    def _corr_w(data):
+        """
+        Closure that will be returned
+        """
+        return _sanitize_w(corrmap.eval(*eval_args_f(data)))
+
+    return _corr_w
+
+
 class EfficiencyProvider(object):
     """
     Class providing interface to easily obtain single muon and photon
