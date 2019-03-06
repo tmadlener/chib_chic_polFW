@@ -11,14 +11,17 @@ NEVENTS=10000000
 # NACCEPT=1500000  # run until at least as many events are accepted (comment to exhaust NEVENTS)
 
 # Start N_JOBS each generating NEVENTS events (set to 1 or comment to start only one job)
-N_JOBS=1
+N_JOBS=10
 
 # efficiency files
 MUON_EFFS=$(pwd)/EffFiles/single_muon_effs_noTracking_L3ptg2_final_fit.root
+# MUON_EFFS=$(pwd)/EffFiles/single_muon_effs_noTracking_L3ptg2_final_graph_MC.root
 PHOTON_EFFS=$(pwd)/EffFiles/photon_effs_param.root
 
 # output base directory
-OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/acceptance_correction_maps_data/reco_level/
+# OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/acceptance_correction_maps_data/high_stat_costh_phi_maps/gen_HX_4d_histogram_2rap_bins_post_fix/min_muPt_5p6/no_sampling/with_folding/
+OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/acceptance_correction_maps_data/gen_HX/reco_level_postfix/no_rap_dep_sign_flip/test_samples
+# OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/acceptance_correction_maps_data/gen_HX/test_folding_hists/
 
 # use the CS frame as natural frame
 USE_CS_FRAME=0
@@ -28,7 +31,7 @@ STORE_ONLY_ANGLES=1
 
 # Store only costh-phi histograms (at different stages)
 # NOTE: If this is enabled then no TTree will be stored
-STORE_ONLY_HISTS=1
+STORE_ONLY_HISTS=0
 
 # Store efficiencies
 STORE_EFFS=1
@@ -47,7 +50,7 @@ JPSI_MINRAP=0 # min ABSOLUTE rapidity for selection
 
 # Do an importance sampling using the costh dimension using the function that is specified in chicpolgen.C
 # (in func_sampling_weight)
-SAMPLING=true
+SAMPLING=false
 
 # muon (loose) and photon selection
 # NOTE: If you only want to store costh phi histograms to determine correction maps from them make sure to enable these selections
@@ -55,18 +58,24 @@ MUON_SEL=true
 PHOTON_SEL=true
 
 # pT range to generate chic in
-CHIC1_GENPTRANGE="5:100"
-CHIC2_GENPTRANGE="5:100"
+CHIC1_GENPTRANGE="7.5:35"
+CHIC2_GENPTRANGE="7.5:35"
 # CHIC1_GENPTRANGE="9.1286:78.9975" # same as "real MC"
 # CHIC2_GENPTRANGE="9.2456:80.01"   # same as "real MC"
 
 # Which chic1 helicities should be generated
 # comment if you do not want to generate chic1
-CHIC1_HELICITIES=(2./3. 0 1)
+# CHIC1_HELICITIES=(2./3. 0 1)
+# CHIC1_HELICITIES=(1./3.)
+CHIC1_HELICITIES=(2./3. 0)
+# CHIC1_HELICITIES=(0)
 
 # Which chic2 helicities should be generated (NOTE: need R1 and R2, separated by comma)
 # comment if you do not want to generate chic2
-CHIC2_HELICITIES=(2./5.,2./5. 0,0 0,1)
+# CHIC2_HELICITIES=(2./5.,2./5. 0,0 0,1)
+# CHIC2_HELICITIES=(1./3.,0)
+CHIC2_HELICITIES=(2./5.,2./5. 0,0)
+# CHIC2_HELICITIES=(0,1)
 
 # other additional arguments that should be passed to run_chicpolgen
 # NOTE: these will be overridden by arguments created from settings above!
@@ -113,7 +122,8 @@ fi
 if [[ ${STORE_ONLY_HISTS} -eq 0 ]]; then
     if [[ ${STORE_ONLY_ANGLES} -eq 1 ]]; then
         ADD_ARGS=${ADD_ARGS}" $(echo --storeBranches {costh,phi}_{HX,PX,CS})" # use echo to expand braces
-        ADD_ARGS=${ADD_ARGS}" $(echo cosTH_{PX,CS,HX}_sm)" # psi angle in chi restframe
+        # ADD_ARGS=${ADD_ARGS}" $(echo cosTH_{PX,CS,HX}_sm)" # psi angle in chi restframe
+        # ADD_ARGS=${ADD_ARGS}" $(echo chicMass)"
         ADD_ARGS=${ADD_ARGS}" $(echo Jpsi{Pt,Rap})" # also need Jpsi pT and rapidity for acceptance maps
         if [[ ${STORE_EFFS} -eq 1 ]]; then
             ADD_ARGS=${ADD_ARGS}" $(echo {gamma,lep{P,N}}_eff_sm)"

@@ -653,6 +653,25 @@ def baseline_plot(baseline, compplots, **kwargs):
     return can
 
 
+def _extremal_vals_hist_2d(axis, extremum):
+    """
+    Get a function that can be used in the EXTREMAL_FUNCS context below to
+    obtain minimum and maximum values for TH2s
+
+    The same could be achieved by some lambdas with a lot of repetition
+    """
+    gaxis = lambda h: getattr(h, 'Get{}axis'.format(axis))()
+    fext = lambda ax: getattr(ax, 'GetX{}'.format(extremum))()
+
+    def _val_getter(hists):
+        """Closure to avoid a lambda"""
+        return __builtin__.__dict__[extremum](
+            fext(gaxis(h)) for h in make_iterable(hists)
+        )
+
+    return _val_getter
+
+
 # Store them globally so they are not created every time the extremal function
 # is called
 EXTREMAL_FUNCS = {
@@ -667,9 +686,16 @@ EXTREMAL_FUNCS = {
     'TH1': {
         'x': {'min': _get_x_min_hist, 'max': _get_x_max_hist},
         'y': {'min': _get_y_min_hist, 'max': _get_y_max_hist},
+    },
+    'TH2': {
+        'x': {'min': _extremal_vals_hist_2d('X', 'min'),
+              'max': _extremal_vals_hist_2d('X', 'max')},
+        'y': {'min': _extremal_vals_hist_2d('Y', 'min'),
+              'max': _extremal_vals_hist_2d('Y', 'max')},
     }
 }
 
+EVAL_ORDER = ['TGraph', 'TF1', 'TH2', 'TH1']
 
 def _get_extremal_value(pltable, axis, value):
     """
@@ -677,10 +703,12 @@ def _get_extremal_value(pltable, axis, value):
     """
     vals = []
     for plt in make_iterable(pltable):
-        for plttype in EXTREMAL_FUNCS:
+        # handled = False
+        for plttype in EVAL_ORDER:
             if plt.InheritsFrom(plttype):
                 vals.append(EXTREMAL_FUNCS[plttype][axis][value](plt))
-                # Do nothing if we can't handle it (TODO: introduce logging)
+                break # We only need to handle each pltable once
+            # Do nothing if we can't handle it (TODO: introduce logging)
 
     # somewhat hacky way to get either min or max depending on the desired value
     return __builtin__.__dict__[value](vals)

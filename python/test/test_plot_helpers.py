@@ -48,18 +48,29 @@ class TestGetXYMinMax(unittest.TestCase):
         self.hist_y_max = 2
         self.hist_y_min = 1
 
+        # For 2D histograms we don't need to fill the histogram since the min
+        # and max values do not depend on it
+        self.hist2d = r.TH2D(create_random_str(8), '', 10, -3, 1, 10, 4, 5)
+        self.hist2d_x_max = 1
+        self.hist2d_x_min = -3
+        self.hist2d_y_max = 5
+        self.hist2d_y_min = 4
+
 
     def test_get_x_max(self):
         # First test the three types individually, then combined
         self.assertAlmostEqual(self.func_x_max, ph.get_x_max(self.func))
         self.assertAlmostEqual(self.hist_x_max, ph.get_x_max(self.hist))
         self.assertAlmostEqual(self.graph_x_max, ph.get_x_max(self.graph))
+        self.assertAlmostEqual(self.hist2d_x_max, ph.get_x_max(self.hist2d))
 
-        overall_max = max([self.graph_x_max, self.func_x_max, self.hist_x_max])
+        overall_max = max([self.graph_x_max, self.func_x_max, self.hist_x_max,
+                           self.hist2d_x_max])
 
         self.assertAlmostEqual(overall_max, ph.get_x_max([self.hist,
                                                           self.func,
-                                                          self.graph]))
+                                                          self.graph,
+                                                          self.hist2d]))
 
 
     def test_get_x_min(self):
@@ -67,12 +78,15 @@ class TestGetXYMinMax(unittest.TestCase):
         self.assertAlmostEqual(self.func_x_min, ph.get_x_min(self.func))
         self.assertAlmostEqual(self.hist_x_min, ph.get_x_min(self.hist))
         self.assertAlmostEqual(self.graph_x_min, ph.get_x_min(self.graph))
+        self.assertAlmostEqual(self.hist2d_x_min, ph.get_x_min(self.hist2d))
 
-        overall_min = min([self.graph_x_min, self.func_x_min, self.hist_x_min])
+        overall_min = min([self.graph_x_min, self.func_x_min, self.hist_x_min,
+                           self.hist2d_x_min])
 
         self.assertAlmostEqual(overall_min, ph.get_x_min([self.hist,
                                                           self.func,
-                                                          self.graph]))
+                                                          self.graph,
+                                                          self.hist2d]))
 
 
     def test_get_y_max(self):
@@ -80,12 +94,15 @@ class TestGetXYMinMax(unittest.TestCase):
         self.assertAlmostEqual(self.func_y_max, ph.get_y_max(self.func))
         self.assertAlmostEqual(self.hist_y_max, ph.get_y_max(self.hist))
         self.assertAlmostEqual(self.graph_y_max, ph.get_y_max(self.graph))
+        self.assertAlmostEqual(self.hist2d_y_max, ph.get_y_max(self.hist2d))
 
-        overall_max = max([self.graph_y_max, self.func_y_max, self.hist_y_max])
+        overall_max = max([self.graph_y_max, self.func_y_max, self.hist_y_max,
+                           self.hist2d_y_max])
 
         self.assertAlmostEqual(overall_max, ph.get_y_max([self.hist,
                                                           self.func,
-                                                          self.graph]))
+                                                          self.graph,
+                                                          self.hist2d]))
 
 
     def test_get_y_min(self):
@@ -93,12 +110,15 @@ class TestGetXYMinMax(unittest.TestCase):
         self.assertAlmostEqual(self.func_y_min, ph.get_y_min(self.func))
         self.assertAlmostEqual(self.hist_y_min, ph.get_y_min(self.hist))
         self.assertAlmostEqual(self.graph_y_min, ph.get_y_min(self.graph))
+        self.assertAlmostEqual(self.hist2d_y_min, ph.get_y_min(self.hist2d))
 
-        overall_min = min([self.graph_y_min, self.func_y_min, self.hist_y_min])
+        overall_min = min([self.graph_y_min, self.func_y_min, self.hist_y_min,
+                           self.hist2d_y_min])
 
         self.assertAlmostEqual(overall_min, ph.get_y_min([self.hist,
                                                           self.func,
-                                                          self.graph]))
+                                                          self.graph,
+                                                          self.hist2d]))
 
 
 if __name__ == '__main__':
