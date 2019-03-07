@@ -5,7 +5,7 @@ Module containing the basic setup for the jpsi mass fitting
 import ROOT as r
 import ROOT.RooFit as rf
 
-from utils.roofit_utils import ws_import, get_var
+from utils.roofit_utils import ws_import, get_var, fix_params
 from utils.FitModel import FitModel
 
 class JpsiMassModel(FitModel):
@@ -99,7 +99,7 @@ class JpsiMassModel(FitModel):
             ('CBn_jpsi', 2.5)
         ]
 
-        self.fix_params(wsp, par_fix_vals)
+        fix_params(wsp, par_fix_vals)
 
         wsp.factory('{}[1e6, 0, 5e7]'.format(self.nevent_vars[0])) # Njpsi
         wsp.factory('{}[1e5, 0, 5e6]'.format(self.nevent_vars[-1])) # Nbkg_jpsi

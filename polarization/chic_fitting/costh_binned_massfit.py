@@ -22,7 +22,9 @@ from utils.misc_helpers import (
     get_costh_binning, get_bin_means, cond_mkdir_file, get_bin_cut_root,
     chunks, parse_binning
 )
-from utils.roofit_utils import get_var, ws_import, get_args
+from utils.roofit_utils import (
+    get_var, ws_import, get_args, release_params, fix_params
+)
 from utils.chic_fitting import ChicMassModel
 from utils.jpsi_fitting import JpsiMassModel
 from utils.chib_fitting import ChibMassModel
@@ -134,10 +136,10 @@ def do_binned_fits(mass_model, wsp, costh_bins, refit=False, weighted_fit=False)
             # in the workspace and refit them leaving only the event numbers
             # free (and don't forget to release the shape again afterwards)
             shape_par = get_shape_params(wsp, savename, mass_model)
-            mass_model.fix_params(wsp, [(sp, None) for sp in shape_par])
+            fix_params(wsp, [(sp, None) for sp in shape_par])
             refit_sn = 'refit_costh_bin_{}'.format(ibin)
             mass_model.fit(wsp, refit_sn, bin_sel, weighted_fit)
-            mass_model.release_params(wsp, shape_par)
+            release_params(wsp, shape_par)
 
 
 def create_bin_info_json(state, bin_str, datafile, fitfile, bininfo_file=None):
@@ -208,7 +210,7 @@ def run_fit(model, tree, costh_bins, datavars, outfile, refit=False,
         refit = False
         model.fit(wsp, 'costh_integrated', weighted_fit=weights is not None)
         shape_pars = get_shape_params(wsp, 'costh_integrated', model)
-        model.fix_params(wsp, [(sp, None) for sp in shape_pars])
+        fix_params(wsp, [(sp, None) for sp in shape_pars])
 
     do_binned_fits(model, wsp, costh_bins, refit, weights is not None)
     wsp.writeToFile(outfile)

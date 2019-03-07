@@ -206,3 +206,58 @@ def get_var_graph(wsp, snap_base, var, n_bins, binning=None, bin_means=None,
 
     return r.TGraphAsymmErrors(n_bins, bin_means, vals, x_lo, x_hi,
                                err_lo, err_hi)
+
+
+def set_var(wsp, varname, val, create=False):
+    """
+    Set the passed value to the variable in the workspace. If the variable is
+    not already present, create it first.
+    """
+    var = get_var(wsp, varname)
+    if var is None:
+        if not create:
+            logging.error('Variable \'{}\' is not present in workspace'
+                          .format(varname))
+        else:
+            logging.debug('Variable \'{}\' not already present in workspace. '
+                          'Creating it.'.format(varname))
+            wsp.factory("{}[{}]".format(varname, val))
+    else:
+        var.setVal(val)
+
+
+def fix_params(wsp, param_vals):
+    """
+    Fix the parameters in the workspace to given or current values
+
+    Args:
+        wsp (ROOT.RooWorkspace): workspace containing all the variables
+        param_vals (list of tuples): tuples where first element is the name
+            of the parameter and the second is the value to which it should
+            be fixed. If the second parameter is None, it will be fixed to
+            the current value in the workspace
+    """
+    for par, val in param_vals:
+        if val is None:
+            val = get_var(wsp, par).getVal()
+            debug_msg = 'Fixing {} to current value in workspace: {}'
+        else:
+            debug_msg = 'Fixing {} to {}'
+
+        logging.info(debug_msg.format(par, val))
+        get_var(wsp, par).setVal(val)
+        get_var(wsp, par).setConstant(True)
+
+
+def release_params(wsp, param_names):
+    """
+    Release the parameters in the workspace
+
+    Args:
+        wsp (ROOT.RooWorkspace): workspace containing all the variables
+        param_names (list of strings): Names of the parameters in the
+            workspace to release
+    """
+    for par in param_names:
+        logging.debug('Releasing variable \'{}\''.format(par))
+        get_var(wsp, par).setConstant(False)

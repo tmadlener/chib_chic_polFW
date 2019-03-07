@@ -5,7 +5,7 @@ Module containing the basic setup for the chic fitting
 import ROOT as r
 import ROOT.RooFit as rf
 
-from utils.roofit_utils import ws_import, get_var
+from utils.roofit_utils import ws_import, get_var, fix_params
 from utils.constants import (
     m_psiPDG, m_chic0PDG, m_chic1PDG, m_chic2PDG
 )
@@ -119,7 +119,7 @@ class ChicMassModel(FitModel):
 
         ws_import(ws, M_background)
 
-        self.fix_params(ws, [
+        fix_params(ws, [
             ('CBn', 2.75),
             ('BK_p2', 1e-10),
             # ('q01S', 3.1)

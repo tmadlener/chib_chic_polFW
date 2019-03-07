@@ -11,24 +11,11 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
 from utils.roofit_utils import (
-    ws_import, get_var, get_chi2_ndf, get_corr_matrix
+    ws_import, get_var, get_chi2_ndf, get_corr_matrix, set_var
 )
+
 from utils.misc_helpers import create_random_str
 from utils.plot_helpers import setup_latex, put_on_latex
-
-
-def set_var(wsp, varname, val):
-    """
-    Set the passed value to the variable in the workspace. If the variable is
-    not already present, create it first.
-    """
-    var = get_var(wsp, varname)
-    if var is None:
-        logging.debug('Variable \'{}\' not already present in workspace'
-                      .format(varname))
-        wsp.factory("{}[{}]".format(varname, val))
-    else:
-        var.setVal(val)
 
 
 class FitModel(object):
@@ -105,8 +92,8 @@ class FitModel(object):
         logging.info('Fit status = {}, covQual = {}'
                      .format(fit_results.status(), fit_results.covQual()))
 
-        set_var(wsp, '__fit_status__', fit_results.status())
-        set_var(wsp, '__cov_qual__', fit_results.covQual())
+        set_var(wsp, '__fit_status__', fit_results.status(), create=True)
+        set_var(wsp, '__cov_qual__', fit_results.covQual(), create=True)
 
         wsp.saveSnapshot('snap_{}'.format(savename), wsp.allVars())
         fit_results.SetName('fit_res_{}'.format(savename))
@@ -298,42 +285,6 @@ class FitModel(object):
         plt.yticks(rotation=0)
 
         fig.savefig(pdfname, bbox_inches='tight')
-
-
-    def fix_params(self, wsp, param_vals):
-        """
-        Fix the parameters in the workspace to given or current values
-
-        Args:
-            wsp (ROOT.RooWorkspace): workspace containing all the variables
-            param_vals (list of tuples): tuples where first element is the name
-                of the parameter and the second is the value to which it should
-                be fixed. If the second parameter is None, it will be fixed to
-                the current value in the workspace
-        """
-        for par, val in param_vals:
-            if val is None:
-                val = get_var(wsp, par).getVal()
-                debug_msg = 'Fixing {} to current value in workspace: {}'
-            else:
-                debug_msg = 'Fixing {} to {}'
-
-            logging.info(debug_msg.format(par, val))
-            get_var(wsp, par).setVal(val)
-            get_var(wsp, par).setConstant(True)
-
-
-    def release_params(self, wsp, param_names):
-        """
-        Release the parameters in the workspace
-
-        Args:
-            wsp (ROOT.RooWorkspace): workspace containing all the variables
-            param_names (list of strings): Names of the parameters in the
-                workspace to release
-        """
-        for par in param_names:
-            get_var(wsp, par).setConstant(False)
 
 
     def _setup_legend(self):

@@ -11,6 +11,7 @@ logging.basicConfig(level=logging.INFO,
                     format='%(levelname) - %(funcName)s: %(message)s')
 
 from utils.FitModel import FitModel
+from utils.roofit_utils import fix_params
 import utils.RooDoubleCB # Make the double sided CB available via the factory
 
 def _full_model_expr(model_type, name, sub_models, event_yields):
@@ -124,7 +125,7 @@ class ConfigFitModel(FitModel):
             success.append(_try_factory(wsp, model))
         success.append(_try_factory(wsp, self.full_model_expr))
 
-        self.fix_params(wsp, self.fix_vars)
+        fix_params(wsp, self.fix_vars)
 
         if not all(success):
             logging.error('Could not succesfully define the model in the '
