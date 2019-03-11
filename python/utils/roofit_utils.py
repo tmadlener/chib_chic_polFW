@@ -261,3 +261,14 @@ def release_params(wsp, param_names):
     for par in param_names:
         logging.debug('Releasing variable \'{}\''.format(par))
         get_var(wsp, par).setConstant(False)
+
+
+def try_factory(wsp, expr):
+    """Try to run the expression through the RooWorkspace.factory"""
+    logging.debug(expr)
+    obj = wsp.factory(expr)
+    if not obj:
+        logging.error('\'{}\' failed to create the an object in the workspace'
+                      .format(expr))
+        return False
+    return True

@@ -448,6 +448,20 @@ def get_bin_cut_root(bin_var, bin_low, bin_up):
     return '{0} > {1} && {0} < {2}'.format(bin_var, bin_low, bin_up)
 
 
+def combine_cuts(cuts, comb=' && '):
+    """
+    Combine cut strings to one so that they can be safely used in the ROOT cut
+    string interface.
+
+    Args:
+        cuts (list of str): Cuts to be combined
+        comb (str, defaults): How the cuts should be combined. Defaults to
+            returning the AND of all cuts
+    """
+    safe_cuts = ["".join(["(", c, ")"]) for c in cuts]
+    return comb.join(safe_cuts)
+
+
 def get_vals_from_rwbuffer(rw_buffer, n_points):
     """
     Get the first n_points from a read-write buffer
