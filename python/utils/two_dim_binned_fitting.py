@@ -15,6 +15,7 @@ logging.basicConfig(level=logging.DEBUG,
 
 from utils.roofit_utils import get_var, try_factory
 from utils.misc_helpers import parse_binning, get_bin_cut_root, combine_cuts
+from utils.plot_helpers import setup_legend, _setup_canvas
 
 
 def get_bins(binning1, binning2, binvar1, binvar2):
@@ -79,8 +80,7 @@ class BinnedFitModel(object):
         self.sub_models = config['sub_models']
         self.nevent_yields = [m['event_yield'] for m in self.sub_models]
 
-        # TODO: add plotting info here
-        self.components = [(m['name'],) for m in self.sub_models]
+        self.components = [(m['name'], m['plot']) for m in self.sub_models]
 
         self.full_model = config['full_model']['name']
 
@@ -90,6 +90,8 @@ class BinnedFitModel(object):
                                             self.full_model,
                                             [c[0] for c in self.components],
                                             self.nevent_yields)
+
+        self.plot_config = config['plot_config']
 
         self.config = config
 
@@ -184,15 +186,22 @@ class BinnedFitModel(object):
                 data as well as the fit results
         """
         fit_var = get_var(wsp, self.fit_var)
-        frames = OrderedDict()
         data = wsp.data('full_data')
 
+        cans = OrderedDict()
 
         for bin_name, bin_borders in self.bins.iteritems():
-            frames[bin_name] = self._plot_bin(wsp, data, bin_name, bin_borders)
+            frame, leg = self._plot_bin(wsp, data, bin_name, bin_borders)
+            can = _setup_canvas(None) # returns a TCanvasWrapper
+            frame.Draw()
+            can.add_tobject(frame)
+            leg.Draw()
+            can.add_tobject(leg)
+
+            cans[bin_name] = can
 
         # for easier debugging at the moment
-        return frames
+        return cans
 
         # TODO: pulls
 
@@ -203,19 +212,27 @@ class BinnedFitModel(object):
         fit_var = get_var(wsp, self.fit_var)
         frame = fit_var.frame(rf.Bins(50))
 
+        leg = setup_legend(*self.plot_config['legpos'])
+
         cut = get_bin_cut(self.bin_vars, bin_borders)
         full_data.reduce(cut).plotOn(frame, *data_args)
         full_pdf = wsp.pdf(self.full_model + '_' + bin_name)
         full_pdf.plotOn(frame, rf.LineWidth(2), rf.Name('full_pdf_curve'))
 
-        # TODO: legend, colors, etc.
-        for name, in self.components:
-            full_pdf.plotOn(frame, rf.Components(name + '_' + bin_name),
-                            rf.LineStyle(7))
+        leg.AddEntry(frame.getCurve('full_pdf_curve'), 'sum', 'l')
 
+        for name, settings in self.components:
+            full_pdf.plotOn(frame, rf.Components(name + '_' + bin_name),
+                            rf.LineStyle(settings['line']),
+                            rf.LineColor(settings['color']),
+                            rf.LineWidth(2),
+                            rf.Name(name))
+            leg.AddEntry(frame.getCurve(name), settings['label'], 'l')
+
+        # At least for debugging
         frame.SetTitle(cut)
 
-        return frame
+        return frame, leg
 
 
     def _create_nll(self, wsp, nll_args):
