@@ -72,6 +72,20 @@ def get_var_err(wsp, varname, fit_res=None):
     return var.getVal(), -1
 
 
+def all_vals(var):
+    """
+    Get the value, minimum value and maximum value the passed variable
+
+    Args:
+        var (ROOT.RooRealVar): The variable
+
+    Returns:
+        tuple of float: the current value, the minimum value and the maximum
+            value
+    """
+    return var.getVal(), var.getMin(), var.getMax()
+
+
 def get_chi2_ndf(fit_res, frame, pdfname, histname):
     """
     Get the chi2 value und the number degrees of freedom between a pdf and a

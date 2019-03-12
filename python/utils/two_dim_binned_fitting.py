@@ -3,6 +3,8 @@
 TODO
 """
 
+import re
+
 import ROOT as r
 import ROOT.RooFit as rf
 import numpy as np
@@ -13,7 +15,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
-from utils.roofit_utils import get_var, try_factory
+from utils.roofit_utils import get_var, try_factory, all_vals
 from utils.misc_helpers import parse_binning, get_bin_cut_root, combine_cuts
 from utils.plot_helpers import setup_legend, _setup_canvas
 
@@ -64,8 +66,11 @@ class BinnedFitModel(object):
     """
     def __init__(self, config):
         """
-        TODO
+        Read all the info from the config and do some computation which are then
+        needed throughout
         """
+        # TODO: read the configuration from a json file and make that the
+        # argument to the function
         self.binning = np.array([
             parse_binning(config['binning'][0]),
             parse_binning(config['binning'][1])
@@ -93,7 +98,7 @@ class BinnedFitModel(object):
 
         self.plot_config = config['plot_config']
 
-        self.config = config
+        # self.config = config # for development / debugging
 
 
     def define_model(self, wsp):
@@ -113,17 +118,25 @@ class BinnedFitModel(object):
         for expr in self.expression_strings:
             success.append(try_factory(wsp, expr))
 
+        # regex to check if a string is a valid variable
+        var_rgx = re.compile(r'\w+')
+
+        # full data set (needed for calculations of bin means, etc)
+        data = wsp.data('full_data')
 
         for bin_name in self.bins:
             for param in self.proto_params:
-                wsp_var = get_var(wsp, self.proto_params[param])
-                if wsp_var is not None:
-                    expr = '{}_{}[{}, {}, {}]'.format(param, bin_name, wsp_var.getVal(),
-                                                      wsp_var.getMin(), wsp_var.getMax())
-                    success.append(try_factory(wsp, expr))
+                var_str = self.proto_params[param]
+
+                # Check if we have a functional dependency or not
+                if isinstance(var_str, (tuple, list)):
+                    expr = self._get_func_expr(wsp, bin_name, param, var_str)
+                # For a non-functional dependency we want to have a prototype
+                # variable in the workspace
                 else:
-                    # TODO: actually handle expressions somehow
-                    pass
+                    expr = self._get_par_expr(wsp, bin_name, param, var_str)
+
+                success.append(try_factory(wsp, expr))
 
             for model in self.sub_models:
                 name = '{}_{}'.format(model['name'], bin_name)
@@ -143,9 +156,7 @@ class BinnedFitModel(object):
 
             full_expr = full_expr.replace(self.full_model,
                                           self.full_model + '_' + bin_name)
-
             success.append(try_factory(wsp, full_expr))
-
 
         return all(success)
 
@@ -176,7 +187,6 @@ class BinnedFitModel(object):
         # TODO: persisting fit results, etc
 
 
-
     def plot(self, wsp):
         """
         Plot the fit results from the passed workspace
@@ -185,7 +195,6 @@ class BinnedFitModel(object):
             wsp (ROOT.RooWorkspace): The workspace that holds the model and the
                 data as well as the fit results
         """
-        fit_var = get_var(wsp, self.fit_var)
         data = wsp.data('full_data')
 
         cans = OrderedDict()
@@ -265,4 +274,53 @@ class BinnedFitModel(object):
         minimizer.setPrintLevel(-1)
 
         return minimizer
+
+
+    def _get_func_expr(self, wsp, bin_name, proto_param, param_expr):
+        """
+        Create the expression that can be passed to the RooWorkspace.factory
+        """
+        if len(param_expr) != 2:
+            logging.error('Expression for proto_param \'{}\' does not have two'
+                          ' sub expressions. For functional dependencies the '
+                          'functional expression and the parameters for it have'
+                          ' to be passed'.format(param_expr[0]))
+            return 'INVALID_EXPRESSION'
+
+        func_expr, arg_list = param_expr
+
+        bin_data = wsp.data('full_data').reduce(
+            get_bin_cut(self.bin_vars, self.bins[bin_name])
+        )
+
+        # regex to check if a string contains a mean-value expression
+        mean_rgx = re.compile(r'<(\w+)>')
+
+        mean_vars = set(mean_rgx.findall(func_expr))
+        mean_vals = {
+            vn: bin_data.mean(get_var(wsp, vn)) for vn in mean_vars
+        }
+
+        expr = func_expr
+        for var, val in mean_vals.iteritems():
+            expr = expr.replace('<{}>'.format(var), str(val))
+
+        return r"expr::{}('{}', {})".format(proto_param + '_' + bin_name,
+                                            expr,
+                                            arg_list)
+
+
+    def _get_par_expr(self, wsp, bin_name, proto_param, param_expr):
+        """
+        Create the expression for a variable that is independent in each bin
+        """
+        wsp_var = get_var(wsp, param_expr)
+        if wsp_var is not None:
+            return '{}_{}[{}, {}, {}]'.format(proto_param, bin_name,
+                                              *all_vals(wsp_var))
+        else:
+            logging.error('Cannot find parameter \'{}\' in workspace. Cannot '
+                          'define expression for proto_parameter \'{}\''
+                          .format(param_expr, proto_param))
+            return 'INVALID_EXPRESSION'
 
