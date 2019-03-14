@@ -303,7 +303,8 @@ class BinnedFitModel(object):
 
         expr = func_expr
         for var, val in mean_vals.iteritems():
-            expr = expr.replace('<{}>'.format(var), str(val))
+#DONE: Added parenthesis to avoid problems with negative values
+            expr = expr.replace('<{}>'.format(var), '('+str(val)+')')
 
         return r"expr::{}('{}', {})".format(proto_param + '_' + bin_name,
                                             expr,
@@ -314,13 +315,15 @@ class BinnedFitModel(object):
         """
         Create the expression for a variable that is independent in each bin
         """
-        wsp_var = get_var(wsp, param_expr)
-        if wsp_var is not None:
-            return '{}_{}[{}, {}, {}]'.format(proto_param, bin_name,
-                                              *all_vals(wsp_var))
-        else:
-            logging.error('Cannot find parameter \'{}\' in workspace. Cannot '
-                          'define expression for proto_parameter \'{}\''
-                          .format(param_expr, proto_param))
-            return 'INVALID_EXPRESSION'
-
+#        wsp_var = get_var(wsp, param_expr)
+#        if wsp_var is not None:
+#            return '{}_{}[{}, {}, {}]'.format(proto_param, bin_name,
+#                                              *all_vals(wsp_var))
+#        else:
+#            logging.error('Cannot find parameter \'{}\' in workspace. Cannot '
+#                          'define expression for proto_parameter \'{}\''
+#                          .format(param_expr, proto_param))
+#            return 'INVALID_EXPRESSION'
+#DONE: changed readout method for proto_params so they take the form
+# 'proto_param': '[mid, low, high]'. Also changed in json file
+        return '{}_{}'.format(proto_param, bin_name)+param_expr

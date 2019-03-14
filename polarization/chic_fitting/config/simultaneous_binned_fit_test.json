@@ -24,21 +24,17 @@
     ],
 
     "expression_strings": [
-        "bkg_lambda[2.5, -10, 10]",
         "sigma_sig[0.25, 0.01, 1.0]",
-        "mean_sig[3.3, 2.8, 4.5]",
-        "n_sig[1000, 0, 20000]",
-        "n_bkg[1000, 0, 20000]",
         "k_mean_sig[0, -10, 10]",
         "d_mean_sig[3, -10, 10]"
     ],
 
     "proto_parameters": {
-        "lambdaBkg": "bkg_lambda",
-        "sigmaSig": "sigma_sig",
+        "lambdaBkg": "[2.5, -10, 10]",
+	"sigmaSig": "[0.25, 0.01, 1.0]",
         "massSig": ["k_mean_sig * <Y_var> + d_mean_sig", "k_mean_sig, d_mean_sig"],
-        "Nbkg": "n_bkg",
-        "Nsig": "n_sig"
+        "Nbkg": "[1000, 0, 20000]",
+        "Nsig": "[1000, 0, 20000]"
     },
 
     "plot_config": {
