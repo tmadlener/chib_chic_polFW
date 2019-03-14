@@ -227,16 +227,17 @@ def chic_mass_sel(df, min_mass=3.325, max_mass=3.725):
     return select_bin('chicMass', min_mass, max_mass)(df)
 chic_mass_sel.requires = ['chicMass']
 
-def jpsi_kin_sel_(min_pt=8, max_pt=20, max_rap=1.2, gen=False):
+def jpsi_kin_sel_(min_pt=8, max_pt=20, max_rap=1.2, min_rap=0, gen=False):
     """Kinematic selection of jpsi
     TODO: Rename after deprecation
     """
     class JpsiKinSel(object):
         """Internal helper class to help with the """
-        def __init__(self, min_pt, max_pt, max_rap, gen):
+        def __init__(self, min_pt, max_pt, max_rap, min_rap, gen):
             self.min_pt = min_pt
             self.max_pt = max_pt
             self.max_rap = max_rap
+            self.min_rap = min_rap
             self.gen = gen
             self.requires = [get_gen_name(v, gen) for v in ['JpsiPt',
                                                             'JpsiRap']]
@@ -244,11 +245,14 @@ def jpsi_kin_sel_(min_pt=8, max_pt=20, max_rap=1.2, gen=False):
 
         def __call__(self, dfr):
             jpsi_name = get_gen_name('Jpsi', self.gen)
-            return (select_bin(jpsi_name + 'Pt', self.min_pt, self.max_pt))(dfr) & \
-                                   (dfr[jpsi_name + 'Rap'].abs() < self.max_rap)
 
+            pt_sel = select_bin(jpsi_name + 'Pt', self.min_pt, self.max_pt)
+            rap_sel = select_bin('abs(' + jpsi_name + 'Rap)',
+                                 self.min_rap, self.max_rap)
 
-    return JpsiKinSel(min_pt, max_pt, max_rap, gen)
+            return pt_sel(dfr) & rap_sel(dfr)
+
+    return JpsiKinSel(min_pt, max_pt, max_rap, min_rap, gen)
 
 
 @deprecated_lambda_call
