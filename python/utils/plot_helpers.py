@@ -371,9 +371,6 @@ def _setup_plot_hist(can, pltables, **kwargs):
         # No frame needed
         return None
 
-    x_plot = (get_x_min(pltables), get_x_max(pltables))
-    y_plot = (get_y_min(pltables), get_y_max(pltables))
-
     def get_ax_range(plot_range, ax_range):
         """Get the axis default range or the plot range"""
         # depending on the sign of the min and maximum values it is necessary
@@ -396,8 +393,13 @@ def _setup_plot_hist(can, pltables, **kwargs):
     if y_range is None:
         y_range = [None, None]
 
-    x_range = get_ax_range(x_plot, x_range)
-    y_range = get_ax_range(y_plot, y_range)
+    # Only compute the range from the plots if it is really necessary
+    if None in x_range:
+        x_plot = (get_x_min(pltables), get_x_max(pltables))
+        x_range = get_ax_range(x_plot, x_range)
+    if None in y_range:
+        y_plot = (get_y_min(pltables), get_y_max(pltables))
+        y_range = get_ax_range(y_plot, y_range)
 
     plot_hist = can.DrawFrame(x_range[0], y_range[0], x_range[1], y_range[1])
 
