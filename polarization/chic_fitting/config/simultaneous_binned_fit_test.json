@@ -1,0 +1,47 @@
+{
+    "bin_vars": ["X_var", "Y_var"],
+    "binning": ["-1:1,3", "0,1.2,4.5"],
+    "fit_variable": "mass",
+
+    "full_model": {
+        "name": "M_fullModel",
+        "type": "SUM"
+    },
+
+    "sub_models": [
+        {
+            "name": "M_sig",
+            "event_yield": "Nsig",
+            "expression": "RooGaussian::{}({}, massSig, sigma_sig)",
+            "plot": {"line": 7, "color": 417, "label": "signal"}
+        },
+        {
+            "name": "M_bkg",
+            "event_yield": "Nbkg",
+            "expression": "RooExponential::{}({}, lambdaBkg)",
+            "plot": {"line": 7, "color": 632, "label": "background"}
+        }
+    ],
+
+    "expression_strings": [
+        "bkg_lambda[2.5, -10, 10]",
+        "sigma_sig[0.25, 0.01, 1.0]",
+        "mean_sig[3.3, 2.8, 4.5]",
+        "n_sig[1000, 0, 20000]",
+        "n_bkg[1000, 0, 20000]",
+        "k_mean_sig[0, -10, 10]",
+        "d_mean_sig[3, -10, 10]"
+    ],
+
+    "proto_parameters": {
+        "lambdaBkg": "bkg_lambda",
+        "sigmaSig": "sigma_sig",
+        "massSig": ["k_mean_sig * <Y_var> + d_mean_sig", "k_mean_sig, d_mean_sig"],
+        "Nbkg": "n_bkg",
+        "Nsig": "n_sig"
+    },
+
+    "plot_config": {
+        "legpos": [0.12, 0.75, 0.24, 0.87]
+    }
+}
