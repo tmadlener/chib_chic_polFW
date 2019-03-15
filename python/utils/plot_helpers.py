@@ -311,7 +311,10 @@ def plot_on_canvas(can, plots, **kwargs):
         if i == 0:
             plot.Draw(draw_option)
         else:
-            plot.Draw(draw_option + 'same')
+            opt = draw_option
+            if not 'same' in draw_option:
+                opt = draw_option + 'same'
+            plot.Draw(opt)
 
         if legend is not None:
             legend.AddEntry(plot, leg_entries[i], leg_option)
