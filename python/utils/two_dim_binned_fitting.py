@@ -15,7 +15,7 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
-from utils.roofit_utils import get_var, try_factory, all_vals
+from utils.roofit_utils import get_var, try_factory, all_vals, set_var, ws_import
 from utils.misc_helpers import parse_binning, get_bin_cut_root, combine_cuts
 from utils.plot_helpers import setup_legend, _setup_canvas
 
@@ -161,7 +161,7 @@ class BinnedFitModel(object):
         return all(success)
 
 
-    def fit(self, wsp):
+    def fit(self, wsp, savename):
         """
         Import the passed data into the workspace, construct the combined
         negative log-likelihood (NLL) and run the simultaneous fit.
@@ -183,6 +183,20 @@ class BinnedFitModel(object):
         minimizer.migrad()
         logging.info('starting minos')
         minimizer.minos()
+
+        fit_results = minimizer.save()
+
+        fit_results.Print()
+        logging.info('Fit status = {}, covQual = {}'
+                     .format(fit_results.status(), fit_results.covQual()))
+        
+        set_var(wsp, '__fit_status__', fit_results.status(), create=True)
+        set_var(wsp, '__cov_qual__', fit_results.covQual(), create=True)
+
+        wsp.saveSnapshot('snap_{}'.format(savename), wsp.allVars())
+        fit_results.SetName('fit_res_{}'.format(savename))
+        ws_import(wsp, fit_results)
+
 
         # TODO: persisting fit results, etc
 
