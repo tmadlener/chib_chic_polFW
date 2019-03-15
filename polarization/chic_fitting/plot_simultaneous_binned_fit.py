@@ -8,6 +8,8 @@ import json
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 
+from os.path import dirname
+
 import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
@@ -25,7 +27,14 @@ def main(args):
 
     cans = model.plot(wsp)
 
-    # TODO: Saving the plots
+    # TODO: conditionally making the outdir
+    outdir = dirname(args.fitfile)
+
+    # Saving the plots
+    for bin_name, bin_borders in model.bins.iteritems():
+        pdfname = '/'.join([outdir, bin_name+'_massfit.pdf'])
+        cans[bin_name].SaveAs(pdfname)
+    
 
 
 if __name__ == '__main__':
