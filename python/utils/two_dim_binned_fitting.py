@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
 from utils.roofit_utils import get_var, try_factory, all_vals, set_var, ws_import
-from utils.misc_helpers import parse_binning, get_bin_cut_root, combine_cuts
+from utils.misc_helpers import parse_binning, get_bin_cut_root, combine_cuts, create_random_str
 from utils.plot_helpers import setup_legend, _setup_canvas
 
 
@@ -228,6 +228,50 @@ class BinnedFitModel(object):
 
         # TODO: pulls
 
+    
+    def plot_fit_params(self, wsp):
+        """
+        Plot all free fit parameters onto canvas
+        Args:
+            wsp (ROOT.RooWorkspace): workspace where the model is stored
+        """
+        fit_var = get_var(wsp, self.fit_var)
+        
+        cans = OrderedDict()
+        
+        for bin_name, bin_borders in self.bins.iteritems():
+            frame = fit_var.frame(rf.Title('Fit Results'))
+            
+            plotname = '{}_{}'.format('M_fullModel', bin_name)
+            full_pdf = wsp.pdf(plotname)
+
+            full_pdf.paramOn(frame, rf.Layout(0.1, 0.9, 0.9), rf.Format('NEU', rf.AutoPrecision(2)))
+
+            can = r.TCanvas(create_random_str(32), 'rcan', 600, 600)
+            can.cd()
+            frame.findObject('{}_paramBox'.format(full_pdf.GetName())).Draw()
+            
+            cans[bin_name] = can
+        #can.SaveAs(pdfname)
+    
+        mods = r.RooArgList()
+        for bin_name, bin_borders in self.bins.iteritems():
+            plotname = 'M_fullModel_'+bin_name
+            mods.add(wsp.pdf(plotname))
+        model_sum = r.RooAddPdf("model", "model", mods)
+    
+        frame = fit_var.frame(rf.Title('Fit Results'))
+        model_sum.paramOn(frame, rf.Layout(0.01, 0.99, 0.99), rf.Format('NEU', rf.AutoPrecision(2)))
+
+        can = r.TCanvas(create_random_str(32), 'rcan', 600, 600)
+        can.cd()
+        frame.findObject('{}_paramBox'.format(model_sum.GetName())).Draw()
+            
+        cans['full_model'] = can
+        
+        # returns fit params for each fit and for the full fit
+        
+        return cans
 
     def _plot_bin(self, wsp, full_data, bin_name, bin_borders):
         """Make the distribution plot for a given bin"""

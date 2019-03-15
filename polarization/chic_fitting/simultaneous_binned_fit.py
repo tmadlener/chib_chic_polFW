@@ -8,6 +8,8 @@ import json
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 
+from os.path import dirname
+
 from root_numpy import array2tree
 
 import logging
@@ -71,7 +73,9 @@ def main(args):
     savename = 'twodim'
     model.fit(wsp, savename)
 
-    wsp.writeToFile(args.outfile)
+    outdir = dirname(args.datafile)
+    ofile = '/'.join([outdir, args.outfile])
+    wsp.writeToFile(ofile)
 
 
 if __name__ == '__main__':

@@ -26,15 +26,22 @@ def main(args):
     wsp = ffile.Get('ws_mass_fit')
 
     cans = model.plot(wsp)
+    canp = model.plot_fit_params(wsp)
 
     # TODO: conditionally making the outdir
     outdir = dirname(args.fitfile)
 
     # Saving the plots
     for bin_name, bin_borders in model.bins.iteritems():
-        pdfname = '/'.join([outdir, bin_name+'_massfit.pdf'])
-        cans[bin_name].SaveAs(pdfname)
+        plotname = '/'.join([outdir, bin_name+'_massfit.pdf'])
+        cans[bin_name].SaveAs(plotname)
+        parname = '/'.join([outdir, bin_name+'_massfit_res.pdf'])
+        canp[bin_name].SaveAs(parname)
+    canp['full_model'].SaveAs('/'.join([outdir, 'full_massfit_res.pdf']))
     
+
+    # TODO: save the plots within the utils file without returning the canvases
+    # TODO: fix whatever is causing the canvas to appear on screen while running the code (not sure if above)
 
 
 if __name__ == '__main__':
