@@ -438,6 +438,9 @@ def mkplot(pltables, **kwargs):
         can (ROOT.TCanvas): Do not create new canvas but use passed canvas to
             plot on
         log[xyz] (boolean, optional): Set the [xyz] axis to log scale
+        title (str, optional): Use the passed string as title of the plot (will
+            be added to the first plot in the list of pltables or the plot_hist
+            if it is set up)
 
     Returns:
         TCanvasWrapper: Transparent wrapper class around a TCanvas that forwards
@@ -480,6 +483,10 @@ def mkplot(pltables, **kwargs):
     plot_on_canvas(can, pltables, leg=leg, **kwargs)
 
     can.add_pltables(pltables)
+    title = kwargs.pop('title', None)
+    if title is not None:
+        can.pltables[0].SetTitle(title)
+
     if leg is not None:
         can.add_tobject(leg)
 
