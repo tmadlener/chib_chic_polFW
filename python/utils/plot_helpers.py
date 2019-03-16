@@ -306,8 +306,20 @@ def plot_on_canvas(can, plots, **kwargs):
     if not leg_option or leg_option == 'H':
         leg_option = 'ple'
 
+    i_att = 0
     for i, plot in enumerate(plots):
-        set_attributes(plot, **get_att(i))
+        if isinstance(plot, r.THStack):
+            for hist in plot:
+                set_attributes(hist, **get_att(i_att))
+                if legend is not None:
+                    legend.AddEntry(hist, leg_entries[i_att], leg_option)
+                i_att += 1
+        else:
+            set_attributes(plot, **get_att(i_att))
+            if legend is not None:
+                legend.AddEntry(plot, leg_entries[i_att], leg_option)
+
+            i_att += 1
         if i == 0:
             plot.Draw(draw_option)
         else:
@@ -316,8 +328,6 @@ def plot_on_canvas(can, plots, **kwargs):
                 opt = draw_option + 'same'
             plot.Draw(opt)
 
-        if legend is not None:
-            legend.AddEntry(plot, leg_entries[i], leg_option)
 
     if legend is not None:
         legend.Draw()
@@ -452,6 +462,11 @@ def mkplot(pltables, **kwargs):
     """
     # allow single plots to be handled the same as a list of plots
     pltables = make_iterable(pltables)
+    # - Have to specially treat a single THStack here, since THStack is an
+    #   instance of Iterable. Putting it into a list here to be sure to always
+    #   having a list in plot_on_canvas, which makes handling there easier
+    if isinstance(pltables, r.THStack):
+        pltables = [pltables]
 
     # Need to pop the can kwarg here otherwise plot_on_canvas will receive it
     # twice and complain
@@ -684,6 +699,24 @@ def _extremal_vals_hist_2d(axis, extremum):
     return _val_getter
 
 
+# Check whether the THStack has been fixed yet
+BUGGED_THSTACK = int(r.gROOT.GetVersion().split('.')[1].split('/')[0]) < 16
+
+def _warn_thstack(func, *args):
+    """
+    Warn about that calling BuildStack() (as it is done in GetMinimum or
+    GetMaximum) has an unfixed bug up to ROOT 6.16 where the plot attributes are
+    not properly set to the things that are plotted.
+
+    See: https://sft.its.cern.ch/jira/browse/ROOT-9854
+    """
+    if BUGGED_THSTACK:
+        logging.warn('Calling GetMinimum or GetMaximum on a THStack leads to '
+                     'plot attributes not being set properly to the stacked '
+                     'histograms')
+    return func(*args)
+
+
 # Store them globally so they are not created every time the extremal function
 # is called
 EXTREMAL_FUNCS = {
@@ -704,10 +737,19 @@ EXTREMAL_FUNCS = {
               'max': _extremal_vals_hist_2d('X', 'max')},
         'y': {'min': _extremal_vals_hist_2d('Y', 'min'),
               'max': _extremal_vals_hist_2d('Y', 'max')},
+    },
+    'THStack': {
+        # For the x-axis we can use the ones from TH1, since they work with the
+        # TAxis
+        'x': {'min': _get_x_min_hist, 'max': _get_x_max_hist},
+        # For the y-axis we can in principle use the ones From the TF1, but we
+        # have to be careful, because the TStack is Iterable
+        'y': {'min': lambda s: _warn_thstack(_get_y_min_func, [s]),
+              'max': lambda s: _warn_thstack(_get_y_max_func, [s])}
     }
 }
 
-EVAL_ORDER = ['TGraph', 'TF1', 'TH2', 'TH1']
+EVAL_ORDER = ['TGraph', 'TF1', 'TH2', 'TH1', 'THStack']
 
 def _get_extremal_value(pltable, axis, value):
     """

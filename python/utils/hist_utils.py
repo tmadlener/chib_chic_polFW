@@ -148,9 +148,11 @@ def _get_x_max_hist(hists):
     Returns:
         float: The maximum x-value of all passed histograms
     """
-    max_bin = lambda h: h.GetNbinsX()
-    return max(h.GetBinLowEdge(max_bin(h)) + h.GetBinWidth(max_bin(h))
-               for h in make_iterable(hists))
+    max_bin = lambda ax: ax.GetNbins() + 1 # get the low edge of the overflow bin
+    get_ax = lambda h: h.GetXaxis()
+    get_le = lambda ax, i: ax.GetBinLowEdge(i)
+
+    return max(get_le(get_ax(h), max_bin(get_ax(h))) for h in make_iterable(hists))
 
 
 def _get_x_min_hist(hists):
@@ -165,7 +167,7 @@ def _get_x_min_hist(hists):
         float: The minimum x-value of all passed histograms
     """
     # 0 is underflow bin (thus starting at 1)
-    return min(h.GetBinLowEdge(1) for h in make_iterable(hists))
+    return min(h.GetXaxis().GetBinLowEdge(1) for h in make_iterable(hists))
 
 
 def get_binning(hist, axis='X'):
