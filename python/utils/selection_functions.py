@@ -380,6 +380,51 @@ def all_sel():
     return AllSel()
 
 
+def random_sel(n_events=None, fraction=None):
+    """
+    Randomly select events from the sample.
+
+    NOTE: When applied in combination with other selections, this selection will
+    use the unselected sample, so that the results might not be as expected.
+
+    The two arguments are mutually exclusive
+
+    Args:
+        n_events (int): Select exactly this number of events
+        fraction (float): Select this fraction of events (approximately)
+    """
+    if n_events is None and fraction is None:
+        err = True
+        logging.error('Need either n_events or fraction as argument')
+    if n_events is not None and fraction is not None:
+        logging.error('n_events and fraction are mutually exclusive arguments')
+
+    if n_events is not None:
+        def sel_func(data):
+            """Function doing the selection"""
+            if n_events > data.shape[0]:
+                logging.warn('n_events = {} > number of data events {}. Will '
+                             'select all events'.format(n_events, data.shape[0]))
+                return np.ones(data.shape[0], dtype=bool)
+
+            sel = np.append(
+                np.ones(n_events, dtype=bool),
+                np.zeros(data.shape[0] - n_events, dtype=bool))
+            np.random.shuffle(sel)
+
+            return sel
+
+        func = sel_func
+
+    if fraction is not None:
+        if fraction < 0 or fraction > 1:
+            logging.warn('Fraction has to be between 0 and 1')
+        func = lambda d: np.random.uniform(0, 1, d.shape[0]) < fraction
+
+    func.requires = []
+    return func
+
+
 def collect_requirements(selections):
     """Collect the list of variables that is needed for the selections"""
     if selections is None:
