@@ -418,6 +418,8 @@ def select_bin(var, low, high):
             self.low = b_lo
             self.high = b_hi
 
+            # allow it to be used in collect_requirements environment
+            self.requires = [self.var[0]]
 
         def __call__(self, dfr):
             var = _get_var(dfr, *self.var)
@@ -425,7 +427,6 @@ def select_bin(var, low, high):
 
 
     return BinSelection(var, low, high)
-
 
 
 def get_bin_cut_root(bin_var, bin_low, bin_up):

@@ -435,8 +435,14 @@ def collect_requirements(selections):
             for req in selection.requires:
                 variables.add(req)
         else:
+            sel_name = ''
+            if hasattr(selection, '__name__'):
+                sel_name = selection.__name__
+            elif hasattr(selection, '__class__'):
+                sel_name = selection.__class__
+
             logging.warning('\'{}\' does not have a requires field, possibly '
                             'cannot get the necessary variables'
-                            .format(selection.__name__))
+                            .format(sel_name))
 
     return list(variables)
