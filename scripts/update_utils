@@ -1,0 +1,65 @@
+#!/bin/bash
+
+PROJECTS_TO_UPDATE=(./toy_mc_plotting
+                    ./single_muon_photon_correlations
+			              ./single_muon_pt_eta_dists
+			              ./acceptance_map_studies
+			              ./analytic_calcs
+			              ./simultaneous_fits_prestudies
+			              ./data_MC_studies)
+
+BRANCH=devel
+FW_DIR=./chib_chic_polFW
+
+function update_fw() {
+    fw_dir=${1}
+    branch=${2}
+
+    curr_dir=$(pwd)
+    cd ${fw_dir}
+    git fetch origin
+
+    ___=$(git rev-parse --verify --quiet ${branch})
+    br_exists=$?
+
+    if [[ ${br_exists} -eq 0 ]] ; then
+        git checkout ${branch}
+        git pull origin ${branch}
+    else
+        git checkout -t origin/${branch}
+    fi
+
+    cd ${curr_dir}
+}
+
+function update_proj() {
+    proj_dir=${1}
+    fw_dir=${2}
+
+    echo "Updating "${proj_dir}
+    mkdir -p ${proj_dir}/utils
+    rsync -rvSz ${fw_dir}/python/utils/* ${proj_dir}/utils
+}
+
+if [[ $# -ge 1 ]]; then
+    branch=${1}
+    shift
+else
+    branch=${BRANCH}
+fi
+
+update_fw ${FW_DIR} ${branch}
+
+if [[ $# -gt 0 ]]; then
+    for proj in ${@}; do
+        echo
+        update_proj ${proj} ${FW_DIR}
+        echo
+    done
+else
+    for proj in ${PROJECTS_TO_UPDATE[@]}; do
+        echo
+        update_proj ${proj} ${FW_DIR}
+        echo
+    done
+fi
