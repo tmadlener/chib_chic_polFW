@@ -4,6 +4,11 @@ Script to preselect events (e.g. to feed them to the costh binned mass fits
 afterwards)
 """
 
+import pandas as pd
+# Avoid the false positive warning of setting a value in a copy of a slice
+# when adding 'mQ' to the final data frame
+pd.options.mode.chained_assignment = None
+
 import numpy as np
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
@@ -16,17 +21,26 @@ from utils.data_handling import (
 )
 import utils.selection_functions as sf
 from utils.plot_helpers import mkplot
+from utils.constants import m_psiPDG
+
 
 # variables that are in the file after the preselection
 # variables necessary for the preslection will also be present!
 VARIABLES = [
-    '{costh,phi}_{HX,PX,CS}', 'chic{Pt,Rap}'
+    '{costh,phi}_{HX,PX,CS}_fold',
+    #'chic{Pt,Rap}',
+    'chicMass',
+    'mumugammaMass', 'JpsiMass',
+    'JpsiPt', 'JpsiRap'
 ]
 
 def get_jpsi_sel(jpsi_sel_str):
     """
     Get the jpsi selection function from the passed string
     """
+    if jpsi_sel_str is None:
+        return sf.all_sel()
+
     min_pt, max_pt, max_rap = [float(v) for v in jpsi_sel_str.split(':')]
     return sf.jpsi_kin_sel_(min_pt, max_pt, max_rap)
 
@@ -87,12 +101,12 @@ def main(args):
 
     selections['loose muon'] = sf.loose_muon_sel()
     selections['trigger'] = sf.trigger_sel_(args.trigger)
-    selections['vtx prob'] = sf.vtx_prob_sel
+    # selections['vtx prob'] = sf.vtx_prob_sel
     selections['jpsi kin sel'] = get_jpsi_sel(args.jpsi)
     selections['photon sel'] = sf.photon_sel_(sf.flat_pt(0.4, 1.5))
     selections['lifetime cut'] = get_lt_selection(args.mc, 2.5)
     selections['deta cut (MC only)'] = get_deta_sel(args.deta)
-    selections['chis mass cut'] = sf.chic_mass_sel # not strictly necessary from a PS point of view
+    # selections['chis mass cut'] = sf.chic_mass_sel # not strictly necessary from a PS point of view
 
     global VARIABLES
     VARIABLES.extend(sf.collect_requirements(selections.values()))
@@ -110,6 +124,9 @@ def main(args):
         sel_data, n_evts = apply_selection_one_by_one(data, selections.values())
         hist = create_store_sel_hist(n_evts, selections.keys())
 
+    # compute the Q-value based mass
+    sel_data.loc[:, 'mQ'] = sel_data.mumugammaMass - sel_data.JpsiMass + m_psiPDG
+
     store_dataframe(sel_data, args.outfile, 'chic_tuple')
 
 
@@ -120,7 +137,7 @@ if __name__ == '__main__':
     parser.add_argument('outfile', help='preselected file')
     parser.add_argument('-t', '--trigger', help='trigger name',
                         default='Dimuon8_Jpsi')
-    parser.add_argument('-j', '--jpsi', default='8:20:1.2',
+    parser.add_argument('-j', '--jpsi', default=None,
                         help='jpsi selection. format: minpt:maxpt:maxrap')
     parser.add_argument('--mc', help='do mc selection (no lifetime cut)',
                         action='store_true', default=False)
