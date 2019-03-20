@@ -254,22 +254,7 @@ class BinnedFitModel(object):
             cans[bin_name] = can
         #can.SaveAs(pdfname)
     
-        mods = r.RooArgList()
-        for bin_name, bin_borders in self.bins.iteritems():
-            plotname = 'M_fullModel_'+bin_name
-            mods.add(wsp.pdf(plotname))
-        model_sum = r.RooAddPdf("model", "model", mods)
-    
-        frame = fit_var.frame(rf.Title('Fit Results'))
-        model_sum.paramOn(frame, rf.Layout(0.01, 0.99, 0.99), rf.Format('NEU', rf.AutoPrecision(2)))
-
-        can = r.TCanvas(create_random_str(32), 'rcan', 600, 600)
-        can.cd()
-        frame.findObject('{}_paramBox'.format(model_sum.GetName())).Draw()
-            
-        cans['full_model'] = can
-        
-        # returns fit params for each fit and for the full fit
+        # returns fit params for each fit
         
         return cans
 

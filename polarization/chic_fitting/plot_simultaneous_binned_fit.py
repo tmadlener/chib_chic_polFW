@@ -7,6 +7,7 @@ import json
 
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
+r.gROOT.SetBatch()
 
 from os.path import dirname
 
@@ -37,12 +38,8 @@ def main(args):
         cans[bin_name].SaveAs(plotname)
         parname = '/'.join([outdir, bin_name+'_massfit_res.pdf'])
         canp[bin_name].SaveAs(parname)
-    canp['full_model'].SaveAs('/'.join([outdir, 'full_massfit_res.pdf']))
+
     
-
-    # TODO: save the plots within the utils file without returning the canvases
-    # TODO: fix whatever is causing the canvas to appear on screen while running the code (not sure if above)
-
 
 if __name__ == '__main__':
     import argparse
