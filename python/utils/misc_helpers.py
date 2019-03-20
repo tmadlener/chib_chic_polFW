@@ -216,6 +216,10 @@ def _get_var(dfr, get_var, np_func=None):
     Get the variable from the dataframe depending on if is a one argument
     function, a string or already a numpy array
     """
+    if np_func is None and isinstance(get_var, tuple):
+        if len(get_var) == 2:
+            get_var, np_func = get_var # unpack the tuple
+
     if np_func is not None:
         if isinstance(np_func, basestring):
             np_func = getattr(np, np_func)
