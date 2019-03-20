@@ -24,12 +24,15 @@ from utils.roofit_utils import get_var_graph, get_args, get_var
 from common_func import get_bin_sel_info
 
 
-def make_fit_res_plots(wsp, costh_bins, state, outdir, mass_model, **kwargs):
+def make_fit_res_plots(wsp, costh_bins, state, outdir, mass_model, bin_var=None, **kwargs):
     """
     Make the plots with the fit results
 
     kwargs forwarded to FitModel.plot
     """
+    if bin_var is None:
+        bin_var = 'costh_HX_fold' # backwards compatibility
+
     if kwargs.pop('fix_shape', False):
         snapname = 'snap_costh_integrated'
         pdfname = '/'.join([outdir, 'mass_fit_{}_costh_integrated.pdf'
@@ -44,7 +47,8 @@ def make_fit_res_plots(wsp, costh_bins, state, outdir, mass_model, **kwargs):
                                         pdfname.replace('.pdf', '_corrmat.pdf'))
 
     for i, ctbin in enumerate(costh_bins):
-        costh_cut = get_bin_cut_root('TMath::Abs(costh_HX)', *ctbin)
+        costh_cut = get_bin_cut_root('TMath::Abs({})'.format(bin_var), *ctbin)
+        # costh_cut = get_bin_cut_root('TMath::Abs(costh_HX)', *ctbin)
         snapname = 'snap_costh_bin_{}'.format(i)
 
         pdfname = '/'.join([outdir, 'mass_fit_{}_costh_bin_{}.pdf'
@@ -140,8 +144,13 @@ def main(args):
     else:
         mass_model = JpsiMassModel('JpsiMass')
 
+    bin_var = None
+    if 'bin_variable' in bin_sel_info:
+        bin_var = bin_sel_info['bin_variable']
+
+
     make_fit_res_plots(ws, bin_sel_info['costh_bins'],
-                       args.state, outdir, mass_model,
+                       args.state, outdir, mass_model, bin_var,
                        logy=args.logy,
                        configfile=args.configfile, ppars=args.print_pars,
                        corr_matrix=args.corr_matrix, refit=args.refit,

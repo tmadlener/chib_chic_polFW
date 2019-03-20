@@ -8,6 +8,8 @@ import json
 import os
 import sys
 
+import numpy as np
+
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 
@@ -20,7 +22,7 @@ import shutil
 from utils.data_handling import get_dataframe
 from utils.misc_helpers import (
     get_costh_binning, get_bin_means, cond_mkdir_file, get_bin_cut_root,
-    chunks, parse_binning
+    chunks, parse_binning, parse_func_var
 )
 from utils.roofit_utils import (
     get_var, ws_import, get_args, release_params, fix_params
@@ -57,6 +59,19 @@ def get_ws_vars(state, massmodel=None, weights=None):
         wsvars[state] += ['{}[0, 1e5]'.format(weights)]
 
     return wsvars[state]
+
+
+def get_load_vars(fit_var, bin_var, binning, weights=None):
+    """
+    Get the variables that should be loaded
+    """
+    variables = [
+        '{}[3.325, 3.725]'.format(fit_var),
+        '{}[{}, {}]'.format(bin_var, np.min(binning), np.max(binning)),
+    ]
+    if weights is not None:
+        variables.append('{}[0, 1e5]'.format(weights))
+    return variables
 
 
 def get_shape_params(wsp, savename, mass_model):
@@ -121,14 +136,21 @@ def import_data(wsp, datatree, datavars, weights=None):
     ws_import(wsp, data)
 
 
-def do_binned_fits(mass_model, wsp, costh_bins, refit=False, weighted_fit=False):
+def do_binned_fits(mass_model, wsp, costh_bins, refit=False, weighted_fit=False,
+                   bin_var=None):
     """
     Do the fits in all costh bins
     """
+    if bin_var is None:
+        logging.fatal('Trying to run a fit without specifying a bin variable. '
+                      'It is also possible that this was not implemented for '
+                      'the model that is trying to be used. Sorry :(')
+        sys.exit(1)
+
     for ibin, ctbin in enumerate(costh_bins):
-        logging.info('Running fit for bin {}: {:.3f} < |costh| < {:.3f}'
-                     .format(ibin, *ctbin))
-        bin_sel = get_bin_cut_root('TMath::Abs(costh_HX)', *ctbin)
+        logging.info('Running fit for bin {0}: {2:.3f} < |{1}| < {3:.3f}'
+                     .format(ibin, bin_var, *ctbin))
+        bin_sel = get_bin_cut_root('TMath::Abs({})'.format(bin_var), *ctbin)
         savename = 'costh_bin_{}'.format(ibin)
         mass_model.fit(wsp, savename, bin_sel, weighted_fit)
         if refit:
@@ -142,15 +164,22 @@ def do_binned_fits(mass_model, wsp, costh_bins, refit=False, weighted_fit=False)
             release_params(wsp, shape_par)
 
 
-def create_bin_info_json(state, bin_str, datafile, fitfile, bininfo_file=None):
+def create_bin_info_json(state, bin_str, datafile, fitfile, bininfo_file=None,
+                         bin_var=None):
     """
     Determine the costh binning and store the information into a json
     """
+    if bin_var is None:
+        logging.fatal('Trying to run a fit without specifying a bin variable. '
+                      'It is also possible that this was not implemented for '
+                      'the model that is trying to be used. Sorry :(')
+        sys.exit(1)
+
     if bininfo_file is None:
         bininfo_file = fitfile.replace('.root', '_bin_sel_info.json')
 
     treename = 'chic_tuple' if state == 'chic' else 'data'
-    dfr = get_dataframe(datafile, treename, columns=['costh_HX'])
+    dfr = get_dataframe(datafile, treename, columns=[bin_var[0]])
 
     auto_match = re.match(r'auto:(\d+)$', bin_str)
     if auto_match:
@@ -161,12 +190,14 @@ def create_bin_info_json(state, bin_str, datafile, fitfile, bininfo_file=None):
             sys.exit(1) # bail out, there is nothing we can do here
         costh_bins = zip(binning[:-1], binning[1:])
 
-    costh_means = get_bin_means(dfr, lambda d: d.costh_HX.abs(), costh_bins)
+    costh_means = get_bin_means(dfr, bin_var, costh_bins)
 
     bin_sel_info = {
         'costh_bins': costh_bins,
         'costh_means': costh_means,
+        'bin_variable': bin_var[0]
     }
+
     bin_sel_info['datafile'] = datafile
     with open(bininfo_file, 'w') as info_file:
         json.dump(bin_sel_info, info_file, sort_keys=True, indent=2)
@@ -198,8 +229,14 @@ def rw_bin_sel_json(bininfo_file, datafile, updated_name=None):
 
 
 def run_fit(model, tree, costh_bins, datavars, outfile, refit=False,
-            fix_shape=False, weights=None):
+            fix_shape=False, weights=None, bin_var=None):
     """Import data, run fits and store the results"""
+    if bin_var is None:
+        logging.fatal('Trying to run a fit without specifying a bin variable. '
+                      'It is also possible that this was not implemented for '
+                      'the model that is trying to be used. Sorry :(')
+        sys.exit(1)
+
     wsp = r.RooWorkspace('ws_mass_fit')
     import_data(wsp, tree, datavars, weights)
     model.define_model(wsp)
@@ -212,7 +249,7 @@ def run_fit(model, tree, costh_bins, datavars, outfile, refit=False,
         shape_pars = get_shape_params(wsp, 'costh_integrated', model)
         fix_params(wsp, [(sp, None) for sp in shape_pars])
 
-    do_binned_fits(model, wsp, costh_bins, refit, weights is not None)
+    do_binned_fits(model, wsp, costh_bins, refit, weights is not None, bin_var)
     wsp.writeToFile(outfile)
 
 
@@ -281,15 +318,18 @@ def run_config_fit(args):
     except shutil.Error as err:
         logging.warn(str(err))
 
+    bin_var = parse_func_var(args.binvariable)
+
     model = ConfigFitModel(args.configfile)
     costh_binning = create_bin_info_json('chic', args.binning, args.datafile,
-                                         args.outfile, args.bin_info)
+                                         args.outfile, args.bin_info, bin_var)
 
-    dvars = get_ws_vars('chic', weights=args.weight)
+    dvars = get_load_vars(model.mname, bin_var[0], costh_binning, weights=args.weight)
     dataf = r.TFile.Open(args.datafile)
     tree = dataf.Get('chic_tuple')
+
     run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit,
-            args.fix_shape, args.weight)
+            args.fix_shape, args.weight, bin_var[0])
 
 
 if __name__ == '__main__':
@@ -331,6 +371,9 @@ if __name__ == '__main__':
     global_parser.add_argument('-w', '--weight', default=None, help='Use the '
                                'weight with the passed name present in the input'
                                ' data as per-event weight in the fit')
+    global_parser.add_argument('-bv', '--binvariable', help='The variable that '
+                               'is used for defining the bins in which the fits '
+                               'are done', default='abs(costh_HX_fold)')
 
     # Add the chic parser
     chic_parser = subparsers.add_parser('chic', description='Run the fits using'
