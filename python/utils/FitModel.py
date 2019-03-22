@@ -88,12 +88,37 @@ class FitModel(object):
 
         fit_results = wsp.pdf(self.full_model).fitTo(fit_data, *fit_args)
 
-        fit_results.Print()
-        logging.info('Fit status = {}, covQual = {}'
-                     .format(fit_results.status(), fit_results.covQual()))
+        cov_qual = fit_results.covQual()
+        fit_stat = fit_results.status()
 
-        set_var(wsp, '__fit_status__', fit_results.status(), create=True)
-        set_var(wsp, '__cov_qual__', fit_results.covQual(), create=True)
+        fit_results.Print()
+        logging.info('Fit status = {}, covQual = {}'.format(fit_stat, cov_qual))
+
+        # If fit results are not as desired, rerun the fit up to 2 times
+        n_refits = 0
+        while fit_results.status() != 0 or fit_results.covQual() != 3:
+            if n_refits >= 2:
+                logging.info('Reran fit 2 times. Not rerunning it another time')
+                break
+            else:
+                logging.info('Rerunning fit.')
+            cov_qual *= 10
+            fit_stat *= 10
+
+            fit_results = wsp.pdf(self.full_model).fitTo(fit_data, *fit_args)
+            cov_qual += fit_results.covQual()
+            fit_stat += fit_results.status()
+            fit_results.Print()
+
+            logging.info('Fit status = {}, covQual = {}'
+                         .format(fit_stat, cov_qual))
+
+            n_refits += 1
+
+
+
+        set_var(wsp, '__fit_status__', fit_stat, create=True)
+        set_var(wsp, '__cov_qual__', cov_qual, create=True)
 
         wsp.saveSnapshot('snap_{}'.format(savename), wsp.allVars())
         fit_results.SetName('fit_res_{}'.format(savename))
