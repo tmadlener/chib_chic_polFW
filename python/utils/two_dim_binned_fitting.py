@@ -18,7 +18,6 @@ logging.basicConfig(level=logging.DEBUG,
 from utils.roofit_utils import get_var, try_factory, all_vals, set_var, ws_import
 from utils.misc_helpers import parse_binning, get_bin_cut_root, combine_cuts, create_random_str, replace_all
 from utils.plot_helpers import setup_legend, _setup_canvas
-from utils.graph_utils import assign_x
 
 
 def get_bins(binning1, binning2, binvar1, binvar2):
