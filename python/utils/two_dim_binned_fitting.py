@@ -16,8 +16,9 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
 from utils.roofit_utils import get_var, try_factory, all_vals, set_var, ws_import
-from utils.misc_helpers import parse_binning, get_bin_cut_root, combine_cuts, create_random_str
+from utils.misc_helpers import parse_binning, get_bin_cut_root, combine_cuts, create_random_str, replace_all
 from utils.plot_helpers import setup_legend, _setup_canvas
+from utils.graph_utils import assign_x
 
 
 def get_bins(binning1, binning2, binvar1, binvar2):
@@ -77,6 +78,11 @@ class BinnedFitModel(object):
         ])
         self.bin_vars = config['bin_vars']
         self.bins = get_bins(self.binning[0], self.binning[1], *self.bin_vars)
+
+        #matching the binning var names to their values when calling binning
+        self.bintovar = OrderedDict()
+        self.bintovar[self.bin_vars[0]] = 0
+        self.bintovar[self.bin_vars[1]] = 1
 
         self.fit_var = config['fit_variable']
         self.expression_strings = config['expression_strings']
@@ -233,7 +239,7 @@ class BinnedFitModel(object):
         """
         Plot all free fit parameters onto canvas
         Args:
-            wsp (ROOT.RooWorkspace): workspace where the model is stored
+        wsp (ROOT.RooWorkspace): workspace where the model is stored
         """
         fit_var = get_var(wsp, self.fit_var)
         
@@ -257,6 +263,65 @@ class BinnedFitModel(object):
         # returns fit params for each fit
         
         return cans
+
+    #helper function that takes all vars in a string and replaces them by their value in the fit
+    #NOTE: only works if there is only dependence on the mean value of ONE binning variable (otherwise it wouldn't be a tf1)
+    def tf1_helper(self, wsp, nameold, vrs):
+        v_names = vrs.split(', ')
+    
+        listp = [('{}'.format(elm), '['+str(i)+']') for i, elm in enumerate(v_names)]
+        name = replace_all(nameold, listp)
+    
+        mean_rgx = re.compile(r'<(\w+)>')
+        
+        #TODO: error message if more than one element in this set?
+        mean_vars = set(mean_rgx.findall(name))
+
+        for var in mean_vars:
+            name = name.replace('<{}>'.format(var), 'x')
+            av_var = var
+    
+        f1 = r.TF1(create_random_str(), name, self.binning[self.bintovar[av_var]][0], self.binning[self.bintovar[av_var]][-1])
+        for i, elm in enumerate(v_names):
+            f1.SetParameter(i, get_var(wsp, elm).getVal())
+            f1.SetParError(i, get_var(wsp, elm).getError())
+        
+        return f1, av_var
+    
+    #function to get mean of a bin
+    def bin_mean(self, wsp, var, bin_name):
+
+        bin_data = wsp.data('full_data').reduce(
+            get_bin_cut(self.bin_vars, self.bins[bin_name])
+            )
+        meanval = bin_data.mean(get_var(wsp, var))
+        
+        return meanval
+    
+    #function that does the plotting of a parameter as a function of either binning variable
+    def plot_free_pars(self, wsp, bin_var, vals_var):
+        graph = []
+    
+        for j in range(2):
+            if bin_var is self.bin_vars[j]:
+                var_nr = j
+    
+        bin_borders = self.binning[var_nr]
+
+        for xplot in xrange(len(vals_var)):
+            y_val = np.array([v.getVal() for v in vals_var[xplot]])
+            y_elo = np.array([v.getErrorLo() for v in vals_var[xplot]]) # this returns negative values
+            y_elo *= -1 # TGraphAsymmErrors expects positive values
+            y_ehi = np.array([v.getErrorHi() for v in vals_var[xplot]])
+
+            #bin means and errors left to calculate externally because it simplifies the process
+            x_val = np.array([0.5 * (bin_borders[i] + bin_borders[i+1]) for i in xrange(len(bin_borders) - 1)])
+            x_err = np.array([0.5 * (bin_borders[i+1] - bin_borders[i]) for i in xrange(len(bin_borders) - 1)])
+        
+            graph.append(r.TGraphAsymmErrors(len(x_val), x_val, y_val, x_err, x_err, y_elo, y_ehi))
+        
+        return graph
+
 
     def _plot_bin(self, wsp, full_data, bin_name, bin_borders):
         """Make the distribution plot for a given bin"""
