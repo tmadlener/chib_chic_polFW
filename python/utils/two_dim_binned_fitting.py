@@ -194,7 +194,7 @@ class BinnedFitModel(object):
         fit_results.Print()
         logging.info('Fit status = {}, covQual = {}'
                      .format(fit_results.status(), fit_results.covQual()))
-        
+
         set_var(wsp, '__fit_status__', fit_results.status(), create=True)
         set_var(wsp, '__cov_qual__', fit_results.covQual(), create=True)
 
@@ -233,7 +233,7 @@ class BinnedFitModel(object):
 
         # TODO: pulls
 
-    
+
     def plot_fit_params(self, wsp):
         """
         Plot all free fit parameters onto canvas
@@ -241,12 +241,12 @@ class BinnedFitModel(object):
         wsp (ROOT.RooWorkspace): workspace where the model is stored
         """
         fit_var = get_var(wsp, self.fit_var)
-        
+
         cans = OrderedDict()
-        
-        for bin_name, bin_borders in self.bins.iteritems():
+
+        for bin_name in self.bins:
             frame = fit_var.frame(rf.Title('Fit Results'))
-            
+
             plotname = '{}_{}'.format('M_fullModel', bin_name)
             full_pdf = wsp.pdf(plotname)
 
@@ -255,38 +255,44 @@ class BinnedFitModel(object):
             can = r.TCanvas(create_random_str(32), 'rcan', 600, 600)
             can.cd()
             frame.findObject('{}_paramBox'.format(full_pdf.GetName())).Draw()
-            
+
             cans[bin_name] = can
         #can.SaveAs(pdfname)
-    
+
         # returns fit params for each fit
-        
+
         return cans
 
-    #helper function that takes all vars in a string and replaces them by their value in the fit
-    #NOTE: only works if there is only dependence on the mean value of ONE binning variable (otherwise it wouldn't be a tf1)
+
     def tf1_helper(self, wsp, nameold, vrs):
+        """
+        helper function that takes all vars in a string and replaces them by their
+        value in the fit
+
+        NOTE: only works if there is only dependence on the
+        mean value of ONE binning variable (otherwise it wouldn't be a tf1)
+        """
         v_names = vrs.split(', ')
-    
+
         listp = [('{}'.format(elm), '['+str(i)+']') for i, elm in enumerate(v_names)]
         name = replace_all(nameold, listp)
-    
+
         mean_rgx = re.compile(r'<(\w+)>')
-        
+
         #TODO: error message if more than one element in this set?
         mean_vars = set(mean_rgx.findall(name))
 
         for var in mean_vars:
             name = name.replace('<{}>'.format(var), 'x')
             av_var = var
-    
+
         f1 = r.TF1(create_random_str(), name, self.binning[self.bintovar[av_var]][0], self.binning[self.bintovar[av_var]][-1])
         for i, elm in enumerate(v_names):
             f1.SetParameter(i, get_var(wsp, elm).getVal())
             f1.SetParError(i, get_var(wsp, elm).getError())
-        
+
         return f1, av_var
-    
+
     #function to get mean of a bin
     def bin_mean(self, wsp, var, bin_name):
 
@@ -294,17 +300,17 @@ class BinnedFitModel(object):
             get_bin_cut(self.bin_vars, self.bins[bin_name])
             )
         meanval = bin_data.mean(get_var(wsp, var))
-        
+
         return meanval
-    
+
     #function that does the plotting of a parameter as a function of either binning variable
     def plot_free_pars(self, wsp, bin_var, vals_var):
         graph = []
-    
+
         for j in range(2):
             if bin_var is self.bin_vars[j]:
                 var_nr = j
-    
+
         bin_borders = self.binning[var_nr]
 
         for xplot in xrange(len(vals_var)):
@@ -316,9 +322,9 @@ class BinnedFitModel(object):
             #bin means and errors left to calculate externally because it simplifies the process
             x_val = np.array([0.5 * (bin_borders[i] + bin_borders[i+1]) for i in xrange(len(bin_borders) - 1)])
             x_err = np.array([0.5 * (bin_borders[i+1] - bin_borders[i]) for i in xrange(len(bin_borders) - 1)])
-        
+
             graph.append(r.TGraphAsymmErrors(len(x_val), x_val, y_val, x_err, x_err, y_elo, y_ehi))
-        
+
         return graph
 
 
@@ -422,6 +428,6 @@ class BinnedFitModel(object):
         """
         Create the expression for a variable that is independent in each bin
         """
-        #readout method for proto_params of the form 
+        #readout method for proto_params of the form
         #'proto_param': '[mid, low, high]'
         return '{}_{}'.format(proto_param, bin_name)+param_expr

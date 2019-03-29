@@ -8,8 +8,6 @@ import json
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 
-from os.path import dirname
-
 from root_numpy import array2tree
 
 import logging
@@ -19,7 +17,7 @@ logging.basicConfig(level=logging.DEBUG,
 from utils.two_dim_binned_fitting import BinnedFitModel
 from utils.data_handling import get_dataframe
 from utils.roofit_utils import ws_import, get_var, try_factory
-
+from utils.misc_helpers import cond_mkdir_file
 
 def load_data(datafile, model):
     """
@@ -73,9 +71,8 @@ def main(args):
     savename = 'twodim'
     model.fit(wsp, savename)
 
-    outdir = dirname(args.datafile)
-    ofile = '/'.join([outdir, args.outfile])
-    wsp.writeToFile(ofile)
+    cond_mkdir_file(args.outfile)
+    wsp.writeToFile(args.outfile)
 
 
 if __name__ == '__main__':
