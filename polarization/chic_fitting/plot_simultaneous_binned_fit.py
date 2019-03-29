@@ -19,19 +19,9 @@ logging.basicConfig(level=logging.DEBUG,
 
 from utils.two_dim_binned_fitting import BinnedFitModel
 from utils.roofit_utils import get_var
-from utils.graph_utils import assign_x
 
 
-def plot_proto_pars(wsp, model, outfile):
-    # auxiliary definitions
-    bin_var_X = model.bin_vars[0]
-    bin_var_Y = model.bin_vars[1]
-
-    #auxiliary dict for getting the parameters in the right order of bins
-    p_name = OrderedDict()
-    p_name[bin_var_X] = ('j','i')
-    p_name[bin_var_Y] = ('i','j')
-
+def store_proto_pars(wsp, model, outfile):
     #list of proto params with or without functional dependence
     simvars = []
     comvars = OrderedDict()
@@ -43,36 +33,13 @@ def plot_proto_pars(wsp, model, outfile):
 
     outf = r.TFile.Open(outfile, 'recreate')
 
-    #cycle over all simple proto-parameters in each binning var that saves the TGraphs
-    for bin_var in model.bin_vars:
-        bintovar = model.bintovar[bin_var]
-        #get parameter in the right binning order
-        p_getname = '{param}_{x_var}_{'+p_name[bin_var][0]+'}_{y_var}_{'+p_name[bin_var][1]+'}'
-        b_getname = p_getname[8:]
+    sim_graphs = model.plot_simvar_graphs(wsp, simvars)
+    for graph in sim_graphs:
+        graph.Write('',r.TObject.kWriteDelete)
 
-        for param in simvars:
-            vals = []
-
-            #get the values of the parameter for each bin of X,Y
-            for i in xrange(len(model.binning[1-bintovar]) - 1):
-                vals.append([get_var(wsp, p_getname.format(param=param, x_var=bin_var_X, y_var=bin_var_Y, i=i, j=j)) for j in xrange(len(model.binning[bintovar]) - 1)])
-
-            #plot graphs as a function of binning var
-            graph = model.plot_free_pars(wsp, bin_var, vals)
-
-            #setting the correct mean (errors adjust accordingly), setting graph name
-            for i in xrange(len(model.binning[1-bintovar]) - 1):
-                g_mean = np.array([model.bin_mean(wsp, bin_var, b_getname.format(x_var=bin_var_X, y_var=bin_var_Y, i=i, j=j)) for j in xrange(len(model.binning[bintovar]) - 1)])
-                graph[i] = assign_x(graph[i], g_mean)
-                # graph name of the form [y_axis]_v_[x_axis]_bin_[bin of other bin_var]
-                graph[i].SetName('{}_v_{}_bin_{}'.format(param, bin_var, i))
-                graph[i].Write('',r.TObject.kWriteDelete)
-
-    for el in comvars:
-        # func stores the passed TF1, as well as the binning variable on which the function depends
-        func = model.tf1_helper(wsp, comvars[el][0], comvars[el][1])
-        func[0].SetName('{}_v_{}'.format(el, func[1]))
-        func[0].Write('',r.TObject.kWriteDelete)
+    com_funcs = model.plot_comvar_funcs(wsp, comvars)
+    for func in com_funcs:
+        func.Write('',r.TObject.kWriteDelete)
 
     outf.Write('', r.TObject.kWriteDelete)
     outf.Close()
@@ -102,7 +69,7 @@ def main(args):
 
     if args.graphs:
         outfile = '/'.join([outdir, 'proto_param_graphs.root'])
-        plot_proto_pars(wsp, model, outfile)
+        store_proto_pars(wsp, model, outfile)
 
 
 if __name__ == '__main__':

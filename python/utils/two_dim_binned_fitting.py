@@ -18,6 +18,7 @@ logging.basicConfig(level=logging.DEBUG,
 from utils.roofit_utils import get_var, try_factory, all_vals, set_var, ws_import
 from utils.misc_helpers import parse_binning, get_bin_cut_root, combine_cuts, create_random_str, replace_all
 from utils.plot_helpers import setup_legend, _setup_canvas
+from utils.graph_utils import assign_x
 
 
 def get_bins(binning1, binning2, binvar1, binvar2):
@@ -263,6 +264,63 @@ class BinnedFitModel(object):
 
         return cans
 
+    def plot_simvar_graphs(self, wsp, simvars):
+        """
+        plots and returns TGraphs for all the simple proto-parameters
+        """
+        #auxiliary definitions
+        bin_var_X = self.bin_vars[0]
+        bin_var_Y = self.bin_vars[1]
+        #auxiliary dict for getting the parameters in the right order of bins
+        p_name = OrderedDict()
+        p_name[bin_var_X] = ('j','i')
+        p_name[bin_var_Y] = ('i','j')
+
+        #all bin means calculated previously
+        bin_means = OrderedDict()
+        for bin_var in self.bin_vars:
+            for bin_name in self.bins:
+                mean_name = '__'.join([bin_var, bin_name])
+                bin_means[mean_name] = self.bin_mean(wsp, bin_var, bin_name)
+
+        graphs = []
+        for bin_var in self.bin_vars:
+            bintovar = self.bintovar[bin_var]
+            #get parameter in the right binning order
+            p_getname = '{param}_{x_var}_{'+p_name[bin_var][0]+'}_{y_var}_{'+p_name[bin_var][1]+'}'
+            b_getname = p_getname[8:]
+
+            for param in simvars:
+                vals = []
+
+                #get the values of the parameter for each bin of X,Y
+                for i in xrange(len(self.binning[1-bintovar]) - 1):
+                    vals.append([get_var(wsp, p_getname.format(param=param, x_var=bin_var_X, y_var=bin_var_Y, i=i, j=j)) for j in xrange(len(self.binning[bintovar]) - 1)])
+
+                #plot graphs as a function of binning var
+                graph = self.plot_free_pars(wsp, bin_var, vals)
+
+                #setting the correct mean (errors adjust accordingly), setting graph name
+                for i in xrange(len(self.binning[1-bintovar]) - 1):
+                    g_mean = np.array([bin_means['__'.join([bin_var, b_getname.format(x_var=bin_var_X, y_var=bin_var_Y, i=i, j=j)])] for j in xrange(len(self.binning[bintovar]) - 1)])
+                    graph[i] = assign_x(graph[i], g_mean)
+                    # graph name of the form [y_axis]_v_[x_axis]_bin_[bin of other bin_var]
+                    graph[i].SetName('{}_v_{}_bin_{}'.format(param, bin_var, i))
+                    graphs.append(graph[i])
+
+        return graphs
+
+    def plot_comvar_funcs(self, wsp, comvars):
+        funcs = []
+
+        for el in comvars:
+        # func stores the passed TF1, as well as the binning variable on which the function depends
+            func = self.tf1_helper(wsp, comvars[el][0], comvars[el][1])
+            func[0].SetName('{}_v_{}'.format(el, func[1]))
+            funcs.append(func[0])
+
+        return funcs
+
 
     def tf1_helper(self, wsp, nameold, vrs):
         """
@@ -290,6 +348,7 @@ class BinnedFitModel(object):
         for i, elm in enumerate(v_names):
             f1.SetParameter(i, get_var(wsp, elm).getVal())
             f1.SetParError(i, get_var(wsp, elm).getError())
+            f1.SetParName(i, elm)
 
         return f1, av_var
 
