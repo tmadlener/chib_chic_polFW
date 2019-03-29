@@ -24,7 +24,9 @@ def cond_mkdir(path):
     Implementation following: http://stackoverflow.com/a/14364249/3604607
     """
     try:
-        os.makedirs(path)
+        logging.debug('trying to make directory: \'{}\''.format(path))
+        if path:
+            os.makedirs(path)
     except OSError as err:
         if not os.path.isdir(path):
             print('Caught error \'{}\' while trying to create directory \'{}\''
