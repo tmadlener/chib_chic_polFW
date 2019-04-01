@@ -81,11 +81,6 @@ class BinnedFitModel(object):
         self.bin_vars = config['bin_vars']
         self.bins = get_bins(self.binning[0], self.binning[1], *self.bin_vars)
 
-        #matching the binning var names to their values when calling binning
-        self.bintovar = OrderedDict()
-        self.bintovar[self.bin_vars[0]] = 0
-        self.bintovar[self.bin_vars[1]] = 1
-
         self.fit_var = config['fit_variable']
         self.expression_strings = config['expression_strings']
         self.proto_params = config['proto_parameters']
@@ -278,8 +273,8 @@ class BinnedFitModel(object):
                 bin_means[mean_name] = self.bin_mean(wsp, bin_var, bin_name)
 
         graphs = []
-        for bin_var in self.bin_vars:
-            bintovar = self.bintovar[bin_var]
+
+        for bintovar, bin_var in enumerate(self.bin_vars):
             #get parameter in the right binning order
             p_getname = '{param}_{x_var}_{'+p_name[bin_var][0]+'}_{y_var}_{'+p_name[bin_var][1]+'}'
             b_getname = p_getname[8:]
@@ -313,14 +308,14 @@ class BinnedFitModel(object):
 
         for el in comvars:
         # func stores the passed TF1, as well as the binning variable on which the function depends
-            func = self.tf1_helper(wsp, comvars[el][0], comvars[el][1])
-            func[0].SetName('{}_v_{}'.format(el, func[1]))
-            funcs.append(func[0])
+            func, dep_var = self._tf1_helper(wsp, comvars[el][0], comvars[el][1])
+            func.SetName('{}_v_{}'.format(el, dep_var))
+            funcs.append(func)
 
         return funcs
 
 
-    def tf1_helper(self, wsp, nameold, vrs):
+    def _tf1_helper(self, wsp, nameold, vrs):
         """
         helper function that takes all vars in a string and replaces them by their
         value in the fit
@@ -336,19 +331,25 @@ class BinnedFitModel(object):
         mean_rgx = re.compile(r'<(\w+)>')
 
         #TODO: error message if more than one element in this set?
-        mean_vars = set(mean_rgx.findall(name))
+        mean_var = list(set(mean_rgx.findall(name)))
+        if len(mean_var) != 1:
+            # Only warning here. Normally the TF1 constructor should emit
+            # another error message because the function doesn't compile below
+            logging.warning('Found dependency on more than one variable')
 
-        for var in mean_vars:
-            name = name.replace('<{}>'.format(var), 'x')
-            av_var = var
+        mean_var = mean_var[0]
+        name = name.replace('<{}>'.format(mean_var), 'x')
 
-        f1 = r.TF1(create_random_str(), name, self.binning[self.bintovar[av_var]][0], self.binning[self.bintovar[av_var]][-1])
+
+        f1 = r.TF1(create_random_str(), name,
+                   self.binning[self.bin_vars.index(mean_var)][0],
+                   self.binning[self.bin_vars.index(mean_var)][-1])
         for i, elm in enumerate(v_names):
             f1.SetParameter(i, get_var(wsp, elm).getVal())
             f1.SetParError(i, get_var(wsp, elm).getError())
             f1.SetParName(i, elm)
 
-        return f1, av_var
+        return f1, mean_var
 
 
     def bin_mean(self, wsp, var, bin_name):
@@ -370,10 +371,7 @@ class BinnedFitModel(object):
         """
         graph = []
 
-        for j in range(2):
-            if bin_var is self.bin_vars[j]:
-                var_nr = j
-
+        var_nr = self.bin_vars.index(bin_var)
         bin_borders = self.binning[var_nr]
 
         for xplot in xrange(len(vals_var)):
