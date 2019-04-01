@@ -8,7 +8,6 @@ import json
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
-import numpy as np
 
 from os.path import dirname
 from collections import OrderedDict
@@ -18,11 +17,12 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
 from utils.two_dim_binned_fitting import BinnedFitModel
-from utils.roofit_utils import get_var
 
 
 def store_proto_pars(wsp, model, outfile):
-    #list of proto params with or without functional dependence
+    """
+    list of proto params with or without functional dependence
+    """
     simvars = []
     comvars = OrderedDict()
     for title, defn in model.proto_params.iteritems():

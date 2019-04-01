@@ -15,8 +15,10 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
-from utils.roofit_utils import get_var, try_factory, all_vals, set_var, ws_import
-from utils.misc_helpers import parse_binning, get_bin_cut_root, combine_cuts, create_random_str, replace_all
+from utils.roofit_utils import get_var, try_factory, set_var, ws_import
+from utils.misc_helpers import (
+    parse_binning, get_bin_cut_root, combine_cuts, create_random_str, replace_all
+)
 from utils.plot_helpers import setup_legend, _setup_canvas
 from utils.graph_utils import assign_x
 
@@ -124,12 +126,6 @@ class BinnedFitModel(object):
         for expr in self.expression_strings:
             success.append(try_factory(wsp, expr))
 
-        # regex to check if a string is a valid variable
-        var_rgx = re.compile(r'\w+')
-
-        # full data set (needed for calculations of bin means, etc)
-        data = wsp.data('full_data')
-
         for bin_name in self.bins:
             for param in self.proto_params:
                 var_str = self.proto_params[param]
@@ -204,9 +200,6 @@ class BinnedFitModel(object):
         ws_import(wsp, fit_results)
 
 
-        # TODO: persisting fit results, etc
-
-
     def plot(self, wsp):
         """
         Plot the fit results from the passed workspace
@@ -264,6 +257,7 @@ class BinnedFitModel(object):
 
         return cans
 
+
     def plot_simvar_graphs(self, wsp, simvars):
         """
         plots and returns TGraphs for all the simple proto-parameters
@@ -298,7 +292,7 @@ class BinnedFitModel(object):
                     vals.append([get_var(wsp, p_getname.format(param=param, x_var=bin_var_X, y_var=bin_var_Y, i=i, j=j)) for j in xrange(len(self.binning[bintovar]) - 1)])
 
                 #plot graphs as a function of binning var
-                graph = self.plot_free_pars(wsp, bin_var, vals)
+                graph = self.plot_free_pars(bin_var, vals)
 
                 #setting the correct mean (errors adjust accordingly), setting graph name
                 for i in xrange(len(self.binning[1-bintovar]) - 1):
@@ -310,7 +304,11 @@ class BinnedFitModel(object):
 
         return graphs
 
+
     def plot_comvar_funcs(self, wsp, comvars):
+        """
+        Plot the parameters that have a functional dependency
+        """
         funcs = []
 
         for el in comvars:
@@ -352,9 +350,11 @@ class BinnedFitModel(object):
 
         return f1, av_var
 
-    #function to get mean of a bin
-    def bin_mean(self, wsp, var, bin_name):
 
+    def bin_mean(self, wsp, var, bin_name):
+        """
+        Get the mean value of the passed variable in the passed bin
+        """
         bin_data = wsp.data('full_data').reduce(
             get_bin_cut(self.bin_vars, self.bins[bin_name])
             )
@@ -362,8 +362,12 @@ class BinnedFitModel(object):
 
         return meanval
 
-    #function that does the plotting of a parameter as a function of either binning variable
-    def plot_free_pars(self, wsp, bin_var, vals_var):
+
+    def plot_free_pars(self, bin_var, vals_var):
+        """
+        function that does the plotting of a parameter as a function of either
+        binning variable
+        """
         graph = []
 
         for j in range(2):
