@@ -189,7 +189,8 @@ def divide_graphs(ngraph, dgraph):
         nx_errs, ny_errs = get_errors(ngraph)
         _, dy_errs = get_errors(dgraph)
 
-        r_errs = np.sqrt((ny_errs / ny_vals)**2 + (dy_errs / dy_vals)**2)
+        r_errs = ry_vals * \
+                 np.sqrt((ny_errs / ny_vals)**2 + (dy_errs / dy_vals)**2)
         return r.TGraphErrors(n_points, nx_vals, ry_vals, nx_errs, r_errs)
 
     return r.TGraph(n_points, nx_vals, ry_vals)
