@@ -416,3 +416,21 @@ def pull_graph(graph, shape):
     val_vals = np.abs(pulls) != 0
 
     return r.TGraph(np.sum(val_vals), xvals[val_vals], pulls[val_vals])
+
+
+def divide_hist(graph, hist):
+    """
+    Divide the graph by the histogram
+
+    Args:
+        graph (ROOT.TGraph or inheriting): numerator graph
+        hist (ROOT.TH1): denominator histogram
+
+    Returns:
+        ROOT.TGraph: ratio of the numerator graph and the denominator histogram.
+            All information in the x-direction is taken from the passed graph.
+    """
+    # since all TGraph types have a constructor from a TH1, it is enough to
+    # convert the denominator to the same type and then use the existing
+    # functionality to divide graphs
+    return divide_graphs(graph, type(graph)(hist))
