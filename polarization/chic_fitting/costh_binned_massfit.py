@@ -65,9 +65,19 @@ def get_load_vars(fit_var, bin_var, binning, weights=None):
     """
     Get the variables that should be loaded
     """
+    bin_var_name = bin_var[0]
+    bin_var_bounds = [np.min(binning), np.max(binning)]
+
+    # Check if the binning is defined in absolute values of the bin variable.
+    # This has to be taken into account to not accidentally throw away half of
+    # the events straight away
+    if bin_var[1] is not None:
+        if 'abs' in bin_var[1].__name__:
+            bin_var_bounds = [-np.max(binning), np.max(binning)]
+
     variables = [
         '{}[3.325, 3.725]'.format(fit_var),
-        '{}[{}, {}]'.format(bin_var, np.min(binning), np.max(binning)),
+        '{}[{}, {}]'.format(bin_var_name, *bin_var_bounds),
     ]
     if weights is not None:
         variables.append('{}[0, 1e5]'.format(weights))
@@ -324,7 +334,7 @@ def run_config_fit(args):
     costh_binning = create_bin_info_json('chic', args.binning, args.datafile,
                                          args.outfile, args.bin_info, bin_var)
 
-    dvars = get_load_vars(model.mname, bin_var[0], costh_binning, weights=args.weight)
+    dvars = get_load_vars(model.mname, bin_var, costh_binning, weights=args.weight)
     dataf = r.TFile.Open(args.datafile)
     tree = dataf.Get('chic_tuple')
 
