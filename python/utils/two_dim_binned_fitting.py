@@ -15,12 +15,14 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
-from utils.roofit_utils import get_var, try_factory, set_var, ws_import
+from utils.roofit_utils import get_var, try_factory, set_var, ws_import, fix_params
 from utils.misc_helpers import (
     parse_binning, get_bin_cut_root, combine_cuts, create_random_str, replace_all
 )
 from utils.plot_helpers import setup_legend, _setup_canvas
 from utils.graph_utils import assign_x
+
+import utils.RooDoubleCB
 
 
 def get_bins(binning1, binning2, binvar1, binvar2):
@@ -99,6 +101,11 @@ class BinnedFitModel(object):
                                             [c[0] for c in self.components],
                                             self.nevent_yields)
 
+        self.fix_vars = []
+        if 'fix_vars' in config:
+            for var in config['fix_vars']:
+                self.fix_vars.append((var.keys()[0], var.values()[0]))
+
         self.plot_config = config['plot_config']
 
         # self.config = config # for development / debugging
@@ -122,12 +129,13 @@ class BinnedFitModel(object):
             success.append(try_factory(wsp, expr))
 
         for bin_name in self.bins:
-            for param in self.proto_params:
-                var_str = self.proto_params[param]
-
+            for param, var_str in self.proto_params:
                 # Check if we have a functional dependency or not
                 if isinstance(var_str, (tuple, list)):
                     expr = self._get_func_expr(wsp, bin_name, param, var_str)
+                    for dep_param, dep_var_str in self.proto_params:
+                        if dep_param is not param:
+                            expr = expr.replace(dep_param, dep_param + '_' + bin_name)
                 # For a non-functional dependency we want to have a prototype
                 # variable in the workspace
                 else:
@@ -139,7 +147,7 @@ class BinnedFitModel(object):
                 name = '{}_{}'.format(model['name'], bin_name)
                 expr = model['expression'].format(name, self.fit_var)
 
-                for param in self.proto_params:
+                for param, var_str in self.proto_params:
                     expr = expr.replace(param, param + '_' + bin_name)
 
                 success.append(try_factory(wsp, expr))
@@ -148,12 +156,14 @@ class BinnedFitModel(object):
             for model in self.sub_models:
                 full_expr = full_expr.replace(model['name'],
                                               model['name'] + '_' + bin_name)
-            for param in self.proto_params:
+            for param, var_str in self.proto_params:
                 full_expr = full_expr.replace(param, param + '_' + bin_name)
 
             full_expr = full_expr.replace(self.full_model,
                                           self.full_model + '_' + bin_name)
             success.append(try_factory(wsp, full_expr))
+
+        fix_params(wsp, self.fix_vars)
 
         return all(success)
 
@@ -170,8 +180,9 @@ class BinnedFitModel(object):
                 fitted. The binning will be done in this function
         """
         nll_args = ( # TODO: define meaning full args
-            rf.NumCPU(2),
-            rf.Extended(True)
+            rf.NumCPU(4),
+            rf.Extended(True),
+            rf.Offset(False)
         )
         sim_nll = self._create_nll(wsp, nll_args)
 
@@ -374,11 +385,18 @@ class BinnedFitModel(object):
         var_nr = self.bin_vars.index(bin_var)
         bin_borders = self.binning[var_nr]
 
+        dependent = isinstance(vals_var[0][0], r.RooFormulaVar)
+
         for xplot in xrange(len(vals_var)):
             y_val = np.array([v.getVal() for v in vals_var[xplot]])
-            y_elo = np.array([v.getErrorLo() for v in vals_var[xplot]]) # this returns negative values
-            y_elo *= -1 # TGraphAsymmErrors expects positive values
-            y_ehi = np.array([v.getErrorHi() for v in vals_var[xplot]])
+            #TODO: define uncertainties for dependent vars
+            if dependent:
+                y_elo = np.array([0 for v in vals_var[xplot]])
+                y_ehi = y_elo
+            else:
+                y_elo = np.array([v.getErrorLo() for v in vals_var[xplot]]) # this returns negative values
+                y_elo *= -1 # TGraphAsymmErrors expects positive values
+                y_ehi = np.array([v.getErrorHi() for v in vals_var[xplot]])
 
             #bin means and errors left to calculate externally because it simplifies the process
             x_val = np.array([0.5 * (bin_borders[i] + bin_borders[i+1]) for i in xrange(len(bin_borders) - 1)])

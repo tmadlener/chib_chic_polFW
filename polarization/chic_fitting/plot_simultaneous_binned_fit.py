@@ -25,10 +25,12 @@ def store_proto_pars(wsp, model, outfile):
     """
     simvars = []
     comvars = OrderedDict()
-    for title, defn in model.proto_params.iteritems():
+    for title, defn in model.proto_params:
         if isinstance(defn, (tuple, list)):
-            comvars[title] = defn
-        else:
+            v_dep = defn[1].split(', ')
+            if (not any([par_dep in v_dep for par_dep, v_str_dep in model.proto_params])):
+                comvars[title] = defn
+        if not isinstance(defn, (tuple, list)) or ("r_chic2_chic1" in title):
             simvars.append(title)
 
     outf = r.TFile.Open(outfile, 'recreate')

@@ -1,0 +1,86 @@
+{
+  "bin_vars": ["JpsiPt", "costh_HX"],
+  "binning": ["8, 20", "0, 0.2, 1.0"],
+  "fit_variable": "chicMass",
+
+  "full_model": {
+    "name": "M_fullModel",
+    "type": "SUM"
+  },
+
+  "sub_models": [
+    {
+      "name": "M_chic0",
+      "event_yield": "Nchic0",
+      "expression": "RooVoigtian::{}({}, CBmass0, CBsigma0, CBwidth)",
+      "plot": {"line": 7, "color": 901, "label": "#chi_{c0}"}
+    },
+    {
+      "name": "M_chic1",
+      "event_yield": "Nchic1",
+      "expression": "RooDoubleCB::{}({}, CBmass1, CBsigma1, CBalpha1_1, CBn1_1, CBalpha1_2, CBn1_2)",
+      "plot": {"line": 7, "color": 417, "label": "#chi_{c1}"}
+    },
+    {
+      "name": "M_chic2",
+      "event_yield": "Nchic2",
+      "expression": "RooDoubleCB::{}({}, CBmass2, CBsigma2, CBalpha2_1, CBn2_1, CBalpha2_2, CBn2_2)",
+      "plot": {"line": 7, "color": 632, "label": "#chi_{c2}"}
+    },
+    {
+      "name": "M_background",
+      "event_yield": "Nbkg",
+      "expression": "RooExponential::{}({}, Bkg_lambda)",
+      "plot": {"line": 7, "color": 1, "label": "Bkg"}
+    }
+  ],
+
+  "expression_strings": [
+    "m_psiPDG[3.096916]",
+    "m_chic0PDG[3.41475]",
+    "m_chic1PDG[3.51066]",
+    "m_chic2PDG[3.55620]",
+    "CBwidth[0.0104]",
+
+    "CBalpha1_1[0.6, 0.2, 2.5]",
+    "CBn1_1[2.5, 1.8, 5.0]",
+    "CBalpha1_2[0.6, 0.2, 5.0]",
+    "CBn1_2[2.5, 1.8, 5.0]",
+
+    "expr::CBn2_1('CBn1_1', CBn1_1)",
+    "expr::CBn2_2('CBn1_2', CBn1_2)",
+    "expr::CBalpha2_1('CBalpha1_1', CBalpha1_1)",
+    "expr::CBalpha2_2('CBalpha1_2', CBalpha1_2)"
+  ],
+
+  "proto_parameters": [
+    ["Nchic0", "[300, 0, 10000]"],
+    ["Nchic1", "[10000, 0, 200000]"],
+    ["Nchic2", "[10000, 0, 200000]"],
+    ["Nbkg", "[30000, 0, 300000]"],
+
+    ["CBmass1", "[3.51, 3.45, 3.54]"],
+    ["CBsigma1", "[0.008, 0.003, 0.02]"],
+    ["Bkg_lambda", "[0, -15, 15]"],
+    ["r_sigma1_sigma2", "[1.2, 0.8, 2.3]"],
+
+    ["PES", ["(CBmass1 - m_psiPDG) / (m_chic1PDG - m_psiPDG)", "CBmass1, m_psiPDG, m_chic1PDG"]],
+    ["CBmass2", ["PES * (m_chic2PDG - m_psiPDG) + m_psiPDG", "PES, m_chic2PDG, m_psiPDG"]],
+    ["CBmass0", ["PES * (m_chic0PDG - m_psiPDG) + m_psiPDG", "PES, m_chic0PDG, m_psiPDG"]],
+    ["CBsigma0", ["CBsigma1 * (m_chic0PDG - m_psiPDG) / (m_chic1PDG - m_psiPDG)", "CBsigma1, m_chic0PDG, m_chic1PDG, m_psiPDG"]],
+    ["CBsigma2", ["CBsigma1 * r_sigma1_sigma2", "CBsigma1, r_sigma1_sigma2"]],
+
+    ["r_chic2_chic1", ["Nchic2 / Nchic1", "Nchic2, Nchic1"]]
+  ],
+
+  "fix_vars": [
+    {"CBn1_1": 3.5},
+    {"CBn1_2": 2.5},
+    {"CBalpha1_1": 0.5},
+    {"CBalpha1_2": 2}
+  ],
+
+  "plot_config": {
+    "legpos": [0.12, 0.75, 0.24, 0.87]
+  }
+}

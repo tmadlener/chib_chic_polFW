@@ -42,11 +42,9 @@ def create_workspace(workspace_name, datafile, model):
         dset_vars.add(get_var(wsp, var))
 
 
-    # NOTE: At the moment the moment the boundaries of the fit_variable are set
-    # to the mass constraints of the test data set.
-    # TODO: Either replace this with the appropriate values for the chic mass
+    # TODO: Replace boundaries with the appropriate values for the chic mass
     # fit once switching to that data or even better put it into the config file
-    try_factory(wsp, '{}[{}, {}]'.format(model.fit_var, 2.8, 3.8))
+    try_factory(wsp, '{}[{}, {}]'.format(model.fit_var, 3.33, 3.72))
     dset_vars.add(get_var(wsp, model.fit_var))
 
 
