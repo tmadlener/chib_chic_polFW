@@ -19,14 +19,6 @@ from utils.data_handling import get_dataframe
 from utils.roofit_utils import ws_import, get_var, try_factory
 from utils.misc_helpers import cond_mkdir_file
 
-def load_data(datafile, model):
-    """
-    Load the data into a DataFrame, but get only the variables that are
-    necessary
-    """
-    variables = [model.fit_var] + model.bin_vars
-    return get_dataframe(datafile, columns=variables)
-
 
 def create_workspace(workspace_name, datafile, model):
     """
@@ -35,22 +27,14 @@ def create_workspace(workspace_name, datafile, model):
     wsp = r.RooWorkspace(workspace_name)
 
     dset_vars = r.RooArgSet()
+    variables = []
 
-    for ivar, var in enumerate(model.bin_cut_vars):
-        binning = model.binning[ivar]
-        if var[1] is None:
-            try_factory(wsp, '{}[{}, {}]'.format(var[0], min(binning), max(binning)))
-        else:
-            try_factory(wsp, '{}[{}, {}]'.format(var[0], -max(binning), max(binning)))
-        dset_vars.add(get_var(wsp, var[0]))
+    for var, bounds in model.get_load_vars():
+        try_factory(wsp, '{}[{}]'.format(var, bounds))
+        dset_vars.add(get_var(wsp, var))
+        variables.append(var)
 
-
-    # TODO: maybe put chicMass limits into the config file
-    try_factory(wsp, '{}[{}, {}]'.format(model.fit_var, 3.325, 3.725))
-    dset_vars.add(get_var(wsp, model.fit_var))
-
-
-    data = load_data(datafile, model)
+    data = get_dataframe(datafile, columns=variables)
     tree = array2tree(data.to_records(index=False))
 
     dataset = r.RooDataSet('full_data', 'full data sample', tree, dset_vars)

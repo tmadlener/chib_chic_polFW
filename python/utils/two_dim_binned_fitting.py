@@ -53,13 +53,10 @@ def get_bin_cut(bin_vars, bin_borders):
     """
     cuts = []
     for i, bv in enumerate(bin_vars):
-        if bv[1] is None:
-            bin_corr = bv[0]
-        else:
-            bin_corr = 'TMath::Abs({})'.format(bv[0])
-        cuts.append(get_bin_cut_root(bin_corr, *bin_borders[i]))
+        cuts.append(get_bin_cut_root(bv, *bin_borders[i]))
 
     return combine_cuts(cuts)
+
 
 def _full_model_expr(model_type, name, sub_models, event_yields):
     """
@@ -90,14 +87,22 @@ class BinnedFitModel(object):
             parse_binning(config['binning'][0]),
             parse_binning(config['binning'][1])
         ])
-        self.bin_vars = config['bin_vars']
-        self.bin_cut_vars = np.array([
-                parse_func_var(config['bin_cut_vars'][0]),
-                parse_func_var(config['bin_cut_vars'][1]),
-        ])
-        self.bins = get_bins(self.binning[0], self.binning[1], *self.bin_vars)
+        # variables as they are defined and used for deciding the binning
+        # inside ROOT with string cuts
+        self.bin_cut_vars = config['bin_vars']
+
+        # For the internal use and especially for naming the variables it is not
+        # possible to have functional variable definitions. Simply use whatever
+        # is the argument of func(var) (i.e. var)
+        self.bin_vars = [
+            parse_func_var(v)[0] for v in config['bin_vars']
+        ]
+
+        self.bins = get_bins(self.binning[0], self.binning[1],
+                             self.bin_vars[0], self.bin_vars[1])
 
         self.fit_var = config['fit_variable']
+        self.fit_range = config['fit_range']
         self.expression_strings = config['expression_strings']
         self.proto_params = config['proto_parameters']
 
@@ -123,6 +128,34 @@ class BinnedFitModel(object):
         self.plot_config = config['plot_config']
 
         # self.config = config # for development / debugging
+
+
+    def get_load_vars(self):
+        """
+        Get the variable names and bounds that are necessary to define the
+        variables in a workspace such that data can be imported from a TTree.
+
+        Returns:
+            load_vars, bounds: List of tuples of strings, where first element is
+                the name of the variable and the second is the boundaries as
+                comma separated list
+        """
+        variables = [
+            (self.fit_var, ",".join([str(v) for v in self.fit_range])),
+        ]
+        for ivar, var in enumerate(self.bin_cut_vars):
+            var_name, var_func = parse_func_var(var)
+            bounds_up = np.max(self.binning[ivar])
+
+            # For now only handle the 'abs(var)' case separately
+            if var_func is not None and 'abs' in var_func.__name__:
+                bounds_low = -bounds_up
+            else:
+                bounds_low = np.min(self.binning[ivar])
+
+            variables.append((var_name, "{}, {}".format(bounds_low, bounds_up)))
+
+        return variables
 
 
     def define_model(self, wsp):
@@ -414,7 +447,10 @@ class BinnedFitModel(object):
         bin_data = wsp.data('full_data').reduce(
             get_bin_cut(self.bin_cut_vars, self.bins[bin_name])
             )
-        meanval = bin_data.abs().mean(get_var(wsp, var))
+        # TODO: this needs some more work here, since it is not straight forward
+        # To get the mean value of the absolute value
+        # meanval = bin_data.abs().mean(get_var(wsp, var))
+        meanval = bin_data.mean(get_var(wsp, var))
 
         return meanval
 
@@ -526,16 +562,10 @@ class BinnedFitModel(object):
 
         data = wsp.data('full_data')
 
-        val = [r.Double(0.), r.Double(0.)]
-
         for bin_name, bin_borders in self.bins.iteritems():
             logging.debug('Creating sub NLL for bin {}'.format(bin_name))
             cut = get_bin_cut(self.bin_cut_vars, bin_borders)
             bin_data = data.reduce(cut)
-
-            bin_data.getRange(get_var(wsp, self.bin_vars[1]), val[0], val[1])
-            #TODO: remove this later, just checking the binning is done right
-            print('range of '+self.bin_vars[1]+' = '+str(val[0])+ ' - '+str(val[1]))
 
             bin_model = wsp.pdf(self.full_model + '_' + bin_name)
             sim_nll_list.add(bin_model.createNLL(bin_data, *nll_args))

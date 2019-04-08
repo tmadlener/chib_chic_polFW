@@ -1,8 +1,8 @@
 {
-  "bin_vars": ["JpsiPt", "costh_HX"],
-  "bin_cut_vars": ["JpsiPt", "abs(costh_HX)"],
-  "binning": ["8, 20", "0, 0.2, 1.0"],
+  "bin_vars": ["JpsiPt", "abs(costh_HX_fold)"],
+  "binning": ["12, 30", "0, 0.625"],
   "fit_variable": "chicMass",
+  "fit_range": [3.325, 3.725],
 
   "full_model": {
     "name": "M_fullModel",
