@@ -129,6 +129,9 @@ def get_dataframe(infile, treename=None, **kwargs):
     if infile.endswith('.root'):
         try:
             from root_pandas import read_root
+            if treename is None:
+                # If there is more than one tree we still fail in read_root
+                treename = get_treename(infile)
             return read_root(infile, key=treename, **kwargs)
         except ImportError:
             # log and bail out
