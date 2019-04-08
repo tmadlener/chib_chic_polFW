@@ -68,8 +68,7 @@ def main(args):
     model = BinnedFitModel(config)
     wsp = create_workspace('ws_mass_fit', args.datafile, model)
     model.define_model(wsp)
-    savename = 'twodim'
-    model.fit(wsp, savename, args.verbosity)
+    model.fit(wsp, args.verbosity)
 
     cond_mkdir_file(args.outfile)
     wsp.writeToFile(args.outfile)

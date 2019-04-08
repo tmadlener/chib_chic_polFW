@@ -15,15 +15,20 @@ import logging
 logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
-from utils.roofit_utils import get_var, try_factory, set_var, ws_import, fix_params
+from utils.roofit_utils import (
+    get_var, try_factory, set_var, ws_import, fix_params, get_chi2_ndf
+)
 from utils.misc_helpers import (
     parse_binning, get_bin_cut_root, combine_cuts, create_random_str, replace_all, parse_func_var
 )
-from utils.plot_helpers import setup_legend, _setup_canvas
+from utils.plot_helpers import (
+    setup_legend, _setup_canvas, setup_latex, put_on_latex
+)
 from utils.graph_utils import assign_x
 
 import utils.RooDoubleCB
 
+N_BINS_FIT_PLOTS = 50
 
 def get_bins(binning1, binning2, binvar1, binvar2):
     """
@@ -177,7 +182,7 @@ class BinnedFitModel(object):
         return all(success)
 
 
-    def fit(self, wsp, savename, verbosity=0):
+    def fit(self, wsp, verbosity=0):
         """
         Import the passed data into the workspace, construct the combined
         negative log-likelihood (NLL) and run the simultaneous fit.
@@ -215,8 +220,8 @@ class BinnedFitModel(object):
         set_var(wsp, '__fit_status__', fit_results.status(), create=True)
         set_var(wsp, '__cov_qual__', fit_results.covQual(), create=True)
 
-        wsp.saveSnapshot('snap_{}'.format(savename), wsp.allVars())
-        fit_results.SetName('fit_res_{}'.format(savename))
+        wsp.saveSnapshot('snap_two_dim', wsp.allVars())
+        fit_results.SetName('fit_res_two_dim')
         ws_import(wsp, fit_results)
 
 
@@ -232,20 +237,45 @@ class BinnedFitModel(object):
 
         cans = OrderedDict()
 
+        wsp.loadSnapshot('snap_two_dim')
         for bin_name, bin_borders in self.bins.iteritems():
             frame, leg = self._plot_bin(wsp, data, bin_name, bin_borders)
+
+
+            add_info = self._additional_info(wsp, frame)
+            latex = setup_latex()
             can = _setup_canvas(None) # returns a TCanvasWrapper
+            can.cd()
+
+            pad = r.TPad('result_pad', 'result pad', 0, 0.3, 1, 1)
+            r.SetOwnership(pad, False)
+            pad.Draw()
+            pad.cd()
             frame.Draw()
             can.add_tobject(frame)
             leg.Draw()
             can.add_tobject(leg)
+            put_on_latex(latex, add_info, ndc=True)
+            can.add_tobject(latex)
+
+            # pulls
+            pull_frame = self._pull_plot(wsp, frame)
+
+            can.cd()
+            pull_pad = r.TPad('pull_pad', 'pull pad', 0, 0, 1, 0.3)
+            r.SetOwnership(pull_pad, False)
+            pull_pad.Draw()
+            pull_pad.SetGridy()
+            pull_pad.SetBottomMargin(0.2)
+            pull_pad.cd()
+            pull_frame.Draw()
+
+            can.add_tobject(pull_frame)
 
             cans[bin_name] = can
 
         # for easier debugging at the moment
         return cans
-
-        # TODO: pulls
 
 
     def plot_fit_params(self, wsp):
@@ -421,11 +451,47 @@ class BinnedFitModel(object):
         return graph
 
 
+    def _pull_plot(self, wsp, frame):
+        """
+        Make the frame containing the pulls
+        """
+        pulls = frame.pullHist('data_hist', 'full_pdf_curve', True)
+        pull_frame = get_var(wsp, self.fit_var).frame(rf.Bins(N_BINS_FIT_PLOTS))
+        pull_frame.addPlotable(pulls, 'P')
+
+        pull_frame.SetTitle("")
+        pull_frame.GetYaxis().SetTitle("pull")
+        pull_frame.GetXaxis().SetTitleSize(0.08)
+        pull_frame.GetYaxis().SetTitleSize(0.08)
+        pull_frame.GetXaxis().SetLabelSize(0.08)
+        pull_frame.GetYaxis().SetLabelSize(0.08)
+        pull_frame.GetYaxis().SetTitleOffset(0.4)
+        pull_frame.GetYaxis().SetRangeUser(-5.99, 5.99)
+
+        return pull_frame
+
+
+    def _additional_info(self, wsp, frame):
+        """
+        Get the the strings and positions for the additional info that should be
+        put onto the fit results plot
+        """
+        info_text = []
+        fit_res = wsp.genobj('fit_res_two_dim')
+
+        chi2, ndf = get_chi2_ndf(fit_res, frame, 'full_pdf_curve', 'data_hist')
+        info_text.append((0.15, 0.875,
+                          '#chi^{{2}}/ndf = {:.1f} / {}'.format(chi2, ndf)))
+
+
+        return info_text
+
+
     def _plot_bin(self, wsp, full_data, bin_name, bin_borders):
         """Make the distribution plot for a given bin"""
-        data_args = (rf.MarkerSize(0.8),)
+        data_args = (rf.MarkerSize(0.8), rf.Name('data_hist'))
         fit_var = get_var(wsp, self.fit_var)
-        frame = fit_var.frame(rf.Bins(50))
+        frame = fit_var.frame(rf.Bins(N_BINS_FIT_PLOTS))
 
         leg = setup_legend(*self.plot_config['legpos'])
 
