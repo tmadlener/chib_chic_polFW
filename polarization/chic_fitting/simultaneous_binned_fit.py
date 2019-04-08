@@ -69,7 +69,7 @@ def main(args):
     wsp = create_workspace('ws_mass_fit', args.datafile, model)
     model.define_model(wsp)
     savename = 'twodim'
-    model.fit(wsp, savename)
+    model.fit(wsp, savename, args.verbosity)
 
     cond_mkdir_file(args.outfile)
     wsp.writeToFile(args.outfile)
@@ -90,6 +90,18 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--outfile', help='The name of the file that will '
                         'be created by this script and contains the fit results',
                         default='fit_results.root')
+    parser.add_argument('-v', '--verbosity', help='The verbosity of the log '
+                        'outputs. (-1 for minimal output, 0 for normal output, '
+                        '1 for verbose output)', default=0, type=int,
+                        choices={0, 1, -1})
 
     clargs = parser.parse_args()
+
+    if clargs.verbosity == 1:
+        logging.getLogger().setLevel(logging.DEBUG)
+    elif clargs.verbosity == -1:
+        logging.getLogger().setLevel(logging.WARNING)
+    else:
+        logging.getLogger().setLevel(logging.INFO)
+
     main(clargs)
