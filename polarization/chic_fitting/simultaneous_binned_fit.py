@@ -36,15 +36,17 @@ def create_workspace(workspace_name, datafile, model):
 
     dset_vars = r.RooArgSet()
 
-    for ivar, var in enumerate(model.bin_vars):
+    for ivar, var in enumerate(model.bin_cut_vars):
         binning = model.binning[ivar]
-        try_factory(wsp, '{}[{}, {}]'.format(var, min(binning), max(binning)))
-        dset_vars.add(get_var(wsp, var))
+        if var[1] is None:
+            try_factory(wsp, '{}[{}, {}]'.format(var[0], min(binning), max(binning)))
+        else:
+            try_factory(wsp, '{}[{}, {}]'.format(var[0], -max(binning), max(binning)))
+        dset_vars.add(get_var(wsp, var[0]))
 
 
-    # TODO: Replace boundaries with the appropriate values for the chic mass
-    # fit once switching to that data or even better put it into the config file
-    try_factory(wsp, '{}[{}, {}]'.format(model.fit_var, 3.33, 3.72))
+    # TODO: maybe put chicMass limits into the config file
+    try_factory(wsp, '{}[{}, {}]'.format(model.fit_var, 3.325, 3.725))
     dset_vars.add(get_var(wsp, model.fit_var))
 
 

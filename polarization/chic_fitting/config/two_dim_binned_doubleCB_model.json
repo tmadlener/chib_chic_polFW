@@ -1,5 +1,6 @@
 {
   "bin_vars": ["JpsiPt", "costh_HX"],
+  "bin_cut_vars": ["JpsiPt", "abs(costh_HX)"],
   "binning": ["8, 20", "0, 0.2, 1.0"],
   "fit_variable": "chicMass",
 

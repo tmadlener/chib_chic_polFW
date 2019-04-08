@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.DEBUG,
 
 from utils.roofit_utils import get_var, try_factory, set_var, ws_import, fix_params
 from utils.misc_helpers import (
-    parse_binning, get_bin_cut_root, combine_cuts, create_random_str, replace_all
+    parse_binning, get_bin_cut_root, combine_cuts, create_random_str, replace_all, parse_func_var
 )
 from utils.plot_helpers import setup_legend, _setup_canvas
 from utils.graph_utils import assign_x
@@ -46,10 +46,15 @@ def get_bin_cut(bin_vars, bin_borders):
     """
     Get the bin cut
     """
-    return combine_cuts([
-        get_bin_cut_root(bv, *bin_borders[i]) for i, bv in enumerate(bin_vars)
-    ])
+    cuts = []
+    for i, bv in enumerate(bin_vars):
+        if bv[1] is None:
+            bin_corr = bv[0]
+        else:
+            bin_corr = 'TMath::Abs({})'.format(bv[0])
+        cuts.append(get_bin_cut_root(bin_corr, *bin_borders[i]))
 
+    return combine_cuts(cuts)
 
 def _full_model_expr(model_type, name, sub_models, event_yields):
     """
@@ -81,6 +86,10 @@ class BinnedFitModel(object):
             parse_binning(config['binning'][1])
         ])
         self.bin_vars = config['bin_vars']
+        self.bin_cut_vars = np.array([
+                parse_func_var(config['bin_cut_vars'][0]),
+                parse_func_var(config['bin_cut_vars'][1]),
+        ])
         self.bins = get_bins(self.binning[0], self.binning[1], *self.bin_vars)
 
         self.fit_var = config['fit_variable']
@@ -188,6 +197,8 @@ class BinnedFitModel(object):
 
         minimizer = self._setup_minimizer(sim_nll)
         logging.info('starting migrad')
+        minimizer.migrad()
+        minimizer.migrad()
         minimizer.migrad()
         logging.info('starting minos')
         minimizer.minos()
@@ -368,9 +379,9 @@ class BinnedFitModel(object):
         Get the mean value of the passed variable in the passed bin
         """
         bin_data = wsp.data('full_data').reduce(
-            get_bin_cut(self.bin_vars, self.bins[bin_name])
+            get_bin_cut(self.bin_cut_vars, self.bins[bin_name])
             )
-        meanval = bin_data.mean(get_var(wsp, var))
+        meanval = bin_data.abs().mean(get_var(wsp, var))
 
         return meanval
 
@@ -415,7 +426,7 @@ class BinnedFitModel(object):
 
         leg = setup_legend(*self.plot_config['legpos'])
 
-        cut = get_bin_cut(self.bin_vars, bin_borders)
+        cut = get_bin_cut(self.bin_cut_vars, bin_borders)
         full_data.reduce(cut).plotOn(frame, *data_args)
         full_pdf = wsp.pdf(self.full_model + '_' + bin_name)
         full_pdf.plotOn(frame, rf.LineWidth(2), rf.Name('full_pdf_curve'))
@@ -446,10 +457,17 @@ class BinnedFitModel(object):
 
         data = wsp.data('full_data')
 
+        val = [r.Double(0.), r.Double(0.)]
+
         for bin_name, bin_borders in self.bins.iteritems():
             logging.debug('Creating sub NLL for bin {}'.format(bin_name))
-            cut = get_bin_cut(self.bin_vars, bin_borders)
+            cut = get_bin_cut(self.bin_cut_vars, bin_borders)
             bin_data = data.reduce(cut)
+
+            bin_data.getRange(get_var(wsp, self.bin_vars[1]), val[0], val[1])
+            #TODO: remove this later, just checking the binning is done right
+            print('range of '+self.bin_vars[1]+' = '+str(val[0])+ ' - '+str(val[1]))
+
             bin_model = wsp.pdf(self.full_model + '_' + bin_name)
             sim_nll_list.add(bin_model.createNLL(bin_data, *nll_args))
 
@@ -482,7 +500,7 @@ class BinnedFitModel(object):
         func_expr, arg_list = param_expr
 
         bin_data = wsp.data('full_data').reduce(
-            get_bin_cut(self.bin_vars, self.bins[bin_name])
+            get_bin_cut(self.bin_cut_vars, self.bins[bin_name])
         )
 
         # regex to check if a string contains a mean-value expression
