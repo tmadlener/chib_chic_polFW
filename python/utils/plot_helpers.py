@@ -124,7 +124,7 @@ def default_colors():
 
 @memoize
 def default_attributes(diff_markers=True, size=1, linewidth=2,
-                       open_markers=True, **kwargs):
+                       open_markers=True, line=1, **kwargs):
     """
     Get a list of some sensible default attributes
 
@@ -134,6 +134,7 @@ def default_attributes(diff_markers=True, size=1, linewidth=2,
         linewidth (int, optional): Linewidth of TLines (2)
         open_markers (bool, optional): Use open markers instead of filled ones
             (False)
+        line (int, optional): Linestyle of TLines (1)
 
     Returns:
         list: List containing a list of dictionaries as taken by the 'attr'
@@ -161,7 +162,8 @@ def default_attributes(diff_markers=True, size=1, linewidth=2,
     attributes = []
     for marker, color in mark_col:
         attributes.append({
-            'color': color, 'marker': marker, 'size': size, 'width': linewidth
+            'color': color, 'marker': marker, 'size': size, 'width': linewidth,
+            'line': line
         })
 
     return attributes
@@ -305,6 +307,8 @@ def plot_on_canvas(can, plots, **kwargs):
     # legend
     if not leg_option or leg_option == 'H':
         leg_option = 'ple'
+    if 'hist' in draw_option and not leg_option:
+        leg_option = 'L'
 
     i_att = 0
     for i, plot in enumerate(plots):
