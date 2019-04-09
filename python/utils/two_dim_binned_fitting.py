@@ -230,7 +230,7 @@ class BinnedFitModel(object):
                 -1 -> quite, 0 -> normal, 1 -> verbose
         """
         nll_args = ( # TODO: define meaning full args
-            rf.NumCPU(4),
+            rf.NumCPU(2, 2),
             rf.Extended(True),
             rf.Offset(False)
         )

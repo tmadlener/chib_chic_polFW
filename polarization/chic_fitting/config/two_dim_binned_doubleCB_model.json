@@ -1,7 +1,7 @@
 {
   "bin_vars": ["JpsiPt", "abs(costh_HX_fold)"],
-  "binning": ["12, 30", "0, 0.625"],
-  "fit_variable": "chicMass",
+  "binning": ["12, 30", "0, 0.075, 0.15, 0.225, 0.3, 0.375, 0.45, 0.625"],
+  "fit_variable": "mQ",
   "fit_range": [3.325, 3.725],
 
   "full_model": {
