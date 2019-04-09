@@ -463,10 +463,22 @@ class BinnedFitModel(object):
         bin_data = wsp.data('full_data').reduce(
             get_bin_cut(self.bin_cut_vars, self.bins[bin_name])
             )
-        # TODO: this needs some more work here, since it is not straight forward
-        # To get the mean value of the absolute value
-        # meanval = bin_data.abs().mean(get_var(wsp, var))
-        meanval = bin_data.mean(get_var(wsp, var))
+        # Check if the variable can be taken as it is or if it has to be treated
+        # specially
+        if var in self.bin_cut_vars:
+            meanval = bin_data.mean(get_var(wsp, var))
+        else:
+            # Check to which bin cut variable it belongs
+            form = [v for v in self.bin_cut_vars if var in v]
+            if len(form) > 1:
+                logging.warning('Cannot uniquely identify to which bin '
+                                'definition \'{}\' belongs'.format(var))
+            # Create a formula var and add it to the temporary data set to
+            # easily obtain the mean value
+            binvarf = r.RooFormulaVar('binvar', 'temporary bin variable',
+                                      form[0], r.RooArgList(get_var(wsp, var)))
+            bin_var = bin_data.addColumn(binvarf)
+            meanval = bin_data.mean(bin_var)
 
         return meanval
 
