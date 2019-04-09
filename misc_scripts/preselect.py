@@ -95,18 +95,48 @@ def create_store_sel_hist(n_events, selections):
     can.SaveAs('selection_hist.pdf')
 
 
+def get_muon_sel(mu_sel):
+    """
+    Get the muon selection
+    """
+    if mu_sel == 'loose':
+        return sf.loose_muon_sel()
+    else:
+        min_pt = float(mu_sel)
+        return sf.single_muon_sel(sf.flat_pt(min_pt, 1.6))
+
+
+def get_state_sel(is_mc, state):
+    """
+    Get a (sensible) state selection
+    """
+    if state == 'all':
+        return sf.all_sel()
+
+    if not is_mc:
+        if state != 'all':
+            logging.warning('Selecting chic1 or chic2 events is only possible'
+                            ' on MC')
+            return sf.all_sel()
+    else:
+        return sf.state_sel(state)
+
+
 def main(args):
     """Main"""
     selections = OrderedDict()
 
-    selections['loose muon'] = sf.loose_muon_sel()
     selections['trigger'] = sf.trigger_sel_(args.trigger)
+    selections['muon'] = get_muon_sel(args.muon)
     # selections['vtx prob'] = sf.vtx_prob_sel
-    selections['jpsi kin sel'] = get_jpsi_sel(args.jpsi)
     selections['photon sel'] = sf.photon_sel_(sf.flat_pt(0.4, 1.5))
+    selections['jpsi kin sel'] = get_jpsi_sel(args.jpsi)
     selections['lifetime cut'] = get_lt_selection(args.mc, 2.5)
     selections['deta cut (MC only)'] = get_deta_sel(args.deta)
     # selections['chis mass cut'] = sf.chic_mass_sel # not strictly necessary from a PS point of view
+    # To ensure rectangular region in costh-phi
+    # selections['costh'] = lambda d: d.costh_HX_fold.abs() < 0.625
+    selections['state_sel'] = get_state_sel(args.mc, args.state)
 
     global VARIABLES
     VARIABLES.extend(sf.collect_requirements(selections.values()))
@@ -139,6 +169,10 @@ if __name__ == '__main__':
                         default='Dimuon8_Jpsi')
     parser.add_argument('-j', '--jpsi', default=None,
                         help='jpsi selection. format: minpt:maxpt:maxrap')
+    parser.add_argument('-m', '--muon', default='3.5', type=str,
+                        help='Specify the muon selection. Either a number, which'
+                        ' will then be used as a flat pt cut or \'loose\' for '
+                        'the loose selection.')
     parser.add_argument('--mc', help='do mc selection (no lifetime cut)',
                         action='store_true', default=False)
     parser.add_argument('--deta', help='Apply the deta selection (only possible'
@@ -146,6 +180,18 @@ if __name__ == '__main__':
     parser.add_argument('--hist', help='Produce a histogram that shows the '
                         'effects of the different cuts', default=False,
                         action='store_true')
+
+    state_sel = parser.add_mutually_exclusive_group()
+    state_sel.add_argument('--all', action='store_const', dest='state',
+                           const='all', help='Use all events (default)')
+    state_sel.add_argument('--chic1', action='store_const', dest='state',
+                           const='chic1', help='Select only chic1 events '
+                           '(MC only)')
+    state_sel.add_argument('--chic2', action='store_const', dest='state',
+                           const='chic2', help='Select only chic2 events '
+                           '(MC only)')
+    state_sel.set_defaults(state='all')
+
 
     clargs = parser.parse_args()
     main(clargs)
