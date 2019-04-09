@@ -4,6 +4,9 @@ Script to run the simultaneous binned fit with a given input data sample
 """
 
 import json
+import os
+import shutil
+import sys
 
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
@@ -49,12 +52,25 @@ def main(args):
     with open(args.configfile, 'r') as configfile:
         config = json.load(configfile)
 
+    cond_mkdir_file(args.outfile)
+    try:
+        shutil.copy2(args.configfile,
+                     os.path.join(os.path.split(args.outfile)[0],
+                                  'fit_model.json'))
+    except shutil.Error as err:
+        loggin.warn(str(err))
+
+
     model = BinnedFitModel(config)
     wsp = create_workspace('ws_mass_fit', args.datafile, model)
-    model.define_model(wsp)
+    if not model.define_model(wsp):
+        logging.error('Cannot define model in workspace. Check outputs to see '
+                      'why the definition fails (Rerun with --verbosity 1 to '
+                      'have more output)')
+        sys.exit(1)
+
     model.fit(wsp, args.verbosity)
 
-    cond_mkdir_file(args.outfile)
     wsp.writeToFile(args.outfile)
 
 
