@@ -269,14 +269,17 @@ class BinnedFitModel(object):
         data = wsp.data('full_data')
 
         cans = OrderedDict()
+        g_chi2, g_ndf = 0, 0
 
         wsp.loadSnapshot('snap_two_dim')
         for bin_name, bin_borders in self.bins.iteritems():
             frame, leg = self._plot_bin(wsp, data, bin_name, bin_borders)
+            b_chi2, b_ndf = get_chi2_ndf(frame, 'full_pdf_curve', 'data_hist')
+            logging.debug('bin: {}: chi2 / number bins = {:.2f} / {}'
+                          .format(bin_name, b_chi2, b_ndf))
+            g_chi2 += b_chi2
+            g_ndf += b_ndf
 
-
-            add_info = self._additional_info(wsp, frame)
-            latex = setup_latex()
             can = _setup_canvas(None) # returns a TCanvasWrapper
             can.cd()
 
@@ -285,11 +288,9 @@ class BinnedFitModel(object):
             pad.Draw()
             pad.cd()
             frame.Draw()
-            can.add_tobject(frame)
+            can.add_tobject(pad)
             leg.Draw()
             can.add_tobject(leg)
-            put_on_latex(latex, add_info, ndc=True)
-            can.add_tobject(latex)
 
             # pulls
             pull_frame = self._pull_plot(wsp, frame)
@@ -302,10 +303,25 @@ class BinnedFitModel(object):
             pull_pad.SetBottomMargin(0.2)
             pull_pad.cd()
             pull_frame.Draw()
-
-            can.add_tobject(pull_frame)
+            can.add_tobject(pull_pad)
 
             cans[bin_name] = can
+
+        fit_res = wsp.genobj('fit_res_two_dim')
+        n_float_pars = fit_res.floatParsFinal().getSize()
+        g_ndf -= n_float_pars
+        logging.debug('Floating parameters in fit: {}'.format(n_float_pars))
+        logging.info('Global chi2 / ndf = {:.2f} / {}'.format(g_chi2, g_ndf))
+
+        # loop again over all canvases and put the global chi2 / ndf there
+        chi2_text = (0.15, 0.875,
+                     '(global) #chi^{{2}} / ndf = {:.1f} / {}'.format(g_chi2, g_ndf))
+        latex = setup_latex()
+
+        for can in cans.values():
+            res_pad = can.attached_tobjects[0]
+            res_pad.cd()
+            put_on_latex(latex, [chi2_text], ndc=True)
 
         # for easier debugging at the moment
         return cans
@@ -505,22 +521,6 @@ class BinnedFitModel(object):
         pull_frame.GetYaxis().SetRangeUser(-5.99, 5.99)
 
         return pull_frame
-
-
-    def _additional_info(self, wsp, frame):
-        """
-        Get the the strings and positions for the additional info that should be
-        put onto the fit results plot
-        """
-        info_text = []
-        fit_res = wsp.genobj('fit_res_two_dim')
-
-        chi2, ndf = get_chi2_ndf(fit_res, frame, 'full_pdf_curve', 'data_hist')
-        info_text.append((0.15, 0.875,
-                          '#chi^{{2}}/ndf = {:.1f} / {}'.format(chi2, ndf)))
-
-
-        return info_text
 
 
     def _plot_bin(self, wsp, full_data, bin_name, bin_borders):

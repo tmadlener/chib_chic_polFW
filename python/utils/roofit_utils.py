@@ -86,24 +86,32 @@ def all_vals(var):
     return var.getVal(), var.getMin(), var.getMax()
 
 
-def get_chi2_ndf(fit_res, frame, pdfname, histname):
+def get_chi2_ndf(frame, pdfname, histname, fit_res=None):
     """
     Get the chi2 value und the number degrees of freedom between a pdf and a
     histogram for a given fit result
 
     Args:
-        fit_res (ROOT.RooFitResult): Fit result corresponding to the pdf.
-            Necessary to obtain the number of floating parameters in the fit
         frame (ROOT.RooPlot): Plot containing the pdf and the histogram for
             which the chi2 should be calculated
         pdfname (str): Name of the pdf as it can be found on the frame
         histname (str): name of the datahist as it can be found on the frame
-
+        fit_res (ROOT.RooFitResult, optional): Fit result corresponding to the
+            pdf. Necessary to obtain the number of floating parameters in the
+            fit. If None (default) only the chi2 will be calculated and ndf will
+            be set to the number of bins
     Returns:
         tuple: chi2 and ndf as floats
     """
-    n_float_pars = fit_res.floatParsFinal().getSize()
     n_bins = frame.GetNbinsX()
+    if fit_res is not None:
+        n_float_pars = fit_res.floatParsFinal().getSize()
+        logging.debug('fit results have {} floating parameters'
+                      .format(n_float_pars))
+    else:
+        n_float_pars = 0
+        logging.debug('No fit result passed')
+
     ndf = n_bins - n_float_pars
 
     # reduced chi square between pdf and histogram assuming n_float_pars free
@@ -111,9 +119,9 @@ def get_chi2_ndf(fit_res, frame, pdfname, histname):
     chi2_ndf = frame.chiSquare(pdfname, histname, n_float_pars)
     chi2 = chi2_ndf * ndf
 
-    logging.debug('fit results have {} floating parameters and histogram uses '
-                  '{} bins. Reduced chi2 from frame is {:.2f}'
-                  .format(n_float_pars, n_bins, chi2_ndf))
+    logging.debug('Reduced chi2 from frame is {:.2f}. Have {} bins in histogram '
+                  'and {} floating parameters -> chi2 / ndf = {:.2f} / {}'
+                  .format(chi2_ndf, n_bins, n_float_pars, chi2, ndf))
 
     return chi2, ndf
 

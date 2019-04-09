@@ -201,8 +201,8 @@ class FitModel(object):
         info_text = []
         if fitresname is not None:
             fit_res = wsp.genobj(fitresname)
-            chi2, ndf = get_chi2_ndf(fit_res, frame, 'full_pdf_curve',
-                                     'data_hist')
+            chi2, ndf = get_chi2_ndf(frame, 'full_pdf_curve', 'data_hist',
+                                     fit_res)
             info_text.append((0.15, 0.875,
                               '#chi^{{2}}/ndf = {:.1f} / {}'.format(chi2, ndf)))
 
