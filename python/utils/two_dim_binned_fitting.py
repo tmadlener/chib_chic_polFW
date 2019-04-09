@@ -340,7 +340,7 @@ class BinnedFitModel(object):
         for bin_name in self.bins:
             frame = fit_var.frame(rf.Title('Fit Results'))
 
-            plotname = '{}_{}'.format('M_fullModel', bin_name)
+            plotname = '{}_{}'.format(self.full_model, bin_name)
             full_pdf = wsp.pdf(plotname)
 
             full_pdf.paramOn(frame, rf.Layout(0.1, 0.9, 0.9), rf.Format('NEU', rf.AutoPrecision(2)))
