@@ -1,0 +1,37 @@
+{
+  "bin_vars": ["JpsiPt", "abs(costh_HX_fold)"],
+  "binning": ["12, 30", "0, 0.075, 0.15, 0.225, 0.3, 0.375, 0.45, 0.625"],
+  "fit_variable": "mQ",
+  "fit_range": [3.325, 3.725],
+
+  "full_model": {
+    "name": "M_massModel",
+    "type": "SUM"
+  },
+
+  "sub_models": [
+    {
+      "name": "M_chic2",
+      "event_yield": "Nchic2",
+      "expression": "RooDoubleCB::{}({}, CBmass2, CBsigma2, CBalpha2_L, CBn2_L, CBalpha2_R, CBn2_R)",
+      "plot": {"line": 7, "color": 632, "label": "#chi_{c2}"}
+    }
+  ],
+
+  "expression_strings": [ ],
+
+  "proto_parameters": [
+    ["Nchic2", "[1000, 0, 100000]"],
+    ["CBmass2", "[3.54, 3.49, 3.58]"],
+    ["CBsigma2", "[0.006, 0.003, 0.02]"],
+    ["CBalpha2_L", "[0.6, 0.2, 2.5]"],
+    ["CBn2_L", "[2.5, 1.8, 5.0]"],
+    ["CBalpha2_R", "[0.6, 0.2, 5.0]"],
+    ["CBn2_R", "[2.5, 1.8, 5.0]"]
+  ],
+
+  "plot_config": {
+    "legpos": [0.18, 0.5, 0.38, 0.7]
+  }
+
+}
