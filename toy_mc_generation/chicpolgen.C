@@ -443,6 +443,12 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
   double pT_chi;    conditionalBranch(tr, pT_chi, "gen_chicPt", store_config.storeBranches, storeAllBranches);
   double pT;            conditionalBranch(tr, pT, "gen_JpsiPt", store_config.storeBranches, storeAllBranches);
+  double phi_psi;   conditionalBranch(tr, phi_psi, "gen_JpsiPhi", store_config.storeBranches, storeAllBranches);
+  double phi_chi;   conditionalBranch(tr, phi_chi, "gen_chicPhi", store_config.storeBranches, storeAllBranches);
+  double p_psi;      conditionalBranch(tr, p_psi, "gen_JpsiP", store_config.storeBranches, storeAllBranches);
+  double p_chi;      conditionalBranch(tr, p_chi, "gen_chicP", store_config.storeBranches, storeAllBranches);
+
+
 #if GENRAPIDITY == 1
   double pL_chi;     //   conditionalBranch(tr, pL_chi,         "pL_chi/D" , "pL_chi", store_config.storeBranches, storeAllBranches);
 #endif
@@ -458,12 +464,15 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
   double pT_gamma;      conditionalBranch(tr, pT_gamma, "gen_photonPt", store_config.storeBranches, storeAllBranches);
   double pL_gamma;      conditionalBranch(tr, pL_gamma, "gen_photonPl", store_config.storeBranches, storeAllBranches);
   double y_gamma;       conditionalBranch(tr, y_gamma, "gen_photonEta", store_config.storeBranches, storeAllBranches);
+  double phi_gamma;     conditionalBranch(tr, phi_gamma, "gen_photonPhi", store_config.storeBranches, storeAllBranches);
 
   double pT_lepP;       conditionalBranch(tr, pT_lepP, "gen_muPPt", store_config.storeBranches, storeAllBranches);
   double eta_lepP;      conditionalBranch(tr, eta_lepP, "gen_muPEta", store_config.storeBranches, storeAllBranches);
+  double phi_lepP;      conditionalBranch(tr, phi_lepP, "gen_muPPhi", store_config.storeBranches, storeAllBranches);
 
   double pT_lepN;       conditionalBranch(tr, pT_lepN, "gen_muNPt", store_config.storeBranches, storeAllBranches);
   double eta_lepN;      conditionalBranch(tr, eta_lepN, "gen_muNEta", store_config.storeBranches, storeAllBranches);
+  double phi_lepN;      conditionalBranch(tr, phi_lepN, "gen_muNPhi", store_config.storeBranches, storeAllBranches);
 
   // int inAcc0;            conditionalBranch(tr, inAcc0, "inAcc0", store_config.storeBranches, storeAllBranches);
   // int inAcc1;            conditionalBranch(tr, inAcc1, "inAcc1", store_config.storeBranches, storeAllBranches);
@@ -491,22 +500,28 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
   // smeared variables with "_sm" postfix
   double pT_chi_sm;     conditionalBranch(tr, pT_chi_sm, "chicPt", store_config.storeBranches, storeAllBranches);
   double y_chi_sm;     conditionalBranch(tr, y_chi_sm, "chicRap", store_config.storeBranches, storeAllBranches);
+  double phi_chi_sm;    conditionalBranch(tr, phi_chi_sm, "chicPhi", store_config.storeBranches, storeAllBranches);
+
+
   double M_chi_sm;      conditionalBranch(tr, M_chi_sm, "mumugammaMass", store_config.storeBranches, storeAllBranches);
   double qM_chi_sm;      conditionalBranch(tr, qM_chi_sm, "chicMass", store_config.storeBranches, storeAllBranches);
 
   double pT_gamma_sm;     conditionalBranch(tr, pT_gamma_sm, "photonPt", store_config.storeBranches, storeAllBranches);
   double y_gamma_sm;     conditionalBranch(tr, y_gamma_sm, "photonEta", store_config.storeBranches, storeAllBranches);
-  // double eta_gamma_sm;     conditionalBranch(tr, eta_gamma_sm, "eta_gamma_sm", store_config.storeBranches, storeAllBranches);
+  double phi_gamma_sm;     conditionalBranch(tr, phi_gamma_sm, "photonPhi", store_config.storeBranches, storeAllBranches);
 
   double pT_jpsi_sm;     conditionalBranch(tr, pT_jpsi_sm, "JpsiPt", store_config.storeBranches, storeAllBranches);
   double y_jpsi_sm;     conditionalBranch(tr, y_jpsi_sm, "JpsiRap", store_config.storeBranches, storeAllBranches);
   double M_jpsi_sm;      conditionalBranch(tr, M_jpsi_sm, "JpsiMass", store_config.storeBranches, storeAllBranches);
+  double phi_jpsi_sm;      conditionalBranch(tr, phi_jpsi_sm, "JpsiPhi", store_config.storeBranches, storeAllBranches);
 
   double pT_lepP_sm;     conditionalBranch(tr, pT_lepP_sm, "muPPt", store_config.storeBranches, storeAllBranches);
   double eta_lepP_sm;     conditionalBranch(tr, eta_lepP_sm, "muPEta", store_config.storeBranches, storeAllBranches);
+  double phi_lepP_sm;     conditionalBranch(tr, phi_lepP_sm, "muPPhi", store_config.storeBranches, storeAllBranches);
 
   double pT_lepN_sm;     conditionalBranch(tr, pT_lepN_sm, "muNPt", store_config.storeBranches, storeAllBranches);
   double eta_lepN_sm;     conditionalBranch(tr, eta_lepN_sm, "muNEta", store_config.storeBranches, storeAllBranches);
+  double phi_lepN_sm;     conditionalBranch(tr, phi_lepN_sm, "muNPhi", store_config.storeBranches, storeAllBranches);
 
   double Mchic;    conditionalBranch(tr, Mchic, "Q_value_gen", store_config.storeBranches, storeAllBranches);
 
@@ -527,6 +542,10 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
   // double ca_mu_mu;     conditionalBranch(tr, ca_mu_mu, "ca_mu_mu", store_config.storeBranches, storeAllBranches);
   // double ca_sm_gamma_jpsi;     conditionalBranch(tr, ca_sm_gamma_jpsi, "ca_sm_gamma_jpsi", store_config.storeBranches, storeAllBranches);
   // double ca_sm_mu_mu;     conditionalBranch(tr, ca_sm_mu_mu, "ca_sm_mu_mu", store_config.storeBranches, storeAllBranches);
+
+
+  double lab_angle_psi_gamma;    conditionalBranch(tr, lab_angle_psi_gamma, "gen_angle_psi_gamma_lab", store_config.storeBranches, storeAllBranches);
+  double lab_angle_psi_gamma_sm;    conditionalBranch(tr, lab_angle_psi_gamma_sm, "angle_psi_gamma_lab", store_config.storeBranches, storeAllBranches);
 
   // double lepP_eff, lepN_eff;
   double lepP_eff_sm, lepN_eff_sm;
@@ -674,8 +693,6 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
 
 
-
-
     const double angdistr_max = 0.02;
     double angdistr_rnd;
 
@@ -732,8 +749,8 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
       y_chi = chi.Rapidity();
 #endif
 
-
-
+      phi_chi = chi.Phi() * 180 / PIG;
+      p_chi = chi.P();
 
       // double sinTH_psi  = 100.;
       const double PHI_psi = 2. * PIG * gRandom->Rndm();
@@ -978,6 +995,8 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     pT = psi.Perp();
     // pL = psi.Pz();
     y  = psi.Rapidity();
+    phi_psi = psi.Phi() * 180 / PIG;
+    p_psi = psi.P();
 
 
  // boost gamma from the chic rest frame into the proton-proton CM frame:
@@ -990,7 +1009,9 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     pT_gamma = gamma.Perp();
     pL_gamma = gamma.Pz();
     y_gamma  = gamma.Rapidity();
+    phi_gamma = gamma.Phi() * 180 / PIG;
 
+    lab_angle_psi_gamma = cos(psi.Angle(gamma.Vect()));
 
  // lepton 4-momentum in the psi rest frame, wrt the "natural" polarization axes (z = psi direction in the chic rest frame):
 
@@ -1119,11 +1140,11 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
     pT_lepN = lepN.Perp();
     eta_lepN = lepN.PseudoRapidity();
-
+    phi_lepN = lepN.Phi() * 180 / PIG;
 
     pT_lepP = lepP.Perp();
     eta_lepP = lepP.PseudoRapidity();
-
+    phi_lepP = lepP.Phi() * 180 / PIG;
 
   // accepted events:
 
@@ -1162,20 +1183,28 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     pT_chi_sm = smearedChi.Pt();
     y_chi_sm = smearedChi.Rapidity();
     M_chi_sm = smearedChi.M();
+    phi_chi_sm = smearedChi.Phi() * 180 / PIG;
 
     pT_jpsi_sm = smearedJpsi.Pt();
     y_jpsi_sm = smearedJpsi.Rapidity();
     M_jpsi_sm = smearedJpsi.M();
+    phi_jpsi_sm = smearedJpsi.Phi() * 180 / PIG;
+
+    lab_angle_psi_gamma_sm = cos(smearedJpsi.Angle(smearedGamma.Vect()));
 
     qM_chi_sm = M_chi_sm - M_jpsi_sm + MdimuonPDG;
 
     pT_gamma_sm = smearedGamma.Pt();
     y_gamma_sm = smearedGamma.Rapidity();
+    phi_gamma_sm = smearedGamma.Phi() * 180 / PIG;
 
     pT_lepP_sm = smearedLepP.Pt();
     eta_lepP_sm = smearedLepP.Eta();
+    phi_lepP_sm = smearedLepP.Phi() * 180 / PIG;
+
     pT_lepN_sm = smearedLepN.Pt();
     eta_lepN_sm = smearedLepN.Eta();
+    phi_lepN_sm = smearedLepN.Phi() * 180 / PIG;
 
     //  filling of the ntuple:
 
