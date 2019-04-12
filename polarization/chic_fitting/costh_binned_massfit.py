@@ -76,7 +76,7 @@ def get_load_vars(fit_var, bin_var, binning, weights=None):
             bin_var_bounds = [-np.max(binning), np.max(binning)]
 
     variables = [
-        '{}[3.325, 3.725]'.format(fit_var),
+        '{}[3.345, 3.725]'.format(fit_var),
         '{}[{}, {}]'.format(bin_var_name, *bin_var_bounds),
     ]
     if weights is not None:
