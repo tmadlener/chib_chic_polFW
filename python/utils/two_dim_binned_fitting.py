@@ -16,7 +16,7 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
 from utils.roofit_utils import (
-    get_var, try_factory, set_var, ws_import, fix_params, get_chi2_ndf
+    get_var, try_factory, set_var, ws_import, fix_params, get_chi2_ndf, get_var_err
 )
 from utils.misc_helpers import (
     parse_binning, get_bin_cut_root, combine_cuts, create_random_str, replace_all, parse_func_var
@@ -237,18 +237,21 @@ class BinnedFitModel(object):
         sim_nll = self._create_nll(wsp, nll_args)
 
         minimizer = self._setup_minimizer(sim_nll, verbosity)
-        logging.info('starting migrad')
-        minimizer.migrad()
-        minimizer.migrad()
-        minimizer.migrad()
-        logging.info('starting minos')
-        minimizer.minos()
 
-        fit_results = minimizer.save()
+        for i in range(3):
+            logging.info('starting migrad')
+            minimizer.migrad()
+            logging.info('starting minos')
+            minimizer.minos()
 
-        fit_results.Print()
-        logging.info('Fit status = {}, covQual = {}'
-                     .format(fit_results.status(), fit_results.covQual()))
+            fit_results = minimizer.save()
+
+            fit_results.Print()
+            logging.info('Fit status = {}, covQual = {}'
+                         .format(fit_results.status(), fit_results.covQual()))
+
+            if fit_results.status() == 0 and fit_results.covQual() == 3:
+                break
 
         set_var(wsp, '__fit_status__', fit_results.status(), create=True)
         set_var(wsp, '__cov_qual__', fit_results.covQual(), create=True)
@@ -391,7 +394,7 @@ class BinnedFitModel(object):
                     vals.append([get_var(wsp, p_getname.format(param=param, x_var=bin_var_X, y_var=bin_var_Y, i=i, j=j)) for j in xrange(len(self.binning[bintovar]) - 1)])
 
                 #plot graphs as a function of binning var
-                graph = self.plot_free_pars(bin_var, vals)
+                graph = self.plot_free_pars(wsp, bin_var, vals)
 
                 #setting the correct mean (errors adjust accordingly), setting graph name
                 for i in xrange(len(self.binning[1-bintovar]) - 1):
@@ -483,7 +486,7 @@ class BinnedFitModel(object):
         return meanval
 
 
-    def plot_free_pars(self, bin_var, vals_var):
+    def plot_free_pars(self, wsp, bin_var, vals_var):
         """
         function that does the plotting of a parameter as a function of either
         binning variable
@@ -496,12 +499,14 @@ class BinnedFitModel(object):
         dependent = isinstance(vals_var[0][0], r.RooFormulaVar)
 
         for xplot in xrange(len(vals_var)):
-            y_val = np.array([v.getVal() for v in vals_var[xplot]])
             #TODO: define uncertainties for dependent vars
             if dependent:
-                y_elo = np.array([0 for v in vals_var[xplot]])
+                y_all = [get_var_err(wsp, str(v.getTitle()), wsp.genobj('fit_res_two_dim')) for v in vals_var[xplot]]
+                y_val = np.array([y_all[i][0] for i in xrange(len(vals_var[xplot]))])
+                y_elo = np.array([y_all[i][1] for i in xrange(len(vals_var[xplot]))])
                 y_ehi = y_elo
             else:
+                y_val = np.array([v.getVal() for v in vals_var[xplot]])
                 y_elo = np.array([v.getErrorLo() for v in vals_var[xplot]]) # this returns negative values
                 y_elo *= -1 # TGraphAsymmErrors expects positive values
                 y_ehi = np.array([v.getErrorHi() for v in vals_var[xplot]])

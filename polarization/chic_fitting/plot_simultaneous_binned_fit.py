@@ -30,8 +30,12 @@ def store_proto_pars(wsp, model, outfile):
             v_dep = defn[1].split(', ')
             if (not any([par_dep in v_dep for par_dep, v_str_dep in model.proto_params])):
                 comvars[title] = defn
-        if not isinstance(defn, (tuple, list)) or ("r_chic2_chic1" in title):
+        else:
             simvars.append(title)
+
+    for par in model.nevent_yields + ['r_chic2_chic1']:
+        if par not in simvars:
+            simvars.append(par)
 
     outf = r.TFile.Open(outfile, 'recreate')
 
