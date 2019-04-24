@@ -154,14 +154,14 @@ def main(args):
     if 'bin_variable' in bin_sel_info:
         bin_var = bin_sel_info['bin_variable']
 
-
-    make_fit_res_plots(ws, bin_sel_info['costh_bins'],
-                       args.state, outdir, mass_model, bin_var,
-                       logy=args.logy,
-                       configfile=args.configfile, ppars=args.print_pars,
-                       corr_matrix=args.corr_matrix, refit=args.refit,
-                       fix_shape=args.fix_shape, weighted_fit=args.weight,
-                       verbose=args.verbose)
+    if not args.no_fit_plots:
+        make_fit_res_plots(ws, bin_sel_info['costh_bins'],
+                           args.state, outdir, mass_model, bin_var,
+                           logy=args.logy,
+                           configfile=args.configfile, ppars=args.print_pars,
+                           corr_matrix=args.corr_matrix, refit=args.refit,
+                           fix_shape=args.fix_shape, weighted_fit=args.weight,
+                           verbose=args.verbose)
 
     if args.graphs:
         outfile = '/'.join([outdir, 'free_fit_param_graphs.root'])
@@ -204,6 +204,9 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose', help='Put some more status info from '
                         'the fit onto the plots', action='store_true',
                         default=False)
+    parser.add_argument('--no-fit-plots', help='Do not create the fit plots '
+                        'overlaying the fitted function with the mass '
+                        'distribution', action='store_true', default=False)
 
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--chic', action='store_const', dest='state',
