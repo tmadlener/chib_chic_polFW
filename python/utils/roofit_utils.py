@@ -171,6 +171,9 @@ def _get_var_vals(wsp, var, snapshots):
     central = []
     err_low = []
     err_high = []
+    # symmetric (HESSE) uncertainties, just in case we need them later
+    err_sym = []
+
     wvar = get_var(wsp, var)
 
     for snap in snapshots:
@@ -179,6 +182,14 @@ def _get_var_vals(wsp, var, snapshots):
         central.append(wvar.getVal())
         err_low.append(-wvar.getErrorLo())
         err_high.append(wvar.getErrorHi())
+        err_sym.append(wvar.getError())
+
+    # check if all the asymmetric uncertainties are present
+    if np.any(np.array(err_low) == 0) or np.any(np.array(err_high) == 0):
+        logging.warning('Some of the asymmetric (MINOS) uncertainties for {} are'
+                        ' not properly determined, switching to symmetric '
+                        '(HESSE) uncertainties'.format(var))
+        err_low = err_high = err_sym
 
     return np.array(central), np.array(err_low), np.array(err_high)
 

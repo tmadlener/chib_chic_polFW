@@ -20,6 +20,7 @@ from utils.chib_fitting import ChibMassModel
 from utils.config_fitting import ConfigFitModel
 from utils.misc_helpers import cond_mkdir, get_bin_cut_root, get_bin_edges
 from utils.roofit_utils import get_var_graph, get_args, get_var
+from utils.graph_utils import has_sym_uncer
 
 from common_func import get_bin_sel_info
 
@@ -116,6 +117,11 @@ def store_graphs(wsp, outfile, bin_info, mass_model):
         graph = get_var_graph(wsp, 'snap_costh_bin_{}', param, n_bins,
                               costh_binning, costh_means,
                               fit_res_base='fit_res_costh_bin_{}')
+        if has_sym_uncer(graph):
+            graph.SetTitle('symmetric')
+        else:
+            graph.SetTitle('asymmetric')
+
         graph.SetName('_'.join([param, 'v', 'costh']))
         graph.Write('', r.TObject.kWriteDelete)
 

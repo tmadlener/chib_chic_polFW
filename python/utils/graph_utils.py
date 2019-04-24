@@ -434,3 +434,18 @@ def divide_hist(graph, hist):
     # convert the denominator to the same type and then use the existing
     # functionality to divide graphs
     return divide_graphs(graph, type(graph)(hist))
+
+
+def has_sym_uncer(graph):
+    """
+    Check if the uncertainties along the y-axis are symmetric
+
+    Args:
+        graph (r.TGraphAsymmErrors)
+
+    Returns:
+        bool: True if the all uncertainties along the y-axis have the same value
+            for low and high direction
+    """
+    _, _, elo, ehi = get_errors(graph)
+    return np.allclose(elo, ehi)
