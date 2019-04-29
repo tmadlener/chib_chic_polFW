@@ -28,7 +28,7 @@ from utils.graph_utils import assign_x
 
 import utils.RooDoubleCB
 
-N_BINS_FIT_PLOTS = 50
+N_BINS_FIT_PLOTS = 80
 
 def get_bins(binning1, binning2, binvar1, binvar2):
     """
@@ -525,6 +525,7 @@ class BinnedFitModel(object):
         Make the frame containing the pulls
         """
         pulls = frame.pullHist('data_hist', 'full_pdf_curve', True)
+        pulls.SetMarkerSize(0.8)
         pull_frame = get_var(wsp, self.fit_var).frame(rf.Bins(N_BINS_FIT_PLOTS))
         pull_frame.addPlotable(pulls, 'P')
 
@@ -562,6 +563,13 @@ class BinnedFitModel(object):
                             rf.LineWidth(2),
                             rf.Name(name))
             leg.AddEntry(frame.getCurve(name), settings['label'], 'l')
+
+
+        # calculate the bin width in MeV
+        bw_mev = lambda v, n: (v.getMax() - v.getMin()) / n * 1000
+        frame.GetYaxis().SetTitleOffset(1.3)
+        frame.GetYaxis().SetTitle('Events / {:.1f} MeV'
+                                  .format(bw_mev(fit_var, N_BINS_FIT_PLOTS)))
 
         # At least for debugging
         frame.SetTitle(cut)
