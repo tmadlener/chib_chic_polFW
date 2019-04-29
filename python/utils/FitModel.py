@@ -77,7 +77,10 @@ class FitModel(object):
             rf.NumCPU(4),
             rf.Save(True),
             rf.Extended(True),
-            rf.Offset(False)
+            rf.Offset(False),
+            rf.Minimizer("Minuit2", "MIGRAD"),
+            rf.Timer(True)
+
         )
 
         if weighted_fit:
