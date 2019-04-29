@@ -241,3 +241,18 @@ def add_auxiliary_info(pad, years, pos='right'):
     latex.SetTextSize(EXTRA_TEXT_SIZE * PAD['t'])
     latex.SetTextAlign(text_align)
     latex.DrawLatex(pos_x, pos_y - REL_EXTRA_DY * CMS_TEXT_SIZE * PAD['t'], EXTRA_TEXT)
+
+
+def set_basic_style():
+    """
+    Set some margins and borders to have somewhat decent looking plots
+    """
+    r.gStyle.SetPadTopMargin(0.05)
+    r.gStyle.SetPadBottomMargin(0.13)
+    r.gStyle.SetPadRightMargin(0.03)
+    r.gStyle.SetPadLeftMargin(0.16)
+    r.gStyle.SetTitleFont(42, "XYZ")
+    r.gStyle.SetTitleSize(0.05, "XYZ")
+    r.gStyle.SetTitleXOffset(0.9)
+    r.gStyle.SetTitleYOffset(1.5)
+
