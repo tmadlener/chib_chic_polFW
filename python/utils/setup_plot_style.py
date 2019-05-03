@@ -188,7 +188,7 @@ def add_lumi_info(pad, lumi_text):
 
 def add_auxiliary_info(pad, years, pos='right'):
     """Add the auxiliary information to the passed pad"""
-    LUMINOSITY = {'2012': '19.7 fb^{-1} (8 TeV)',
+    LUMINOSITY = {'2012': '19.1 fb^{-1} (8 TeV)',
                   '2016': '4.6 fb^{-1} (13 TeV)',
                   '2017': '42.4 fb^{-1} (13 TeV)'}
 
