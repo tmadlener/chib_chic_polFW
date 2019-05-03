@@ -17,6 +17,8 @@ from utils.roofit_utils import (
 from utils.misc_helpers import create_random_str
 from utils.plot_helpers import setup_latex, put_on_latex
 
+# number of bins that are used for plotting the data mass distribution
+N_BINS_MASS = 76
 
 class FitModel(object):
     """
@@ -164,7 +166,7 @@ class FitModel(object):
             plot_data = plot_data.reduce(add_cut)
 
         # TODO: find a better heuristic to do this here
-        nbins = 80
+        nbins = N_BINS_MASS
         nevents_data = plot_data.numEntries()
         logging.debug('Number of events in reduced sample: {}'
                       .format(nevents_data))
