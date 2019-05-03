@@ -138,7 +138,8 @@ struct sel_config {
 
   std::unique_ptr<Selector> getMuonSelector() const {
     if (muon_sel) {
-      return std::make_unique<LooseMuonSelector>();
+      // return std::make_unique<LooseMuonSelector>();
+      return std::make_unique<MinPtMaxEtaSelector>(3.5, 1.6);
     }
     return std::make_unique<AllSelector>();
   }
@@ -455,6 +456,8 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
   // double pL;         //   conditionalBranch(tr, pL,             "pL/D" , "pL", store_config.storeBranches, storeAllBranches);
   double y_chi;         conditionalBranch(tr, y_chi, "gen_chicRap", store_config.storeBranches, storeAllBranches);
   double y;             conditionalBranch(tr, y, "gen_JpsiRap", store_config.storeBranches, storeAllBranches);
+
+  double gen_cosTH_HX; conditionalBranch(tr, gen_cosTH_HX, "gen_cosTH_HX", store_config.storeBranches, storeAllBranches);
 
   double Mchi;
   double Mpsi;
@@ -1250,6 +1253,9 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
     const auto Angles_PX = calcAnglesInFrame(smearedJpsi, smearedGamma, RefFrame::PX);
     cosTH_PX_sm = Angles_PX.costh;
+
+    const auto gen_Angles_HX = calcAnglesInFrame(psi, gamma, RefFrame::HX);
+    gen_cosTH_HX = gen_Angles_HX.costh;
 
     // add the desired efficiencies
     if (muonEffs) {

@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -J ToyMCGeneration
 #SBATCH -D /afs/hephy.at/work/t/tmadlener/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/
-#SBATCH -o /afs/hephy.at/work/t/tmadlener/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/logfiles/runToyMCGen_%A.out
+#SBATCH -o /afs/hephy.at/work/t/tmadlener/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/logfiles/runToyMCGen_%A_%a.out
 
 source ${CHIB_CHIC_POLFW_DIR}/scripts/bash_functions.sh
 
