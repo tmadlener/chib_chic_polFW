@@ -551,6 +551,55 @@ class TestRebin(unittest.TestCase):
         self.assertEqual(hu._get_nbins(re_hist), (2,))
 
 
+class TestRebin1DBinning(unittest.TestCase):
+    """
+    Tests checking that binning into a non-uniform binning works
+    """
+    @patch('utils.hist_utils.logging')
+    def test_non_compatible_binning(self, mock_logger):
+        hist = _get_hist(1)
+        non_comp_binning = np.linspace(0, 1, 7)
+
+        exp_err = 'Cannot rebin histogram with binning {} to target binning {}'
+        self.assertTrue(hu.rebin_1d_binning(hist, non_comp_binning) is None)
+        mock_logger.error.assert_called_with(exp_err.format(hu.get_binning(hist),
+                                                            non_comp_binning))
+
+    def test_uniform_rebinning(self):
+        hist = _get_hist(1)
+        targ_bin = np.linspace(0, 1, 6)
+
+        # since hist has 10 bin, rebin(hist, 5) should return the same histogram
+        # as the one when we rebin it according to a custom binning
+        npt.assert_allclose(hu.get_array(hu.rebin_1d_binning(hist, targ_bin)),
+                            hu.get_array(hu.rebin(hist, [(0, 5)])))
+
+
+    def test_non_uniform_binning(self):
+        hist = _get_hist(1)
+        targ_bin = np.array([0, 0.1, 0.2, 0.4, 0.6, 0.8, 1.0])
+
+        # manually rebin this histogram here, since we now what we want
+        vals = hu.get_array(hist)
+        targ_vals = np.array([vals[0], vals[1], vals[2] + vals[3],
+                              vals[4] + vals[5], vals[6] + vals[7],
+                              vals[8] + vals[9]])
+
+        npt.assert_allclose(hu.get_array(hu.rebin_1d_binning(hist, targ_bin)),
+                            targ_vals)
+
+    def test_non_full_coverage(self):
+        """
+        Check that if the target binning does not cover the full range of the
+        original histogram things still work
+        """
+        hist = _get_hist(1)
+        targ_bin = np.linspace(0.1, 0.6, 6)
+        targ_vals = hu.get_array(hist)[1:6]
+
+        npt.assert_allclose(hu.get_array(hu.rebin_1d_binning(hist, targ_bin)),
+                            targ_vals)
+
 
 if __name__ == '__main__':
     unittest.main()

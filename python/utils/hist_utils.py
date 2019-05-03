@@ -18,7 +18,7 @@ from root_numpy import __version__ as rnp_version
 
 from utils.misc_helpers import (
     make_iterable, create_random_str, get_vals_from_rwbuffer, replace_all,
-    is_divisable
+    is_divisable, get_bin_centers
 )
 
 def draw_var_to_hist(tree, hist, var, cut='', weight=None):
@@ -704,7 +704,7 @@ def get_array(hist, overflow=False, errors=False):
     return vals
 
 
-def find_bin(binning, value):
+def find_bin(binning, value, silent=False):
     """
     Find the bin index in the passed binning (in a numpy friendly way)
 
@@ -712,6 +712,8 @@ def find_bin(binning, value):
         binning (numpy.array): The values of the bin borders
         value (numpy.array): The values for which the bin index should
             be found
+        silent (boolean, optional): If True, do not emit a warning when one of
+            the passed values can not be put into the binning (default False)
 
     Returns:
         numpy.array (int): The bin indices
@@ -728,7 +730,8 @@ def find_bin(binning, value):
     # The rows can be checked to see if each value was categorized. If it was
     # than it simply is an array with numbers increasing by one every row and
     # giving a value for all input values
-    if not (len(rows) == len(value) and np.all(np.diff(rows) == 1)):
+    if not silent and not (len(rows) == len(value)
+                           and np.all(np.diff(rows) == 1)):
         logging.warn('When trying to find the bin indices at least one value '
                      'could not be attributed to a bin in the passed binning')
 
@@ -1012,3 +1015,40 @@ def rebin(hist, targ_bins):
         return hist.Rebin2D(rebin_factors[0], rebin_factors[1], name)
 
     return hist.Rebin(rebin_factors[0], name)
+
+
+def rebin_1d_binning(hist, targ_binning):
+    """
+    Rebin a 1d histogram into a different, not necessarily uniform, binning.
+
+    Args:
+        hist (ROOT.TH1D): 1d histogram that should be rebinned
+        targ_binning (np.array): Target binning
+
+    Returns:
+        ROOT.TH1D: Rebinned histogram if the rebinning is possible, otherwise
+            None
+    """
+    orig_binning = get_binning(hist)
+    # Check if the target binning is compatible with the original binning
+    if not np.all([np.abs(orig_binning - v).min() < 1e-7 for v in targ_binning]):
+        logging.error('Cannot rebin histogram with binning {} to target binning '
+                      '{}'.format(orig_binning, targ_binning))
+        return None
+
+    # Now loop over all original bin centers and check into which bin they fall
+    orig_centers = get_bin_centers(orig_binning)
+
+    orig_vals = get_array(hist)
+    rebin_vals = np.zeros(len(targ_binning) - 1)
+
+    for obin, bin_c in enumerate(orig_centers):
+        # here we have to loop over every bin center, because find_bin does not
+        # give any information on which values cannot be attributed to a bin if
+        # we pass all of them simultaneously, but if we pass one by one we can
+        # check whether we have found a bin
+        rbin = find_bin(targ_binning, np.array([bin_c]), True)
+        if len(rbin): # If we have a bin, then the list will contain one idx
+            rebin_vals[rbin] += orig_vals[obin]
+
+    return from_array(rebin_vals, targ_binning)
