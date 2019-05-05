@@ -244,12 +244,21 @@ def make_plot_comp_ana_shapes(graph, variable):
     return can
 
 
+def get_graph(graphfile, corrmap, corr):
+    """
+    Get the graph from the file and possibly apply corrections
+    """
+    graph = graphfile.Get(RATIO_NAME)
+    if corr:
+        graph = divide_hist(graph, corrmap)
+    return graph
+
+
 def main(args):
     """Main"""
     set_TDR_style()
 
     cntfile = r.TFile.Open(args.centralfile)
-    graph = cntfile.Get(RATIO_NAME)
 
     # Open correction maps here, to keep histos alive
     chi1_cf = r.TFile.Open(args.chi1corrfile)
@@ -258,10 +267,14 @@ def main(args):
     var = args.direction
     corrmap = get_correction_map(var, chi1_cf, chi2_cf)
 
-    if not args.uncorr:
-        graph = divide_hist(graph, corrmap)
-
+    graph = get_graph(cntfile, corrmap, not args.uncorr)
     can = make_plot_comp_ana_shapes(graph, var)
+
+    if args.compgraph is not None:
+        cmpfile = r.TFile.Open(args.compgraph)
+        cmpgraph = get_graph(cmpfile, corrmap, not args.uncorr)
+
+        mkplot(cmpgraph, can=can, drawOpt='samePE', attr=RATIO_ATTR[1:])
 
     can.SaveAs(args.outfile)
 
@@ -281,6 +294,9 @@ if __name__ == '__main__':
                         help='Do not correct the ratio')
     parser.add_argument('-o', '--outfile', help='Name of the produced pdf file',
                         default='ratio.pdf')
+    parser.add_argument('-c', '--compgraph', help='Add a graph from this file '
+                        'as comparison (without any rescaling or fitting)',
+                        default=None)
 
     dir_sel = parser.add_mutually_exclusive_group()
     dir_sel.add_argument('--costh', action='store_const', dest='direction',
