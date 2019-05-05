@@ -12,6 +12,8 @@ import sys
 import re
 from os import path
 
+from utils.reporting import open_tex_file
+
 
 NICE_VARS = {'phi_HX_fold': r'\varphi^{HX}_{\text{fold}}', 'costh_HX_fold':
              r'|\cos\vartheta^{HX}|'}
@@ -66,9 +68,8 @@ def create_subfloat(plot, label):
     """
     Create a subfloat entry
     """
-    # print(r'\subfloat[][LABEL]{\includegraphics[width=0.5\linewidth]{PLOT}}'
-    print(r'\subfloat[][LABEL]{\rootfig{0.45}{PLOT}}'
-          .replace('LABEL', label).replace('PLOT', plot))
+    return (r'\subfloat[][LABEL]{\rootfig{0.45}{PLOT}}'
+            .replace('LABEL', label).replace('PLOT', plot))
 
 
 def create_figure(plots, bin_var, binning):
@@ -77,34 +78,40 @@ def create_figure(plots, bin_var, binning):
     """
     plots = sorted(plots, key=get_bin_idx)
 
+    ret_str = []
+
     fig_started = False
     for iplot, pname in enumerate(plots):
         if iplot % 6 == 0:
             if fig_started:
-                print(r'\end{figure}')
-                print('')
+                ret_str.append(r'\end{figure}')
+                ret_str.append('')
                 fig_started = False
             if not fig_started:
-                print(r'\begin{figure}')
+                ret_str.append(r'\begin{figure}')
+                ret_str.append('')
                 fig_started = True
 
         label_txt = LABEL_BASE[bin_var].format(NICE_VARS[bin_var],
                                                *binning[iplot])
-        create_subfloat(pname, label_txt)
+        ret_str.append(create_subfloat(pname, label_txt))
+
         if iplot % 2 != 0:
-            print('')
+            ret_str.append('')
 
     if fig_started:
-        print(r'\end{figure}')
+        ret_str.append(r'\end{figure}')
+
+    return '\n'.join(ret_str)
 
 
 def main(args):
     """Main"""
     bin_var, binning = get_binning(args.inputdir)
     plots = get_fit_res_names(args.inputdir)
-    create_figure(plots, bin_var, binning)
 
-
+    with open_tex_file(args.outfile) as tex_file:
+        tex_file.write(create_figure(plots, bin_var, binning))
 
 
 if __name__ == '__main__':
@@ -113,6 +120,8 @@ if __name__ == '__main__':
                                      'stub that contains all the fit results')
     parser.add_argument('inputdir', help='Input directory that contains the '
                         'plots (and also the bin info json)')
+    parser.add_argument('-o', '--outfile', help='Ouptut file name',
+                        default='fit_report.tex')
 
     clargs = parser.parse_args()
     main(clargs)
