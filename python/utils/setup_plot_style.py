@@ -186,7 +186,7 @@ def add_lumi_info(pad, lumi_text):
     latex.DrawLatex(1-PAD['r'], 1-PAD['t']+LUMI_TEXT_OFFSET*PAD['t'], lumi_text)
 
 
-def add_auxiliary_info(pad, years, pos='right'):
+def add_auxiliary_info(pad, years, pos='right', mc=False, prelim=False):
     """Add the auxiliary information to the passed pad"""
     LUMINOSITY = {'2012': '19.1 fb^{-1} (8 TeV)',
                   '2016': '4.6 fb^{-1} (13 TeV)',
@@ -198,10 +198,14 @@ def add_auxiliary_info(pad, years, pos='right'):
     CMS_TEXT_SIZE = 0.75
     CMS_TEXT_OFFSET = 0.1
 
-    EXTRA_TEXT = 'Preliminary'
+    EXTRA_TEXT = ''
+    if mc:
+        EXTRA_TEXT = 'Simulation'
+    if prelim:
+        EXTRA_TEXT += ' Preliminary'
+
     EXTRA_TEXT_FONT = 52
     EXTRA_TEXT_SIZE = 0.76 * CMS_TEXT_SIZE
-
 
 
     REL_POS_X = 0.045

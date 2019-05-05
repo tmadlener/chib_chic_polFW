@@ -223,7 +223,7 @@ def get_legend_keys(fit_res):
     return leg_entries
 
 
-def make_plot_comp_ana_shapes(graph, variable):
+def make_plot_comp_ana_shapes(graph, variable, is_mc=False):
     """
     Make the comparison plot with the analytical shapes
     """
@@ -234,13 +234,13 @@ def make_plot_comp_ana_shapes(graph, variable):
 
     can = mkplot(graph, drawOpt='PE', attr=RATIO_ATTR,
                  xRange=XRANGES[variable], xLabel=XLABELS[variable],
-                 yRange=[0, 0.75], yLabel=YLABEL)
+                 yRange=[0, 1.2] if is_mc else [0, 0.75], yLabel=YLABEL)
 
     mkplot(ana_shapes.values(), can=can, drawOpt='same', attr=SCEN_ATTR,
            legPos=LEG_POS[variable], legEntries=get_legend_keys(fit_res),
            legOpt='L')
 
-    add_auxiliary_info(can, [YEAR])
+    add_auxiliary_info(can, [YEAR], prelim=True, mc=is_mc)
     return can
 
 
@@ -268,7 +268,7 @@ def main(args):
     corrmap = get_correction_map(var, chi1_cf, chi2_cf)
 
     graph = get_graph(cntfile, corrmap, not args.uncorr)
-    can = make_plot_comp_ana_shapes(graph, var)
+    can = make_plot_comp_ana_shapes(graph, var, args.mc)
 
     if args.compgraph is not None:
         cmpfile = r.TFile.Open(args.compgraph)
@@ -297,6 +297,8 @@ if __name__ == '__main__':
     parser.add_argument('-c', '--compgraph', help='Add a graph from this file '
                         'as comparison (without any rescaling or fitting)',
                         default=None)
+    parser.add_argument('--mc', action='store_true', default=False,
+                        help='Put \'Simulation\' on plot')
 
     dir_sel = parser.add_mutually_exclusive_group()
     dir_sel.add_argument('--costh', action='store_const', dest='direction',
