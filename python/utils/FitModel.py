@@ -18,7 +18,7 @@ from utils.misc_helpers import create_random_str
 from utils.plot_helpers import setup_latex, put_on_latex
 
 # number of bins that are used for plotting the data mass distribution
-N_BINS_MASS = 76
+N_BINS_MASS = 100
 
 class FitModel(object):
     """
