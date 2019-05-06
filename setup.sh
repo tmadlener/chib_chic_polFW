@@ -29,4 +29,12 @@ if [[ -z "${CHIB_CHIC_POLFW_DIR+x}" ]] || $(check_args_flag "--force" ${@}); the
     if $(check_args_flag "--run-tests" ${@}); then
         run_tests
     fi
+
+    ## Set the latex command
+    ## Check if xelatex exists and use it, otherwise default to pdflatex
+    if type xelatex > /dev/null 2>&1; then
+        export LATEX_EXE=xelatex
+    else
+        export LATEX_EXE=pdflatex
+    fi
 fi

@@ -230,3 +230,52 @@ function print_var() {
     fi
 }
 export -f print_var
+
+## run the costh binned fits and also plot the results
+## Arguments:
+## 1 - input data file containing the data that are fitted
+## 2 - output directory into which the results are stored
+## 3 - config json file that contains the fit configuration
+## 4 - the binvariable
+## 5 - the binning
+function run_plot_fits() {
+    if [[ $# -ne 5 ]]; then
+        echo "usage: run_plot_fits DATAFILE OUTPUTDIR CONFIGFILE BINVAR BINNING"
+        return 64
+    fi
+
+    local infile=$1
+    local outdir=$2
+    local config=$3
+    local binvar=$4
+    local binning=$5
+
+    local FITTER=${CHIB_CHIC_POLFW_DIR}/polarization/chic_fitting/costh_binned_massfit.py
+    local PLOTTER=${CHIB_CHIC_POLFW_DIR}/polarization/chic_fitting/make_fit_plots.py
+    local REPORTGEN=${CHIB_CHIC_POLFW_DIR}/misc_scripts/make_fit_res_summary.py
+
+    local fitresfile=${outdir}/costh_binned_fit_results.root
+
+    mkdir -p ${outdir}
+    local logfile=${outdir}/run_fits.log
+
+    echo $(date) > ${logfile}
+
+    python $FITTER config --binning=${binning} --binvariable=${binvar} \
+           --fix-shape ${infile} ${fitresfile} ${config} >> ${logfile} 2>&1
+
+    echo $(date) >> ${logfile}
+
+    # rename logfile for plotting
+    logfile=${logfile/fits.log/plots.log}
+
+    python $PLOTTER --config --configfile ${outdir}/fit_model.json \
+           --fix-shape --graphs --verbose ${fitresfile} > ${logfile} 2>&1
+
+    mkdir -p ${outdir}/latex
+    cd ${outdir}/latex
+    python ${REPORTGEN} -o fit_report.tex
+    ${LATEX_EXE} fit_report.tex > /dev/null 2>&1 && rm fit_report.{log,aux}
+
+}
+export -f run_plot_fits

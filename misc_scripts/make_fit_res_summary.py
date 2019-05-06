@@ -10,7 +10,7 @@ import glob
 import json
 import sys
 import re
-from os import path
+from os import path, environ
 
 from utils.reporting import open_tex_file
 
@@ -23,6 +23,17 @@ LABEL_BASE = {'phi_HX_fold': r'${1:.0f} < {0} < {2:.0f}$',
 # maximum number of figures per page
 MAX_FIG_P_PAGE = 6
 SORT_RGX = re.compile(r'bin_([0-9]+)\.pdf')
+
+try:
+    LATEX_EXE = environ['LATEX_EXE']
+except KeyError:
+    LATEX_EXE = 'pdflatex'
+    pass
+
+PLOT_COMMAND = r'\includegraphics[width=0.5\linewidth]'
+if LATEX_EXE == 'xelatex':
+    PLOT_COMMAND = r'\rootfig{0.475}'
+
 
 def get_bin_idx(plotname):
     """
@@ -68,8 +79,9 @@ def create_subfloat(plot, label):
     """
     Create a subfloat entry
     """
-    return (r'\subfloat[][LABEL]{\rootfig{0.45}{PLOT}}'
-            .replace('LABEL', label).replace('PLOT', plot))
+    return (r'\subfloat[][LABEL]{PLTCMD{PLOT}}'
+            .replace('LABEL', label).replace('PLOT', plot)
+            .replace('PLTCMD', PLOT_COMMAND))
 
 
 def create_figure(plots, bin_var, binning):
