@@ -253,6 +253,7 @@ function run_plot_fits() {
     local FITTER=${CHIB_CHIC_POLFW_DIR}/polarization/chic_fitting/costh_binned_massfit.py
     local PLOTTER=${CHIB_CHIC_POLFW_DIR}/polarization/chic_fitting/make_fit_plots.py
     local REPORTGEN=${CHIB_CHIC_POLFW_DIR}/misc_scripts/make_fit_res_summary.py
+    local GRAPHPLOTTER=${CHIB_CHIC_POLFW_DIR}/misc_scripts/params_v_costh_plots.py
 
     local fitresfile=${outdir}/costh_binned_fit_results.root
 
@@ -269,13 +270,21 @@ function run_plot_fits() {
     # rename logfile for plotting
     logfile=${logfile/fits.log/plots.log}
 
-    python $PLOTTER --config --configfile ${outdir}/fit_model.json \
+    python $PLOTTER --config --configfile ${outdir}/fit_model.json --outdir ${outdir}/plots/ \
            --fix-shape --graphs --verbose ${fitresfile} > ${logfile} 2>&1
+
+
+    python $GRAPHPLOTTER --outdir ${outdir}/plots ${outdir}/plots/free_fit_param_graphs.root
+
 
     mkdir -p ${outdir}/latex
     cd ${outdir}/latex
-    python ${REPORTGEN} -o fit_report.tex
+
+    local bin_info_file=../$(basename ${fitresfile}| sed 's/.root/_bin_sel_info.json/')
+
+    python ${REPORTGEN} -o fit_report.tex ../plots/ ${bin_info_file} && \
     ${LATEX_EXE} fit_report.tex > /dev/null 2>&1 && rm fit_report.{log,aux}
+    cd -
 
 }
 export -f run_plot_fits

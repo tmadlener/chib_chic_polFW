@@ -7,6 +7,7 @@ free fit params
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
+r.gROOT.ProcessLine('gErrorIgnoreLevel = 1001')
 
 import numpy as np
 

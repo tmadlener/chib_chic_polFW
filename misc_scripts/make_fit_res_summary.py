@@ -12,6 +12,8 @@ import sys
 import re
 from os import path, environ
 
+from collections import OrderedDict
+
 from utils.reporting import open_tex_file
 
 
@@ -42,37 +44,42 @@ def get_bin_idx(plotname):
     return int(SORT_RGX.search(plotname).group(1))
 
 
-def get_binning(indir):
+def get_binning(bin_info_file):
     """
     Read the bin-info json and get the bin variable and the binning
     """
-    json_files = glob.glob(path.join(indir, '*.json'))
-    json_files.remove(path.join(indir, 'fit_model.json'))
-
-    if len(json_files) > 1:
-        print('Have more than 1 json file: ')
-        for ifile, filen in enumerate(json_files):
-            print('[{}] {}'.format(ifile, filen))
-        while 1:
-            ifile = raw_input('Chose one of the above files (q to quit): ')
-            if ifile == 'q':
-                sys.exit(1)
-            if ifile < len(json_files):
-                bin_info_file = json_files[ifile]
-    else:
-        bin_info_file = json_files[0]
-
     with open(bin_info_file, 'r') as bin_info_f:
         bin_info = json.load(bin_info_f)
 
     return bin_info['bin_variable'], bin_info['costh_bins']
 
 
-def get_fit_res_names(indir):
+def get_fit_res_names(indir, bin_var, binning):
     """
     Get the list of fit_res files
     """
-    return glob.glob(path.join(indir, 'mass_fit_config_costh_bin_?.pdf'))
+    plot_files = glob.glob(path.join(indir, 'mass_fit_config_costh_bin_?.pdf'))
+    plots = OrderedDict()
+    for iplot, pname in enumerate(sorted(plot_files, key=get_bin_idx)):
+        label = LABEL_BASE[bin_var].format(NICE_VARS[bin_var],
+                                           *binning[iplot])
+        plots[label] = pname
+
+    return plots
+
+
+def get_param_plot_names(indir):
+    """
+    Get the list of param v costh graphs
+    """
+    param_files = glob.glob(path.join(indir, '*_v_costh.pdf'))
+    plots = OrderedDict()
+    for iplot, pname in enumerate(param_files):
+        label = path.basename(pname).replace('_v_costh.pdf', '')
+        label = label.replace('_', r'\_')
+        plots[label] = pname
+
+    return plots
 
 
 def create_subfloat(plot, label):
@@ -84,17 +91,15 @@ def create_subfloat(plot, label):
             .replace('PLTCMD', PLOT_COMMAND))
 
 
-def create_figure(plots, bin_var, binning):
+def create_figure(plots):
     """
     Make the latex figure
     """
-    plots = sorted(plots, key=get_bin_idx)
-
     ret_str = []
 
     fig_started = False
-    for iplot, pname in enumerate(plots):
-        if iplot % 6 == 0:
+    for iplot, (label, pname) in enumerate(plots.iteritems()):
+        if iplot % MAX_FIG_P_PAGE == 0:
             if fig_started:
                 ret_str.append(r'\end{figure}')
                 ret_str.append('')
@@ -104,9 +109,7 @@ def create_figure(plots, bin_var, binning):
                 ret_str.append('')
                 fig_started = True
 
-        label_txt = LABEL_BASE[bin_var].format(NICE_VARS[bin_var],
-                                               *binning[iplot])
-        ret_str.append(create_subfloat(pname, label_txt))
+        ret_str.append(create_subfloat(pname, label))
 
         if iplot % 2 != 0:
             ret_str.append('')
@@ -119,11 +122,17 @@ def create_figure(plots, bin_var, binning):
 
 def main(args):
     """Main"""
-    bin_var, binning = get_binning(args.inputdir)
-    plots = get_fit_res_names(args.inputdir)
+    bin_var, binning = get_binning(args.bininfofile)
+    fit_plots = get_fit_res_names(args.inputdir, bin_var, binning)
+
+    graph_plots = get_param_plot_names(args.inputdir)
 
     with open_tex_file(args.outfile) as tex_file:
-        tex_file.write(create_figure(plots, bin_var, binning))
+        tex_file.write(r'\paragraph{Free parameters}')
+        tex_file.write(create_figure(graph_plots))
+
+        tex_file.write('\n\\clearpage\n\\paragraph{Fit result plots}\n')
+        tex_file.write(create_figure(fit_plots))
 
 
 if __name__ == '__main__':
@@ -131,7 +140,9 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script that generates a tex '
                                      'stub that contains all the fit results')
     parser.add_argument('inputdir', help='Input directory that contains the '
-                        'plots (and also the bin info json)')
+                        'plots')
+    parser.add_argument('bininfofile', help='Bin info json file created by fit '
+                        'script')
     parser.add_argument('-o', '--outfile', help='Ouptut file name',
                         default='fit_report.tex')
 
