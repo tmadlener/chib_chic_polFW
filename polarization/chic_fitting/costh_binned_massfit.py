@@ -32,35 +32,6 @@ from utils.jpsi_fitting import JpsiMassModel
 from utils.chib_fitting import ChibMassModel
 from utils.config_fitting import ConfigFitModel
 
-
-def get_ws_vars(state, massmodel=None, weights=None):
-    """
-    Get the workspace variables for the given state (jpsi or chic)
-    """
-    logging.debug('Getting workspace variables for {}'.format(state))
-    wsvars = {
-        'chic': [
-            'chicMass[3.325, 3.725]', 'costh_HX[-1, 1]'
-        ],
-        'jpsi': [
-            'JpsiMass[2.9, 3.25]', 'costh_HX[-1, 1]'
-        ],
-        'chib' : [
-            'chi_mass_rf1S[9.6,10.15]', 'costh_HX[-1, 1]'
-        ],
-    }
-    if state == 'chib' and massmodel:
-        return [
-            '{}[{}, {}]'.format(massmodel.mname, massmodel.fitvarmin, massmodel.fitvarmax),
-            'costh_HX[-1, 1]'
-        ]
-
-    if weights is not None:
-        wsvars[state] += ['{}[0, 1e5]'.format(weights)]
-
-    return wsvars[state]
-
-
 def get_load_vars(fit_var, bin_var, binning, weights=None):
     """
     Get the variables that should be loaded
@@ -216,29 +187,6 @@ def create_bin_info_json(state, bin_str, datafile, fitfile, bininfo_file=None,
     return costh_bins
 
 
-def rw_bin_sel_json(bininfo_file, datafile, updated_name=None):
-    """
-    Read the passed bin info file, get the costh_binning and calculate updated
-    costh means for the bins and store the resulting content into a new file
-    """
-    if updated_name is None:
-        updated_name = bininfo_file.replace('.json', '_jpsi.json')
-
-    with open(bininfo_file, 'r') as info_file:
-        bin_info = json.load(info_file)
-
-    dfr = get_dataframe(datafile, 'jpsi_tuple', columns=['costh_HX'])
-
-    costh_bins = bin_info['costh_bins']
-    costh_means = get_bin_means(dfr, lambda d: d.costh_HX.abs(), costh_bins)
-    bin_info['costh_means'] = costh_means
-
-    with open(updated_name, 'w') as info_file:
-        json.dump(bin_info, info_file, sort_keys=True, indent=2)
-
-    return costh_bins
-
-
 def run_fit(model, tree, costh_bins, datavars, outfile, refit=False,
             fix_shape=False, weights=None, bin_var=None):
     """Import data, run fits and store the results"""
@@ -266,54 +214,23 @@ def run_fit(model, tree, costh_bins, datavars, outfile, refit=False,
 
 def run_chic_fit(args):
     """Setup everything and run the chic fits"""
-    logging.warn('The \'chic\' mode of costh_binned_massfits.py is deprecated.'
-                 ' You should switch to using a configfile for the fitmodel')
-    logging.info('Running chic fits')
-    cond_mkdir_file(args.outfile)
-
-    model = ChicMassModel('chicMass')
-    costh_binning = create_bin_info_json('chic', args.binning, args.datafile,
-                                         args.outfile, args.bin_info)
-
-    dvars = get_ws_vars('chic')
-    dataf = r.TFile.Open(args.datafile)
-    tree = dataf.Get('chic_tuple')
-    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit,
-            args.fix_shape)
+    logging.error('The \'chic\' mode of costh_binned_massfits.py is deprecated.'
+                  ' You should switch to using a configfile for the fitmodel')
+    sys.exit(1)
 
 
 def run_chib_fit(args):
     """Setup everything and run the chic fits"""
-    logging.warn('The \'chib\' mode of costh_binned_massfits.py is deprecated.'
-                 ' You should switch to using a configfile for the fitmodel')
-    logging.info('Running chib fits')
-    cond_mkdir_file(args.outfile)
-    model = ChibMassModel(args.configfile)
-    costh_binning = create_bin_info_json('chib', args.binning, args.datafile,
-                                         args.outfile, args.bin_info)
-
-    dvars = get_ws_vars('chib', model)
-    dataf = r.TFile.Open(args.datafile)
-    tree = dataf.Get('data')
-    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit,
-            args.fix_shape)
+    logging.error('The \'chib\' mode of costh_binned_massfits.py is deprecated.'
+                  ' You should switch to using a configfile for the fitmodel')
+    sys.exit(1)
 
 
 def run_jpsi_fit(args):
     """Setup everything and run the chic fits"""
-    logging.warn('The \'jpsi\' mode of costh_binned_massfits.py is deprecated.'
-                 ' You should switch to using a configfile for the fitmodel')
-    logging.info('Running jpsi fits')
-    cond_mkdir_file(args.outfile)
-    model = JpsiMassModel('JpsiMass')
-    costh_binning = rw_bin_sel_json(args.costh_bin_file, args.datafile,
-                                    args.bin_info)
-
-    dvars = get_ws_vars('jpsi')
-    dataf = r.TFile.Open(args.datafile)
-    tree = dataf.Get('jpsi_tuple')
-    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit,
-            args.fix_shape)
+    logging.error('The \'jpsi\' mode of costh_binned_massfits.py is deprecated.'
+                  ' You should switch to using a configfile for the fitmodel')
+    sys.exit(1)
 
 
 def run_config_fit(args):
