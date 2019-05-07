@@ -19,41 +19,91 @@ logging.basicConfig(level=logging.DEBUG,
 
 import shutil
 
-from utils.data_handling import get_dataframe
+from root_numpy import array2tree
+
+from utils.data_handling import get_dataframe, apply_selections
 from utils.misc_helpers import (
     get_costh_binning, get_bin_means, cond_mkdir_file, get_bin_cut_root,
-    chunks, parse_binning, parse_func_var
+    parse_binning, parse_func_var, select_bin
 )
 from utils.roofit_utils import (
-    get_var, ws_import, get_args, release_params, fix_params
+    get_var, ws_import, get_args, release_params, fix_params, try_factory
 )
-from utils.chic_fitting import ChicMassModel
-from utils.jpsi_fitting import JpsiMassModel
-from utils.chib_fitting import ChibMassModel
 from utils.config_fitting import ConfigFitModel
 
-def get_load_vars(fit_var, bin_var, binning, weights=None):
-    """
-    Get the variables that should be loaded
-    """
-    bin_var_name = bin_var[0]
-    bin_var_bounds = [np.min(binning), np.max(binning)]
 
-    # Check if the binning is defined in absolute values of the bin variable.
-    # This has to be taken into account to not accidentally throw away half of
-    # the events straight away
-    if bin_var[1] is not None:
-        if 'abs' in bin_var[1].__name__:
-            bin_var_bounds = [-np.max(binning), np.max(binning)]
+def get_costh_bins(bin_str, binvar, data):
+    """
+    Get the bin edges from the binning_str and the data
+    """
+    auto_match = re.match(r'auto:(\d+)$', bin_str)
+    if auto_match:
+        costh_bins = get_costh_binning(data, int(auto_match.group(1)))
+    else:
+        binning = parse_binning(bin_str)
+        if len(binning) == 0:
+            sys.exit(1) # bail out, there is nothing we can do here
+        costh_bins = zip(binning[:-1], binning[1:])
 
-    variables = [
-        # '{}[3.345, 3.725]'.format(fit_var),
-        '{}[3.25, 3.75]'.format(fit_var),
-        '{}[{}, {}]'.format(bin_var_name, *bin_var_bounds),
-    ]
+    costh_means = get_bin_means(data, binvar, costh_bins)
+
+    return costh_bins, costh_means
+
+
+def create_bin_info_json(filename, costh_bins, costh_means, bin_var, datafile):
+    """
+    Write the bin info json file to store the costh bins, mans and the binning
+    variable
+    """
+    bin_sel_info = {
+        'costh_bins': costh_bins,
+        'costh_means': costh_means,
+        'bin_variable': bin_var,
+        'datafile': datafile
+    }
+
+    with open(filename, 'w') as info_file:
+        json.dump(bin_sel_info, info_file, sort_keys=True, indent=2)
+
+
+def create_workspace(model, datafile, binvar, binning, massrange, fitfile, weights=None):
+    """
+    Create the workspace with the data already imported and the model defined,
+    also in charge of writing the bin info json file
+    """
+    wsp = r.RooWorkspace('ws_mass_fit')
+
+    massrange = [float(v) for v in massrange.split(',')]
+
+    # load the data and apply the mass selection of the fitting range immediately
+    bin_var = parse_func_var(binvar) # necessary for loading
+    variables = [model.mname, bin_var[0]]
     if weights is not None:
-        variables.append('{}[0, 1e5]'.format(weights))
-    return variables
+        variables.append(weights)
+    data = apply_selections(get_dataframe(datafile, columns=variables),
+                            select_bin(model.mname, *massrange))
+
+    costh_bins, costh_means = get_costh_bins(binning, bin_var, data)
+    create_bin_info_json(fitfile.replace('.root', '_bin_sel_info.json'),
+                         costh_bins, costh_means, bin_var[0], datafile)
+
+
+    # Create the variables in the workspace
+    try_factory(wsp, '{}[{}, {}]'.format(model.mname, *massrange))
+    try_factory(wsp, '{}[{}, {}]'.format(bin_var[0], np.min(costh_bins), np.max(costh_bins)))
+    dset_vars = r.RooArgSet(get_var(wsp, model.mname), get_var(wsp, bin_var[0]))
+
+    tree = array2tree(data.to_records(index=False))
+    if weights is not None:
+        try_factory(wsp, '{}[0, 1e5]'.format(weights))
+        dataset = r.RooDataSet('full_data', 'full data sample', tree, dset_vars,
+                               '', weights)
+    else:
+        dataset = r.RooDataSet('full_data', 'full data sample', tree, dset_vars)
+
+    ws_import(wsp, dataset)
+
+    return wsp, costh_bins
 
 
 def get_shape_params(wsp, savename, mass_model):
@@ -86,37 +136,6 @@ def get_shape_params(wsp, savename, mass_model):
     return all_params
 
 
-def import_data(wsp, datatree, datavars, weights=None):
-    """
-    Import all data that is necessary to the workspace
-    """
-    logging.info('Importing dataset')
-
-    # deactivate all branches and just activate the used ones
-    datatree.SetBranchStatus('*', 0)
-    varlist = []
-    for dvar in datavars:
-        wsp.factory(dvar)
-        branch_var = re.sub(r'([A-Za-z_]*)\[.*\]', r'\1', dvar)
-        datatree.SetBranchStatus(branch_var, 1)
-        varlist.append(get_var(wsp, branch_var))
-
-    # The RooArgSet constructor is overloaded up to 9 arguments
-    # Split the varlist in chunks of maximum 9 values
-    varlists = chunks(varlist, 9)
-    var_argset = r.RooArgSet()
-    for varl in varlists:
-        sub_set = r.RooArgSet(*varl)
-        var_argset.add(sub_set)
-
-    if weights is None:
-        data = r.RooDataSet('full_data', 'full_data', datatree, var_argset)
-    else:
-        data = r.RooDataSet('full_data', 'full_data', datatree, var_argset, '',
-                            weights)
-
-    ws_import(wsp, data)
-
 
 def do_binned_fits(mass_model, wsp, costh_bins, refit=False, weighted_fit=False,
                    bin_var=None):
@@ -146,49 +165,8 @@ def do_binned_fits(mass_model, wsp, costh_bins, refit=False, weighted_fit=False,
             release_params(wsp, shape_par)
 
 
-def create_bin_info_json(state, bin_str, datafile, fitfile, bininfo_file=None,
-                         bin_var=None):
-    """
-    Determine the costh binning and store the information into a json
-    """
-    if bin_var is None:
-        logging.fatal('Trying to run a fit without specifying a bin variable. '
-                      'It is also possible that this was not implemented for '
-                      'the model that is trying to be used. Sorry :(')
-        sys.exit(1)
-
-    if bininfo_file is None:
-        bininfo_file = fitfile.replace('.root', '_bin_sel_info.json')
-
-    treename = 'chic_tuple' if state == 'chic' else 'data'
-    dfr = get_dataframe(datafile, treename, columns=[bin_var[0]])
-
-    auto_match = re.match(r'auto:(\d+)$', bin_str)
-    if auto_match:
-        costh_bins = get_costh_binning(dfr, int(auto_match.group(1)))
-    else:
-        binning = parse_binning(bin_str)
-        if len(binning) == 0:
-            sys.exit(1) # bail out, there is nothing we can do here
-        costh_bins = zip(binning[:-1], binning[1:])
-
-    costh_means = get_bin_means(dfr, bin_var, costh_bins)
-
-    bin_sel_info = {
-        'costh_bins': costh_bins,
-        'costh_means': costh_means,
-        'bin_variable': bin_var[0]
-    }
-
-    bin_sel_info['datafile'] = datafile
-    with open(bininfo_file, 'w') as info_file:
-        json.dump(bin_sel_info, info_file, sort_keys=True, indent=2)
-
-    return costh_bins
-
-
-def run_fit(model, tree, costh_bins, datavars, outfile, refit=False,
-            fix_shape=False, weights=None, bin_var=None):
+def run_fit(model, datafile, outfile, bin_var, binning, massrange,
+            fix_shape=False, refit=False, weights=None):
     """Import data, run fits and store the results"""
     if bin_var is None:
         logging.fatal('Trying to run a fit without specifying a bin variable. '
@@ -196,8 +174,9 @@ def run_fit(model, tree, costh_bins, datavars, outfile, refit=False,
                       'the model that is trying to be used. Sorry :(')
         sys.exit(1)
 
-    wsp = r.RooWorkspace('ws_mass_fit')
-    import_data(wsp, tree, datavars, weights)
+    wsp, costh_bins = create_workspace(model, datafile, bin_var, binning,
+                                       massrange, outfile, weights)
+
     model.define_model(wsp)
     wsp.Print()
 
@@ -207,6 +186,8 @@ def run_fit(model, tree, costh_bins, datavars, outfile, refit=False,
         model.fit(wsp, 'costh_integrated', weighted_fit=weights is not None)
         shape_pars = get_shape_params(wsp, 'costh_integrated', model)
         fix_params(wsp, [(sp, None) for sp in shape_pars])
+
+    bin_var = parse_func_var(bin_var)[0]
 
     do_binned_fits(model, wsp, costh_bins, refit, weights is not None, bin_var)
     wsp.writeToFile(outfile)
@@ -246,18 +227,10 @@ def run_config_fit(args):
     except shutil.Error as err:
         logging.warn(str(err))
 
-    bin_var = parse_func_var(args.binvariable)
-
     model = ConfigFitModel(args.configfile)
-    costh_binning = create_bin_info_json('chic', args.binning, args.datafile,
-                                         args.outfile, args.bin_info, bin_var)
 
-    dvars = get_load_vars(model.mname, bin_var, costh_binning, weights=args.weight)
-    dataf = r.TFile.Open(args.datafile)
-    tree = dataf.Get('chic_tuple')
-
-    run_fit(model, tree, costh_binning, dvars, args.outfile, args.refit,
-            args.fix_shape, args.weight, bin_var[0])
+    run_fit(model, args.datafile, args.outfile, args.binvariable, args.binning,
+            args.massrange, args.fix_shape, args.refit, weights=args.weight)
 
 
 if __name__ == '__main__':
@@ -302,6 +275,9 @@ if __name__ == '__main__':
     global_parser.add_argument('-bv', '--binvariable', help='The variable that '
                                'is used for defining the bins in which the fits '
                                'are done', default='abs(costh_HX_fold)')
+    global_parser.add_argument('-m', '--massrange', help='Comma separated lower '
+                               'and upper value of the mass window in which the '
+                               'fits should be done', default='3.425,3.725')
 
     # Add the chic parser
     chic_parser = subparsers.add_parser('chic', description='Run the fits using'
