@@ -239,8 +239,8 @@ export -f print_var
 ## 4 - the binvariable
 ## 5 - the binning
 function run_plot_fits() {
-    if [[ $# -ne 5 ]]; then
-        echo "usage: run_plot_fits DATAFILE OUTPUTDIR CONFIGFILE BINVAR BINNING"
+    if [[ $# -lt 5 ]]; then
+        echo "usage: run_plot_fits DATAFILE OUTPUTDIR CONFIGFILE BINVAR BINNING [MASSRANGE]"
         return 64
     fi
 
@@ -249,6 +249,11 @@ function run_plot_fits() {
     local config=$3
     local binvar=$4
     local binning=$5
+
+    shift 5
+    if [[ $# -ne 0 ]]; then
+        local massrange="--massrange "${1}
+    fi
 
     local FITTER=${CHIB_CHIC_POLFW_DIR}/polarization/chic_fitting/costh_binned_massfit.py
     local PLOTTER=${CHIB_CHIC_POLFW_DIR}/polarization/chic_fitting/make_fit_plots.py
@@ -263,7 +268,7 @@ function run_plot_fits() {
     echo $(date) > ${logfile}
 
     python $FITTER config --binning=${binning} --binvariable=${binvar} \
-           --fix-shape ${infile} ${fitresfile} ${config} >> ${logfile} 2>&1
+           --fix-shape ${massrange} ${infile} ${fitresfile} ${config} >> ${logfile} 2>&1
 
     echo $(date) >> ${logfile}
 
@@ -283,7 +288,8 @@ function run_plot_fits() {
     local bin_info_file=../$(basename ${fitresfile}| sed 's/.root/_bin_sel_info.json/')
 
     python ${REPORTGEN} -o fit_report.tex ../plots/ ${bin_info_file} && \
-    ${LATEX_EXE} fit_report.tex > /dev/null 2>&1 && rm fit_report.{log,aux}
+        ${LATEX_EXE} -interaction=nonstopmode fit_report.tex > /dev/null 2>&1 && \
+        rm fit_report.{log,aux}
     cd -
 
 }
