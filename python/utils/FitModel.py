@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
 from utils.roofit_utils import (
-    ws_import, get_var, get_chi2_ndf, get_corr_matrix, set_var
+    ws_import, get_var, get_chi2_ndf, get_corr_matrix, set_var, calc_info_crit
 )
 
 from utils.misc_helpers import create_random_str
@@ -218,6 +218,12 @@ class FitModel(object):
             info_text.append((0.15, 0.825,
                              'status = {}, covQual = {}'.format(int(status),
                                                                 int(cov_qual))))
+            if fitresname is not None:
+                aic = calc_info_crit(fit_res)
+                bic = calc_info_crit(fit_res, nevents_data)
+                info_text.append((0.15, 0.775,
+                                  'AIC = {:.1f}, BIC = {:.1f}'.format(aic, bic)))
+
 
         pull_frame = mvar.frame(rf.Bins(nbins))
         hpull = frame.pullHist('data_hist', 'full_pdf_curve', True)

@@ -126,6 +126,33 @@ def get_chi2_ndf(frame, pdfname, histname, fit_res=None):
     return chi2, ndf
 
 
+def calc_info_crit(fit_res, n_events=None):
+    """
+    Calculate the BIC (Bayesian Information Criterion) or the AIC (Akaike
+    Information Criterion) from the passed fit result.
+
+    Args:
+        fit_res (ROOT.RooFitResult): Fit result of a maximum likelihood fit
+        n_events (int or None): If an int is passed it is assumed that this is
+            the number of events in the sample and the BIC is calculated, if
+            None is passed the AIC is calculated
+
+    See also:
+        https://en.wikipedia.org/wiki/Bayesian_information_criterion
+        https://en.wikipedia.org/wiki/Akaike_information_criterion
+    """
+    min_nll = fit_res.minNll()
+    n_pars = fit_res.floatParsFinal().getSize()
+    if n_events is not None:
+        logging.debug('Calculating BIC with -log(L) = {:.0f}, k = {}, n = {}'
+                      .format(min_nll, n_pars, n_events))
+        return np.log(n_events) * n_pars + 2 * min_nll
+
+    logging.debug('Calculating AIC with -log(L) = {:.0f}, k = {}'
+                  .format(min_nll, n_pars))
+    return 2 * n_pars + 2 * min_nll
+
+
 def get_args(rooarglist):
     """
     Get all elements from a ROOT.RooArgList.
