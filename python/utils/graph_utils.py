@@ -449,3 +449,23 @@ def has_sym_uncer(graph):
     """
     _, _, elo, ehi = get_errors(graph)
     return np.allclose(elo, ehi)
+
+
+def shift_graph_horizontal(graph, shift):
+    """
+    Shift the passed graph by a constant factor along the x-axis.
+
+    Args:
+        graph (r.TGraphAsymmErrors): Graph for which all points should be
+            shifted along the x-axis
+        shift (float): Amount by which the x-points should be shifted
+
+    Returns:
+        r.TGraphAsymmErrors: Graph with shifted x coordinates. The uncertainties
+            along x are updated such that the bins that are described by them
+            are the same as before the shift.
+
+    See also:
+        assign_x
+    """
+    return assign_x(graph, np.array(graph.GetX()) + shift)
