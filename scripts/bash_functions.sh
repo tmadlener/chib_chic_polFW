@@ -279,7 +279,7 @@ function run_plot_fits() {
            --fix-shape --graphs --verbose ${fitresfile} > ${logfile} 2>&1
 
 
-    python $GRAPHPLOTTER --outdir ${outdir}/plots ${outdir}/plots/free_fit_param_graphs.root
+    python $GRAPHPLOTTER --outdir ${outdir}/plots --no-ratio ${outdir}/plots/free_fit_param_graphs.root
 
 
     mkdir -p ${outdir}/latex

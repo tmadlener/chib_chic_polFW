@@ -92,6 +92,11 @@ def main(args):
         graphf.Get(g.GetName()) for g in graphf.GetListOfKeys()
     }
 
+    if args.no_ratio:
+        ratio_name = 'r_chic2_chic1'
+        if ratio_name in graphs:
+            del graphs[ratio_name]
+
     if args.intgraphfile is not None:
         intf = r.TFile.Open(args.intgraphfile)
         intgraphs = {
@@ -121,6 +126,8 @@ if __name__ == '__main__':
     parser.add_argument('-f', '--dofit', help='for each parameter fit the trend'
                         ' against costh with a constant and add the fit to the '
                         'plot', action='store_true', default=False)
+    parser.add_argument('--no-ratio', action='store_true', default=False,
+                        help='Do not create the ratio plot')
 
     clargs = parser.parse_args()
     main(clargs)
