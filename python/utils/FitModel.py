@@ -17,8 +17,8 @@ from utils.roofit_utils import (
 from utils.misc_helpers import create_random_str
 from utils.plot_helpers import setup_latex, put_on_latex
 
-# number of bins that are used for plotting the data mass distribution
-N_BINS_MASS = 100
+# The desired nominal bin width
+BIN_WIDTH = 0.005 # GeV
 
 class FitModel(object):
     """
@@ -102,8 +102,8 @@ class FitModel(object):
         # If fit results are not as desired, rerun the fit up to 2 times
         n_refits = 0
         while fit_results.status() != 0 or fit_results.covQual() != 3:
-            if n_refits >= 2:
-                logging.info('Reran fit 2 times. Not rerunning it another time')
+            if n_refits >= 3:
+                logging.info('Reran fit 3 times. Not rerunning it another time')
                 break
             else:
                 logging.info('Rerunning fit.')
@@ -165,8 +165,9 @@ class FitModel(object):
         if add_cut:
             plot_data = plot_data.reduce(add_cut)
 
+        nbins = int((mvar.getMax() - mvar.getMin()) / BIN_WIDTH)
+
         # TODO: find a better heuristic to do this here
-        nbins = N_BINS_MASS
         nevents_data = plot_data.numEntries()
         logging.debug('Number of events in reduced sample: {}'
                       .format(nevents_data))
