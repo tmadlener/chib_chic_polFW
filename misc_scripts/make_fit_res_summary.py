@@ -15,7 +15,7 @@ from os import path, environ
 from collections import OrderedDict
 
 from utils.reporting import open_tex_file
-
+from utils.plot_decoration import PLOT_LABELS_LATEX
 
 NICE_VARS = {'phi_HX_fold': r'\varphi^{HX}_{\text{fold}}', 'costh_HX_fold':
              r'|\cos\vartheta^{HX}|'}
@@ -35,6 +35,16 @@ except KeyError:
 PLOT_COMMAND = r'\includegraphics[width=0.5\linewidth]'
 if LATEX_EXE == 'xelatex':
     PLOT_COMMAND = r'\rootfig{0.475}'
+
+# Define an order such that the similar plots always appear next to each other
+DESIRED_PLOT_ORDER = [
+    'CBmass1', 'CBmass2',
+    'CBsigma1', 'CBsigma2',
+    'mu_bkg', 'sigma_bkg',
+    'lambda_bkg', 'Nbkg',
+    'Nchic1', 'Nchic2',
+    'Nchic0',
+]
 
 
 def get_bin_idx(plotname):
@@ -68,15 +78,31 @@ def get_fit_res_names(indir, bin_var, binning):
     return plots
 
 
+def get_plot_idx(plotname):
+    """
+    Get the sort index for the graph plots, such that they are matched against
+    the DESIRED_PLOT_ORDER
+    """
+    try:
+        pdfname = plotname.split('/')[-1]
+        return DESIRED_PLOT_ORDER.index(pdfname.replace('_v_costh.pdf', ''))
+    except ValueError:
+        pass
+    return len(DESIRED_PLOT_ORDER)
+
+
 def get_param_plot_names(indir):
     """
     Get the list of param v costh graphs
     """
     param_files = glob.glob(path.join(indir, '*_v_costh.pdf'))
     plots = OrderedDict()
-    for iplot, pname in enumerate(param_files):
+    for iplot, pname in enumerate(sorted(param_files, key=get_plot_idx)):
         label = path.basename(pname).replace('_v_costh.pdf', '')
-        label = label.replace('_', r'\_')
+        if label in PLOT_LABELS_LATEX:
+            label = PLOT_LABELS_LATEX[label]
+        else:
+            label = label.replace('_', r'\_')
         plots[label] = pname
 
     return plots

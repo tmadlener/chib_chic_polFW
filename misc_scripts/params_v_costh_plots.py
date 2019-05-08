@@ -15,15 +15,7 @@ from utils.plot_helpers import (
     mkplot, default_colors, setup_legend, setup_latex, put_on_latex
 )
 from utils.misc_helpers import cond_mkdir
-
-# fix the plotting ranges for some of the parameters for more meaningful plots
-FIX_RANGES = {
-    'BK_p2': [-0.004, 0.004],
-    'CBmass1': [3.505, 3.5075],
-    'beta1': [-5, -3],
-    'alpha1': [0.4, 1.2],
-    'CBmass2': [3.546, 3.556],
-}
+from utils.plot_decoration import FIX_RANGES, YLABELS
 
 def make_comp_plot(graph, intgraph, fit=False):
     """
@@ -42,8 +34,10 @@ def make_comp_plot(graph, intgraph, fit=False):
     else:
         yRange=None
 
+    ylabel = YLABELS[graph_name] if graph_name in YLABELS else graph_name
+
     can = mkplot(graph, xRange=[0, 1], drawOpt='PE', attr=plt_attr[0:],
-                 yRange=yRange, yLabel=graph_name, xLabel='|cos#vartheta^{HX}|')
+                 yRange=yRange, yLabel=ylabel, xLabel='|cos#vartheta^{HX}|')
 
     # some cosmetics
     can.SetTopMargin(0.05)
