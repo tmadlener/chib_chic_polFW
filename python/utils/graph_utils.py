@@ -469,3 +469,39 @@ def shift_graph_horizontal(graph, shift):
         assign_x
     """
     return assign_x(graph, np.array(graph.GetX()) + shift)
+
+
+def graph_in_range(graph, low, high):
+    """
+    Get a new graph with only those points that are in the desired range.
+
+    Args:
+        graph (r.TGraph or inheriting): Original graph spanning a possibly wider
+            range than the desired range
+        low (float): Lower boundary of the desired range
+        high (float): Higher boundary of the desired range
+
+    Returns:
+        ROOT.TGraph: Graph with only the points (central x-values) in the
+            desired range. If all points are in the desired range the original
+            graph will be returned
+    """
+    x_vals = np.array(graph.GetX())
+    in_range = (x_vals < high) & (x_vals > low)
+    if np.all(in_range):
+        return graph
+
+    y_vals = np.array(graph.GetY())
+
+    if isinstance(graph, (r.TGraphErrors, r.TGraphAsymmErrors)):
+        errors = get_errors(graph)
+        range_errors = []
+        for err in errors:
+            range_errors.append(err[in_range])
+
+        return getattr(r, graph.ClassName())(
+            np.sum(in_range), x_vals[in_range], y_vals[in_range], *range_errors
+        )
+    else:
+        return r.TGraph(np.sum(in_range, dtype=int),
+                        x_vals[in_range], y_vals[in_range])
