@@ -6,6 +6,6 @@ logging.basicConfig(level=logging.ERROR,
 from utils.root_lib_loading import try_load_lib
 
 lib_path = os.path.join(os.environ['CHIB_CHIC_POLFW_DIR'],
-                        'general', 'RooDoubleCB', 'RooDoubleCB.so')
+                        'general', 'RooErfExponential', 'RooErfExponential.so')
 
-try_load_lib(lib_path, 'RooDoubleCB')
+try_load_lib(lib_path, 'RooErfExponential')

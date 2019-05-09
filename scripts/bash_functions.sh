@@ -192,14 +192,16 @@ function run_sandboxed() {
     echo "${sandboxid}"
 }
 
-## Function that calls make in the RooDoubleCB directory so that the shared object is present
-function build_double_sided_CB() {
-    cmpfile=$(mktemp ${CHIB_CHIC_POLFW_DIR}/general/RooDoubleCB/compile.XXXXXXXX)
-    make -C ${CHIB_CHIC_POLFW_DIR}/general/RooDoubleCB/ > ${cmpfile} 2>&1
-    compile_status=$?
+## Function the builds the shared object (assuming a folder is present for it in the general directory)
+## First and only argument is the name of the folder
+function build_shared_object() {
+    local object=${1}
+    local cmpfile=$(mktemp ${CHIB_CHIC_POLFW_DIR}/general/${object}/compile.XXXXXXXX)
+    make -C ${CHIB_CHIC_POLFW_DIR}/general/${object}/ > ${cmpfile} 2>&1
+    local compile_status=$?
 
     if [[ ${compile_status} -ne 0 ]]; then
-        echo "Problem building RooDoubleCB:"
+        echo "Problem building ""${object}"":"
         echo "================================================================================"
         cat ${cmpfile}
         echo "================================================================================"
@@ -209,6 +211,13 @@ function build_double_sided_CB() {
     fi
 
     return ${compile_status}
+}
+
+## Function that calls make in the RooDoubleCB directory so that the shared object is present
+function build_shapes() {
+    for shape in "RooDoubleCB" "RooErfExponential"; do
+        build_shared_object $shape
+    done
 }
 
 ## Function that moves an already existing file to a new place
