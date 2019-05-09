@@ -27,6 +27,8 @@ from utils.plot_helpers import (
 from utils.graph_utils import assign_x
 
 import utils.RooDoubleCB
+import utils.RooErfExponential
+import utils.RooPowerlawExponential
 
 N_BINS_FIT_PLOTS = 80
 
@@ -230,7 +232,7 @@ class BinnedFitModel(object):
                 -1 -> quite, 0 -> normal, 1 -> verbose
         """
         nll_args = ( # TODO: define meaning full args
-            rf.NumCPU(2, 2),
+            rf.NumCPU(2),
             rf.Extended(True),
             rf.Offset(False)
         )
@@ -240,7 +242,8 @@ class BinnedFitModel(object):
 
         for i in range(3):
             logging.info('starting migrad')
-            minimizer.migrad()
+            # minimizer.migrad()
+            minimizer.minimize('Minuit2', 'MIGRAD')
             logging.info('starting minos')
             minimizer.minos()
 
@@ -604,6 +607,7 @@ class BinnedFitModel(object):
         """
         logging.debug('setting up minimizer')
         minimizer = r.RooMinimizer(nll)
+        minimizer.setMinimizerType('Minuit2')
         minimizer.setVerbose(verbosity == -1)
         minimizer.setPrintLevel(verbosity)
 
