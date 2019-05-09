@@ -14,6 +14,7 @@ from utils.FitModel import FitModel
 from utils.roofit_utils import fix_params, try_factory
 import utils.RooDoubleCB # Make the double sided CB available via the factory
 import utils.RooErfExponential
+import utils.RooPowerlawExponential
 
 def _full_model_expr(model_type, name, sub_models, event_yields):
     """

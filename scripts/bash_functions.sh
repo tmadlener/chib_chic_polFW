@@ -215,7 +215,7 @@ function build_shared_object() {
 
 ## Function that calls make in the RooDoubleCB directory so that the shared object is present
 function build_shapes() {
-    for shape in "RooDoubleCB" "RooErfExponential"; do
+    for shape in "RooDoubleCB" "RooErfExponential" "RooPowerlawExponential"; do
         build_shared_object $shape
     done
 }
