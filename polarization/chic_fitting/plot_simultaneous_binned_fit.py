@@ -61,7 +61,7 @@ def main(args):
     ffile = r.TFile.Open(args.fitfile)
     wsp = ffile.Get('ws_mass_fit')
 
-    cans = model.plot(wsp)
+    cans = model.plot(wsp, verbose=args.verbose)
     canp = model.plot_fit_params(wsp)
 
     if args.outdir is None:
@@ -98,6 +98,8 @@ if __name__ == '__main__':
     parser.add_argument('-o', '--outdir', help='Output directory for the created'
                         ' plot files (defaults to the directory of the fitfile)',
                         default=None)
+    parser.add_argument('-v', '--verbose', action='store_true', default=False,
+                        help='Add some debug information to the produced plots')
 
 
     clargs = parser.parse_args()

@@ -16,10 +16,12 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
 from utils.roofit_utils import (
-    get_var, try_factory, set_var, ws_import, fix_params, get_chi2_ndf, get_var_err
+    get_var, try_factory, set_var, ws_import, fix_params, get_chi2_ndf,
+    get_var_err, calc_info_crit
 )
 from utils.misc_helpers import (
-    parse_binning, get_bin_cut_root, combine_cuts, create_random_str, replace_all, parse_func_var
+    parse_binning, get_bin_cut_root, combine_cuts, create_random_str,
+    replace_all, parse_func_var
 )
 from utils.plot_helpers import (
     setup_legend, _setup_canvas, setup_latex, put_on_latex
@@ -240,6 +242,9 @@ class BinnedFitModel(object):
 
         minimizer = self._setup_minimizer(sim_nll, verbosity)
 
+        fit_status = 0
+        cov_qual = 0
+
         for i in range(3):
             logging.info('starting migrad')
             minimizer.migrad()
@@ -252,24 +257,34 @@ class BinnedFitModel(object):
             logging.info('Fit status = {}, covQual = {}'
                          .format(fit_results.status(), fit_results.covQual()))
 
+            fit_status *= 10
+            fit_status += fit_results.status()
+            cov_qual *= 10
+            cov_qual += fit_results.covQual()
+
+
             if fit_results.status() == 0 and fit_results.covQual() == 3:
                 break
 
-        set_var(wsp, '__fit_status__', fit_results.status(), create=True)
-        set_var(wsp, '__cov_qual__', fit_results.covQual(), create=True)
+
+
+        set_var(wsp, '__fit_status__', fit_status, create=True)
+        set_var(wsp, '__cov_qual__', cov_qual, create=True)
 
         wsp.saveSnapshot('snap_two_dim', wsp.allVars())
         fit_results.SetName('fit_res_two_dim')
         ws_import(wsp, fit_results)
 
 
-    def plot(self, wsp):
+    def plot(self, wsp, verbose=False):
         """
         Plot the fit results from the passed workspace
 
         Args:
             wsp (ROOT.RooWorkspace): The workspace that holds the model and the
                 data as well as the fit results
+            verbose (boolean): Print some more information about the fit status
+                onto the plots (mainly for debugging)
         """
         data = wsp.data('full_data')
 
@@ -318,15 +333,31 @@ class BinnedFitModel(object):
         logging.debug('Floating parameters in fit: {}'.format(n_float_pars))
         logging.info('Global chi2 / ndf = {:.2f} / {}'.format(g_chi2, g_ndf))
 
+        add_info = []
+
         # loop again over all canvases and put the global chi2 / ndf there
-        chi2_text = (0.15, 0.875,
-                     '(global) #chi^{{2}} / ndf = {:.1f} / {}'.format(g_chi2, g_ndf))
+        add_info.append((0.15, 0.875,
+                         '(global) #chi^{{2}} / ndf = {:.1f} / {}'.format(g_chi2, g_ndf)))
+
+        if verbose:
+            status = get_var(wsp, '__fit_status__').getVal()
+            cov_qual = get_var(wsp, '__cov_qual__').getVal()
+            add_info.append((0.15, 0.825,
+                             'status = {}, covQual = {}'.format(int(status),
+                                                                int(cov_qual))))
+
+            aic = calc_info_crit(fit_res)
+            bic = calc_info_crit(fit_res, data.numEntries())
+            add_info.append((0.15, 0.775,
+                             'AIC = {:.1f}, BIC = {:.1f}'.format(aic, bic)))
+
+
         latex = setup_latex()
 
         for can in cans.values():
             res_pad = can.attached_tobjects[0]
             res_pad.cd()
-            put_on_latex(latex, [chi2_text], ndc=True)
+            put_on_latex(latex, add_info, ndc=True)
 
         # for easier debugging at the moment
         return cans
