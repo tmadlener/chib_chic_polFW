@@ -90,7 +90,10 @@ def create_workspace(model, datafile, binvar, binning, massrange, fitfile, weigh
 
     # Create the variables in the workspace
     try_factory(wsp, '{}[{}, {}]'.format(model.mname, *massrange))
-    try_factory(wsp, '{}[{}, {}]'.format(bin_var[0], np.min(costh_bins), np.max(costh_bins)))
+    if 'abs' in bin_var[1].__name__:
+        try_factory(wsp, '{}[{}, {}]'.format(bin_var[0], -np.max(costh_bins), np.max(costh_bins)))
+    else:
+        try_factory(wsp, '{}[{}, {}]'.format(bin_var[0], np.min(costh_bins), np.max(costh_bins)))
     dset_vars = r.RooArgSet(get_var(wsp, model.mname), get_var(wsp, bin_var[0]))
 
     tree = array2tree(data.to_records(index=False))
