@@ -72,7 +72,10 @@ class FitModel(object):
         """
         fit_data = wsp.data('full_data')
         if add_cut:
+            logging.debug('Applying cut to full data ({} events): \'{}\''
+                          .format(fit_data.numEntries(), add_cut))
             fit_data = fit_data.reduce(add_cut)
+            logging.debug('{} left after cut'.format(fit_data.numEntries()))
 
         fit_args = (
             rf.Minos(True),
