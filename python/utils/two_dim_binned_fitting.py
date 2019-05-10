@@ -234,7 +234,7 @@ class BinnedFitModel(object):
         nll_args = ( # TODO: define meaning full args
             rf.NumCPU(2),
             rf.Extended(True),
-            rf.Offset(False)
+            rf.Offset(True)
         )
         sim_nll = self._create_nll(wsp, nll_args)
 
@@ -242,8 +242,7 @@ class BinnedFitModel(object):
 
         for i in range(3):
             logging.info('starting migrad')
-            # minimizer.migrad()
-            minimizer.minimize('Minuit2', 'MIGRAD')
+            minimizer.migrad()
             logging.info('starting minos')
             minimizer.minos()
 
@@ -636,7 +635,7 @@ class BinnedFitModel(object):
 
         mean_vars = set(mean_rgx.findall(func_expr))
         mean_vals = {
-            vn: bin_data.mean(get_var(wsp, vn)) for vn in mean_vars
+            vn: self.bin_mean(wsp, vn, bin_name) for vn in mean_vars
         }
 
         expr = func_expr
