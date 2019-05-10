@@ -55,11 +55,12 @@
   ],
 
   "proto_parameters": [
-    ["Nchic0", "[300, 0, 10000]"],
     ["Nchic1", "[10000, 0, 200000]"],
     ["Nbkg", "[30000, 0, 300000]"],
     ["r_chic2_chic1", "[0.5, 0, 2]"],
+    ["r_chic0_chic1", "[0.03, 0, 0.2]"],
     ["Nchic2", ["(r_chic2_chic1 * Nchic1)", "r_chic2_chic1, Nchic1"]],
+    ["Nchic0", ["(r_chic0_chic1 * Nchic1)", "r_chic0_chic1, Nchic1"]],
 
 
     ["CBmass1", "[3.506, 3.45, 3.54]"],
@@ -76,7 +77,6 @@
     ["PES", ["(CBmass1 - m_psiPDG) / (m_chic1PDG - m_psiPDG)", "CBmass1, m_psiPDG, m_chic1PDG"]],
     ["CBmass0", ["PES * (m_chic0PDG - m_psiPDG) + m_psiPDG", "PES, m_chic0PDG, m_psiPDG"]],
     ["CBsigma0", ["CBsigma1 * (m_chic0PDG - m_psiPDG) / (m_chic1PDG - m_psiPDG)", "CBsigma1, m_chic0PDG, m_chic1PDG, m_psiPDG"]]
-
   ],
 
   "fix_vars": [
