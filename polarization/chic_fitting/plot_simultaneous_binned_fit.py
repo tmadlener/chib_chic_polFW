@@ -17,6 +17,7 @@ logging.basicConfig(level=logging.DEBUG,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
 from utils.two_dim_binned_fitting import BinnedFitModel
+from utils.misc_helpers import cond_mkdir
 
 
 def store_proto_pars(wsp, model, outfile):
@@ -63,8 +64,12 @@ def main(args):
     cans = model.plot(wsp)
     canp = model.plot_fit_params(wsp)
 
-    # TODO: conditionally making the outdir
-    outdir = dirname(args.fitfile)
+    if args.outdir is None:
+        outdir = dirname(args.fitfile)
+    else:
+        outdir = args.outdir
+
+    cond_mkdir(outdir)
 
     # Saving the plots
     for bin_name, bin_borders in model.bins.iteritems():
@@ -90,6 +95,9 @@ if __name__ == '__main__':
                         'parameters vs each bin var and store them into a root '
                         'file in the output directory', action='store_true',
                         default=False)
+    parser.add_argument('-o', '--outdir', help='Output directory for the created'
+                        ' plot files (defaults to the directory of the fitfile)',
+                        default=None)
 
 
     clargs = parser.parse_args()
