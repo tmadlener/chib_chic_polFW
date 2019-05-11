@@ -40,3 +40,12 @@ PLOT_LABELS_LATEX = {
     'Nchic0': r'$N^{\chi_{c0}}$',
     'Nbkg': r'$N^{\text{Bkg}}$'
 }
+
+
+CTH_LAB = '|cos#vartheta^{HX}|'
+CTH_RAN = [0, 1]
+PHI_LAB = '#varphi^{HX}_{fold}'
+PHI_RAN = [0, 90]
+
+CTH_PLOT = {'xRange': CTH_RAN, 'xLabel': CTH_LAB}
+PHI_PLOT = {'xRange': PHI_RAN, 'xLabel': PHI_LAB}

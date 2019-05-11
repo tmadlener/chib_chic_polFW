@@ -303,3 +303,36 @@ function run_plot_fits() {
 
 }
 export -f run_plot_fits
+
+function run_sim_fits() {
+    if [[ $# -lt 3 ]]; then
+        echo "usage: run_sim_fits DATAFILE OUTPUTDIR CONFIGFILE"
+        return 64
+    fi
+
+    local infile=$1
+    local outdir=$2
+    local config=$3
+
+    local FITTER=${CHIB_CHIC_POLFW_DIR}/polarization/chic_fitting/simultaneous_binned_fit.py
+    local PLOTTER=${CHIB_CHIC_POLFW_DIR}/polarization/chic_fitting/plot_simultaneous_binned_fit.py
+    local PARAMPLOTTER=${CHIB_CHIC_POLFW_DIR}/misc_scripts/make_proto_param_plots.py
+
+    local fitresfile=${outdir}/simultaneous_fit_results.root
+
+    mkdir -p ${outdir}
+    local logfile=${outdir}/run_fits.log
+
+    set -x
+    echo $(date) > ${logfile}
+    python $FITTER --verbosity 1 --outfile ${fitresfile} ${infile} ${config} >> ${logfile} 2>&1 || return 1
+    echo $(date) >> ${logfile}
+
+    logfile=${outdir}/run_plots.log
+    python $PLOTTER --verbose --graphs --outdir ${outdir}/plots ${fitresfile} ${outdir}/fit_model.json > ${logfile} 2>&1 || return 1
+
+    python $PARAMPLOTTER --outdir ${outdir}/plots --no-ratio ${outdir}/plots/proto_param_graphs.root
+
+    set +x
+}
+export -f run_sim_fits
