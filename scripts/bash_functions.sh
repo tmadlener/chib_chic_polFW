@@ -266,7 +266,7 @@ function run_plot_fits() {
 
     local FITTER=${CHIB_CHIC_POLFW_DIR}/polarization/chic_fitting/costh_binned_massfit.py
     local PLOTTER=${CHIB_CHIC_POLFW_DIR}/polarization/chic_fitting/make_fit_plots.py
-    local REPORTGEN=${CHIB_CHIC_POLFW_DIR}/misc_scripts/make_fit_res_summary.py
+    local REPORTGEN=${CHIB_CHIC_POLFW_DIR}/misc_scripts/make_fit_res_summary_binned.py
     local GRAPHPLOTTER=${CHIB_CHIC_POLFW_DIR}/misc_scripts/params_v_costh_plots.py
 
     local fitresfile=${outdir}/costh_binned_fit_results.root
@@ -317,6 +317,7 @@ function run_sim_fits() {
     local FITTER=${CHIB_CHIC_POLFW_DIR}/polarization/chic_fitting/simultaneous_binned_fit.py
     local PLOTTER=${CHIB_CHIC_POLFW_DIR}/polarization/chic_fitting/plot_simultaneous_binned_fit.py
     local PARAMPLOTTER=${CHIB_CHIC_POLFW_DIR}/misc_scripts/make_proto_param_plots.py
+    local REPORTGEN=${CHIB_CHIC_POLFW_DIR}/misc_scripts/make_fit_res_summary.py
 
     local fitresfile=${outdir}/simultaneous_fit_results.root
 
@@ -334,5 +335,13 @@ function run_sim_fits() {
     python $PARAMPLOTTER --outdir ${outdir}/plots --no-ratio ${outdir}/plots/proto_param_graphs.root
 
     set +x
+
+    mkdir -p ${outdir}/latex
+    cd ${outdir}/latex
+
+    python $REPORTGEN --outfile fit_report.tex ../fit_model.json ../plots/ && \
+        ${LATEX_EXE} -interaction=nonstopmode fit_report.tex > /dev/null 2>&1 && \
+        rm fit_report.{aux,log}
+    cd -
 }
 export -f run_sim_fits

@@ -16,8 +16,6 @@ from collections import OrderedDict
 
 from utils.reporting import open_tex_file
 from utils.plot_decoration import PLOT_LABELS_LATEX
-from utils.misc_helpers import parse_binning, parse_func_var
-
 
 NICE_VARS = {'phi_HX_fold': r'\varphi^{HX}_{\text{fold}}', 'costh_HX_fold':
              r'|\cos\vartheta^{HX}|'}
@@ -26,7 +24,7 @@ LABEL_BASE = {'phi_HX_fold': r'${1:.0f} < {0} < {2:.0f}$',
 
 # maximum number of figures per page
 MAX_FIG_P_PAGE = 6
-SORT_RGX = re.compile(r'_([0-9]+)_massfit\.pdf')
+SORT_RGX = re.compile(r'bin_([0-9]+)\.pdf')
 
 try:
     LATEX_EXE = environ['LATEX_EXE']
@@ -44,8 +42,8 @@ DESIRED_PLOT_ORDER = [
     'CBsigma1', 'CBsigma2',
     'mu_bkg', 'sigma_bkg',
     'lambda_bkg', 'Nbkg',
-    'Nchic0', 'r_chic0_chic1'
     'Nchic1', 'Nchic2',
+    'Nchic0',
 ]
 
 
@@ -56,24 +54,21 @@ def get_bin_idx(plotname):
     return int(SORT_RGX.search(plotname).group(1))
 
 
-def get_binning(fit_config_f):
+def get_binning(bin_info_file):
     """
-    Read the fit config json and get the bin variable and the binning
+    Read the bin-info json and get the bin variable and the binning
     """
-    with open(fit_config_f, 'r') as fconfig:
-        config = json.load(fconfig)
+    with open(bin_info_file, 'r') as bin_info_f:
+        bin_info = json.load(bin_info_f)
 
-    binning = parse_binning(config['binning'][1])
-    bins = zip(binning[:-1], binning[1:])
-
-    return parse_func_var(config['bin_vars'][1])[0], bins
+    return bin_info['bin_variable'], bin_info['costh_bins']
 
 
 def get_fit_res_names(indir, bin_var, binning):
     """
     Get the list of fit_res files
     """
-    plot_files = glob.glob(path.join(indir, 'JpsiPt_0_costh_HX_fold_?_massfit.pdf'))
+    plot_files = glob.glob(path.join(indir, 'mass_fit_config_costh_bin_?.pdf'))
     plots = OrderedDict()
     for iplot, pname in enumerate(sorted(plot_files, key=get_bin_idx)):
         label = LABEL_BASE[bin_var].format(NICE_VARS[bin_var],
@@ -153,7 +148,7 @@ def create_figure(plots):
 
 def main(args):
     """Main"""
-    bin_var, binning = get_binning(args.fitconfig)
+    bin_var, binning = get_binning(args.bininfofile)
     fit_plots = get_fit_res_names(args.inputdir, bin_var, binning)
 
     graph_plots = get_param_plot_names(args.inputdir)
@@ -170,10 +165,10 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser(description='Script that generates a tex '
                                      'stub that contains all the fit results')
-    parser.add_argument('fitconfig', help='Fit configuration json file (for '
-                        'binning information)')
     parser.add_argument('inputdir', help='Input directory that contains the '
                         'plots')
+    parser.add_argument('bininfofile', help='Bin info json file created by fit '
+                        'script')
     parser.add_argument('-o', '--outfile', help='Ouptut file name',
                         default='fit_report.tex')
 
