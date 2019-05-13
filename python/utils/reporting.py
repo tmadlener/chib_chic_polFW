@@ -11,6 +11,7 @@ BASIC_PREAMBLE = r'''\documentclass[a4paper,11pt]{scrartcl}
 \usepackage{subfig}
 \usepackage{amsmath}
 \usepackage[margin=2cm]{geometry}
+\usepackage{tabulary}
 
 \newcommand{\rootfig}[2]{\includegraphics[width=#1\linewidth, angle=270, origin=c]{#2}}
 

@@ -845,3 +845,37 @@ def memoize(func):
 
     func.cache = {}
     return decorate(func, _memoize)
+
+
+# for formatting, the absolute value of the decimal exponent above which the
+# decimal formatting will be used
+MAX_ABS_EXP = 2
+
+# The maximum number of the digits after the decimal point
+MAX_N_DIGITS = 4
+
+def fmt_float(number):
+    """
+    Format a floating point number such that it is (more or less) nicely written
+    using decimal exponents if necessary
+
+    Args:
+        number (float):
+
+    Returns:
+        str: The formatted number
+    """
+    if number == 0:
+        return '0'
+
+    if number < 0:
+        exp = np.floor(np.log10(-number))
+    else:
+        exp = np.floor(np.log10(number))
+
+    if np.abs(exp) > MAX_ABS_EXP:
+        fmt_str = r'{{:.{}f}} \cdot 10^{{{{{{:.0f}}}}}}'.format(MAX_N_DIGITS - 1)
+        return fmt_str.format(number * 10**(-exp), exp)
+
+    fmt_str = '{{:.{}f}}'.format(MAX_N_DIGITS)
+    return fmt_str.format(number)

@@ -6,6 +6,9 @@ a "reasonable" appearance
 
 from __future__ import print_function
 
+import ROOT as r
+r.PyConfig.IgnoreCommandLineOptions = True
+
 import glob
 import json
 import sys
@@ -16,7 +19,11 @@ from collections import OrderedDict
 
 from utils.reporting import open_tex_file
 from utils.plot_decoration import PLOT_LABELS_LATEX
-from utils.misc_helpers import parse_binning, parse_func_var
+from utils.misc_helpers import parse_binning, parse_func_var, fmt_float
+from utils.roofit_utils import get_var
+
+import utils.RooDoubleCB
+import utils.RooErfExponential
 
 
 NICE_VARS = {'phi_HX_fold': r'\varphi^{HX}_{\text{fold}}', 'costh_HX_fold':
@@ -48,6 +55,10 @@ DESIRED_PLOT_ORDER = [
     'Nchic1', 'Nchic2',
 ]
 
+# Parameters that should not be put into the fitted / fixed parameter table
+EXCLUDE_PARS = [
+    'm_psiPDG', 'm_chic0PDG', 'm_chic1PDG', 'm_chic2PDG', 'CBwidth'
+]
 
 def get_bin_idx(plotname):
     """
@@ -56,13 +67,10 @@ def get_bin_idx(plotname):
     return int(SORT_RGX.search(plotname).group(1))
 
 
-def get_binning(fit_config_f):
+def get_binning(config):
     """
     Read the fit config json and get the bin variable and the binning
     """
-    with open(fit_config_f, 'r') as fconfig:
-        config = json.load(fconfig)
-
     binning = parse_binning(config['binning'][1])
     bins = zip(binning[:-1], binning[1:])
 
@@ -151,16 +159,54 @@ def create_figure(plots):
     return '\n'.join(ret_str)
 
 
+def create_fit_param_table(frfile, fit_config):
+    """
+    Write a table with all the parameters that are fitted or fixed
+    """
+    fitfile = r.TFile.Open(frfile)
+    wsp = fitfile.Get('ws_mass_fit')
+
+    ret_str = []
+
+    ret_str.append(r'\begin{table}')
+    ret_str.append(r'\begin{tabulary}{1.0\linewidth}{l c }')
+    ret_str.append(r'parameter & value \\ \hline')
+    for exp in fit_config['expression_strings']:
+        par = exp.split('[')[0]
+        if par in EXCLUDE_PARS or par.startswith('expr'):
+            continue
+        var = get_var(wsp, par)
+        par_text = r'\texttt{{{}}}'.format(par).replace('_', r'\_')
+        if var.isConstant():
+            val_text = r'${}$ (fixed)'.format(fmt_float(var.getVal()))
+        else:
+            val_text = r'${} \pm {}$'.format(fmt_float(var.getVal()),
+                                             fmt_float(var.getError()))
+
+        ret_str.append(r'{} & {} \\'.format(par_text, val_text))
+
+    ret_str.append(r'\end{tabulary}')
+    ret_str.append(r'\end{table}')
+
+    return '\n'.join(ret_str)
+
+
 def main(args):
     """Main"""
-    bin_var, binning = get_binning(args.fitconfig)
-    fit_plots = get_fit_res_names(args.inputdir, bin_var, binning)
+    with open(args.fitconfig, 'r') as fit_conf_f:
+        fit_config = json.load(fit_conf_f)
 
-    graph_plots = get_param_plot_names(args.inputdir)
+    bin_var, binning = get_binning(fit_config)
+    fit_plots = get_fit_res_names(args.plotdir, bin_var, binning)
+
+    graph_plots = get_param_plot_names(args.plotdir)
 
     with open_tex_file(args.outfile) as tex_file:
         tex_file.write(r'\paragraph{Free parameters}')
         tex_file.write(create_figure(graph_plots))
+
+        tex_file.write('\n\\clearpage\n\\paragraph{Fitted / fixed parameters}\n')
+        tex_file.write(create_fit_param_table(args.fitresfile, fit_config))
 
         tex_file.write('\n\\clearpage\n\\paragraph{Fit result plots}\n')
         tex_file.write(create_figure(fit_plots))
@@ -172,8 +218,9 @@ if __name__ == '__main__':
                                      'stub that contains all the fit results')
     parser.add_argument('fitconfig', help='Fit configuration json file (for '
                         'binning information)')
-    parser.add_argument('inputdir', help='Input directory that contains the '
+    parser.add_argument('plotdir', help='Input directory that contains the '
                         'plots')
+    parser.add_argument('fitresfile', help='File containing the fit results')
     parser.add_argument('-o', '--outfile', help='Ouptut file name',
                         default='fit_report.tex')
 

@@ -339,7 +339,7 @@ function run_sim_fits() {
     mkdir -p ${outdir}/latex
     cd ${outdir}/latex
 
-    python $REPORTGEN --outfile fit_report.tex ../fit_model.json ../plots/ && \
+    python $REPORTGEN --outfile fit_report.tex ../fit_model.json ../plots/ ../simultaneous_fit_results.root && \
         ${LATEX_EXE} -interaction=nonstopmode fit_report.tex > /dev/null 2>&1 && \
         rm fit_report.{aux,log}
     cd -
