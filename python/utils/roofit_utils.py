@@ -3,13 +3,13 @@
 Module to facilitate some handling of RooFit objects
 """
 import logging
-logging.basicConfig(level=logging.DEBUG,
+logging.basicConfig(level=logging.WARNING,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 import ROOT as r
 import numpy as np
 import pandas as pd
 
-from utils.misc_helpers import get_np_from_tmatrix, get_bin_centers
+from utils.misc_helpers import get_np_from_tmatrix, get_bin_centers, fmt_float
 
 
 def ws_import(wsp, *args):
@@ -332,3 +332,25 @@ def try_factory(wsp, expr):
                       .format(expr))
         return False
     return True
+
+
+def param_str(wsp, param):
+    """
+    Get a string representation of the values of the parameter in the workspace.
+    Uses misc_utils.fmt_float for formatting.
+
+    Args:
+        wsp (ROOT.RooWorkspace): The workspace containing the parameter
+        param (str): The name of the parameter
+
+    Returns:
+        str (string that can be used in latex math environments)
+    """
+    var = get_var(wsp, param)
+    if var.isConstant():
+        return r'${}$ (fixed)'.format(fmt_float(var.getVal()))
+    val = var.getVal()
+    var_exp = np.floor(np.log10(val)) if val > 0 else np.floor(np.log10(-val))
+
+    return r'${} \pm {}$'.format(fmt_float(val),
+                                 fmt_float(var.getError(), var_exp.astype(int)))

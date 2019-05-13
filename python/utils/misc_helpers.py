@@ -854,13 +854,14 @@ MAX_ABS_EXP = 2
 # The maximum number of the digits after the decimal point
 MAX_N_DIGITS = 4
 
-def fmt_float(number):
+def fmt_float(number, use_exp=None):
     """
     Format a floating point number such that it is (more or less) nicely written
     using decimal exponents if necessary
 
     Args:
         number (float):
+        use_exp (int, optional): Use this exponent to format the number
 
     Returns:
         str: The formatted number
@@ -872,6 +873,12 @@ def fmt_float(number):
         exp = np.floor(np.log10(-number))
     else:
         exp = np.floor(np.log10(number))
+
+    if use_exp is not None:
+        if not isinstance(use_exp, int):
+            logging.warning('Rounding use_exp={} to nearest int')
+        # float to avoid "Integers to negative integer powers are not allowed"
+        exp = np.round(use_exp).astype(float)
 
     if np.abs(exp) > MAX_ABS_EXP:
         fmt_str = r'{{:.{}f}} \cdot 10^{{{{{{:.0f}}}}}}'.format(MAX_N_DIGITS - 1)

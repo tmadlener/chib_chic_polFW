@@ -5,12 +5,13 @@ Module that mainly holds constants values for nicer looking plots
 
 FIX_RANGES = {
     'CBmass1': [3.505, 3.5075],
-    'CBmass2': [3.546, 3.556],
+    'CBmass2': [3.55, 3.5525],
     'CBsigma1': [0.004, 0.006],
     'CBsigma2': [0.0055, 0.009],
     'lambda_bkg': [-3.0, -1.7],
     'mu_bkg': [3.2, 3.25],
     'sigma_bkg': [0.05, 0.13],
+    'r_chic0_chic1': [0.01, 0.06],
 }
 
 YLABELS = {
@@ -24,7 +25,9 @@ YLABELS = {
     'Nchic1': 'N^{#chi_{c1}}',
     'Nchic2': 'N^{#chi_{c2}}',
     'Nchic0': 'N^{#chi_{c0}}',
-    'Nbkg': 'N^{Bkg}'
+    'Nbkg': 'N^{Bkg}',
+    'r_chic0_chic1': 'N^{#chi_{c0}} / N^{#chi_{c1}}',
+    'r_chic2_chic1': 'N^{#chi_{c2}} / N^{#chi_{c1}}'
 }
 
 PLOT_LABELS_LATEX = {
@@ -38,7 +41,8 @@ PLOT_LABELS_LATEX = {
     'Nchic1': r'$N^{\chi_{c1}}$',
     'Nchic2': r'$N^{\chi_{c2}}$',
     'Nchic0': r'$N^{\chi_{c0}}$',
-    'Nbkg': r'$N^{\text{Bkg}}$'
+    'Nbkg': r'$N^{\text{Bkg}}$',
+    'r_chic0_chic1': r'$N^{\chi_{c0}} / N^{\chi_{c1}}$'
 }
 
 

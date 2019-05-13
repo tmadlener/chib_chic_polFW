@@ -11,7 +11,6 @@ r.PyConfig.IgnoreCommandLineOptions = True
 
 import glob
 import json
-import sys
 import re
 from os import path, environ
 
@@ -19,8 +18,8 @@ from collections import OrderedDict
 
 from utils.reporting import open_tex_file
 from utils.plot_decoration import PLOT_LABELS_LATEX
-from utils.misc_helpers import parse_binning, parse_func_var, fmt_float
-from utils.roofit_utils import get_var
+from utils.misc_helpers import parse_binning, parse_func_var
+from utils.roofit_utils import param_str
 
 import utils.RooDoubleCB
 import utils.RooErfExponential
@@ -39,7 +38,7 @@ try:
     LATEX_EXE = environ['LATEX_EXE']
 except KeyError:
     LATEX_EXE = 'pdflatex'
-    pass
+
 
 PLOT_COMMAND = r'\includegraphics[width=0.5\linewidth]'
 if LATEX_EXE == 'xelatex':
@@ -175,15 +174,8 @@ def create_fit_param_table(frfile, fit_config):
         par = exp.split('[')[0]
         if par in EXCLUDE_PARS or par.startswith('expr'):
             continue
-        var = get_var(wsp, par)
         par_text = r'\texttt{{{}}}'.format(par).replace('_', r'\_')
-        if var.isConstant():
-            val_text = r'${}$ (fixed)'.format(fmt_float(var.getVal()))
-        else:
-            val_text = r'${} \pm {}$'.format(fmt_float(var.getVal()),
-                                             fmt_float(var.getError()))
-
-        ret_str.append(r'{} & {} \\'.format(par_text, val_text))
+        ret_str.append(r'{} & {} \\'.format(par_text, param_str(wsp, par)))
 
     ret_str.append(r'\end{tabulary}')
     ret_str.append(r'\end{table}')
