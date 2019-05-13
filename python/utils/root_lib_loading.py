@@ -41,4 +41,4 @@ def try_load_lib(path, name=''):
                               ' sure that it is compiled and linked against the'
                               ' proper libraries.\nCheck {} for this and run '
                               '\'make clean; make\' there and see if this fixes'
-                              ' things.'.format(name, path, os.path.basename(path)))
+                              ' things.'.format(name, path, os.path.dirname(path)))
