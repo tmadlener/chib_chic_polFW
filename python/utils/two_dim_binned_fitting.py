@@ -266,14 +266,14 @@ class BinnedFitModel(object):
             if fit_results.status() == 0 and fit_results.covQual() == 3:
                 break
 
-
-
         set_var(wsp, '__fit_status__', fit_status, create=True)
         set_var(wsp, '__cov_qual__', cov_qual, create=True)
 
         wsp.saveSnapshot('snap_two_dim', wsp.allVars())
         fit_results.SetName('fit_res_two_dim')
         ws_import(wsp, fit_results)
+        sim_nll.setName('sim_nll')
+        ws_import(wsp, sim_nll)
 
 
     def plot(self, wsp, verbose=False):
@@ -295,6 +295,7 @@ class BinnedFitModel(object):
         n_bins = int((fvar.getMax() - fvar.getMin()) / BIN_WIDTH)
 
         wsp.loadSnapshot('snap_two_dim')
+
         for bin_name, bin_borders in self.bins.iteritems():
             frame, leg = self._plot_bin(wsp, data, bin_name, bin_borders, n_bins)
             b_chi2, b_ndf = get_chi2_ndf(frame, 'full_pdf_curve', 'data_hist')
@@ -348,9 +349,17 @@ class BinnedFitModel(object):
             add_info.append((0.15, 0.825,
                              'status = {}, covQual = {}'.format(int(status),
                                                                 int(cov_qual))))
+            # Check if the simultaneous negative log-likelihood is present in
+            # the workspace or create it if it is not yet present.
+            # Since the snapshot values of the fit result are already loaded it
+            # can be directly evaluated to get the value at the minimum
+            sim_nll = get_var(wsp, 'sim_nll')
+            if sim_nll is None:
+                sim_nll = self._create_nll(wsp, (rf.Extended(True), rf.Offset(True)))
+            min_nll = sim_nll.getVal()
 
-            aic = calc_info_crit(fit_res)
-            bic = calc_info_crit(fit_res, data.numEntries())
+            aic = calc_info_crit(fit_res, min_nll)
+            bic = calc_info_crit(fit_res, min_nll, data.numEntries())
             add_info.append((0.15, 0.775,
                              'AIC = {:.1f}, BIC = {:.1f}'.format(aic, bic)))
 

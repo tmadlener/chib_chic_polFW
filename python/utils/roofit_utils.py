@@ -126,13 +126,16 @@ def get_chi2_ndf(frame, pdfname, histname, fit_res=None):
     return chi2, ndf
 
 
-def calc_info_crit(fit_res, n_events=None):
+def calc_info_crit(fit_res, min_nll, n_events=None):
     """
     Calculate the BIC (Bayesian Information Criterion) or the AIC (Akaike
     Information Criterion) from the passed fit result.
 
     Args:
         fit_res (ROOT.RooFitResult): Fit result of a maximum likelihood fit
+        min_nll (float): The value of the negative log likelihood at its
+            minimum. If None is passed, the minimum stored in the fit result
+            will be used.
         n_events (int or None): If an int is passed it is assumed that this is
             the number of events in the sample and the BIC is calculated, if
             None is passed the AIC is calculated
@@ -141,7 +144,8 @@ def calc_info_crit(fit_res, n_events=None):
         https://en.wikipedia.org/wiki/Bayesian_information_criterion
         https://en.wikipedia.org/wiki/Akaike_information_criterion
     """
-    min_nll = fit_res.minNll()
+    if min_nll is None:
+        min_nll = fit_res.minNll()
     n_pars = fit_res.floatParsFinal().getSize()
     if n_events is not None:
         logging.debug('Calculating BIC with -log(L) = {:.0f}, k = {}, n = {}'
