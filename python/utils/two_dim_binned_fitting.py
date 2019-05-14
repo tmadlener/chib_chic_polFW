@@ -32,7 +32,7 @@ import utils.RooDoubleCB
 import utils.RooErfExponential
 import utils.RooPowerlawExponential
 
-N_BINS_FIT_PLOTS = 80
+BIN_WIDTH = 0.005 # GeV
 
 def get_bins(binning1, binning2, binvar1, binvar2):
     """
@@ -291,9 +291,12 @@ class BinnedFitModel(object):
         cans = OrderedDict()
         g_chi2, g_ndf = 0, 0
 
+        fvar = get_var(wsp, self.fit_var)
+        n_bins = int((fvar.getMax() - fvar.getMin()) / BIN_WIDTH)
+
         wsp.loadSnapshot('snap_two_dim')
         for bin_name, bin_borders in self.bins.iteritems():
-            frame, leg = self._plot_bin(wsp, data, bin_name, bin_borders)
+            frame, leg = self._plot_bin(wsp, data, bin_name, bin_borders, n_bins)
             b_chi2, b_ndf = get_chi2_ndf(frame, 'full_pdf_curve', 'data_hist')
             logging.debug('bin: {}: chi2 / number bins = {:.2f} / {}'
                           .format(bin_name, b_chi2, b_ndf))
@@ -559,7 +562,7 @@ class BinnedFitModel(object):
         """
         pulls = frame.pullHist('data_hist', 'full_pdf_curve', True)
         pulls.SetMarkerSize(0.8)
-        pull_frame = get_var(wsp, self.fit_var).frame(rf.Bins(N_BINS_FIT_PLOTS))
+        pull_frame = get_var(wsp, self.fit_var).frame()
         pull_frame.addPlotable(pulls, 'P')
 
         pull_frame.SetTitle("")
@@ -574,11 +577,11 @@ class BinnedFitModel(object):
         return pull_frame
 
 
-    def _plot_bin(self, wsp, full_data, bin_name, bin_borders):
+    def _plot_bin(self, wsp, full_data, bin_name, bin_borders, n_bins):
         """Make the distribution plot for a given bin"""
         data_args = (rf.MarkerSize(0.8), rf.Name('data_hist'))
         fit_var = get_var(wsp, self.fit_var)
-        frame = fit_var.frame(rf.Bins(N_BINS_FIT_PLOTS))
+        frame = fit_var.frame(rf.Bins(n_bins))
 
         leg = setup_legend(*self.plot_config['legpos'])
 
@@ -602,7 +605,7 @@ class BinnedFitModel(object):
         bw_mev = lambda v, n: (v.getMax() - v.getMin()) / n * 1000
         frame.GetYaxis().SetTitleOffset(1.3)
         frame.GetYaxis().SetTitle('Events / {:.1f} MeV'
-                                  .format(bw_mev(fit_var, N_BINS_FIT_PLOTS)))
+                                  .format(bw_mev(fit_var, n_bins)))
 
         # At least for debugging
         frame.SetTitle(cut)
