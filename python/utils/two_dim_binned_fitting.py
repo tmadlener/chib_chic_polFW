@@ -32,7 +32,7 @@ import utils.RooDoubleCB
 import utils.RooErfExponential
 import utils.RooPowerlawExponential
 
-BIN_WIDTH = 0.005 # GeV
+BIN_WIDTH = 0.00625 # GeV
 
 def get_bins(binning1, binning2, binvar1, binvar2):
     """
@@ -272,7 +272,7 @@ class BinnedFitModel(object):
         wsp.saveSnapshot('snap_two_dim', wsp.allVars())
         fit_results.SetName('fit_res_two_dim')
         ws_import(wsp, fit_results)
-        sim_nll.setName('sim_nll')
+        sim_nll.SetName('sim_nll')
         ws_import(wsp, sim_nll)
 
 
@@ -292,7 +292,7 @@ class BinnedFitModel(object):
         g_chi2, g_ndf = 0, 0
 
         fvar = get_var(wsp, self.fit_var)
-        n_bins = int((fvar.getMax() - fvar.getMin()) / BIN_WIDTH)
+        n_bins = int(round(((fvar.getMax() - fvar.getMin()) / BIN_WIDTH)))
 
         wsp.loadSnapshot('snap_two_dim')
 
@@ -613,7 +613,7 @@ class BinnedFitModel(object):
         # calculate the bin width in MeV
         bw_mev = lambda v, n: (v.getMax() - v.getMin()) / n * 1000
         frame.GetYaxis().SetTitleOffset(1.3)
-        frame.GetYaxis().SetTitle('Events / {:.1f} MeV'
+        frame.GetYaxis().SetTitle('Events / {:.2f} MeV'
                                   .format(bw_mev(fit_var, n_bins)))
 
         # At least for debugging
