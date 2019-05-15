@@ -8,7 +8,9 @@ r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.ProcessLine('gErrorIgnoreLevel = 1001')
 r.gROOT.SetBatch()
 
-from utils.plot_helpers import mkplot, default_attributes
+from utils.plot_helpers import (
+    mkplot, default_attributes, setup_latex, put_on_latex
+)
 from utils.plot_decoration import YLABELS, FIX_RANGES, CTH_PLOT
 from utils.misc_helpers import cond_mkdir
 from utils.data_handling import list_obj
@@ -48,6 +50,26 @@ def make_plot(pname, param_fg):
                  yLabel=YLABELS.get(pname, pname),
                  yRange=FIX_RANGES.get(pname, None),
                  **CTH_PLOT)
+
+    # If TF1, simply assume that it is a polynomial for now and also put the
+    # parameters onto the plot
+    if isinstance(param_fg, r.TF1):
+        x_coord = 0.675
+        y_coord = 0.88
+        add_text = []
+        for ipar in xrange(param_fg.GetNumberFreeParameters()):
+            par_text = (x_coord, y_coord,
+                        'p{} = {:.3e} #pm {:.3e}'.format(
+                            ipar,
+                            param_fg.GetParameter(ipar),
+                            param_fg.GetParError(ipar)))
+
+            add_text.append(par_text)
+            y_coord -= 0.035
+
+        ltx = setup_latex()
+        ltx.SetTextSize(0.025)
+        put_on_latex(ltx, add_text, True)
 
     return can
 
