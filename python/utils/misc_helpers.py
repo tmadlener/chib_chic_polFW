@@ -524,7 +524,8 @@ def log_key_error(func, *args):
 
 def flatten(iterable):
     """
-    Flatten any list or iterable into a 1D-list.
+    Flatten any list or iterable into a 1D-list. Keep dictionaries and strings
+    intact.
     Taken from here: http://stackoverflow.com/a/2158532/3604607
 
     Args:
@@ -538,7 +539,7 @@ def flatten(iterable):
     for elem in iterable:
         # only checking for the __iter__ attribute here should allow to enter
         # sub lists but not tear apart strings since they don't have it
-        if hasattr(elem, "__iter__"):
+        if hasattr(elem, "__iter__") and not isinstance(elem, dict):
             for sub in flatten(elem):
                 yield sub
         else:
