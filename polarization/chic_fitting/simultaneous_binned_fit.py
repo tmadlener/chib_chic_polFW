@@ -58,7 +58,7 @@ def main(args):
                      os.path.join(os.path.split(args.outfile)[0],
                                   'fit_model.json'))
     except shutil.Error as err:
-        loggin.warn(str(err))
+        logging.warn(str(err))
 
 
     model = BinnedFitModel(config)
