@@ -23,6 +23,7 @@ from utils.roofit_utils import param_str
 
 import utils.RooDoubleCB
 import utils.RooErfExponential
+import utils.RooPowerlawExponential
 
 
 NICE_VARS = {'phi_HX_fold': r'\varphi^{HX}_{\text{fold}}', 'costh_HX_fold':
