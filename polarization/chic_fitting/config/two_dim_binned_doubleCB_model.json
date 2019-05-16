@@ -49,30 +49,40 @@
     "CBn1_R[2.5, 1.8, 5.0]",
     "CBalpha2_L[0.6, 0.2, 2.5]",
     "CBalpha2_R[0.6, 0.2, 5.0]",
+    "CBn2_L[2.5, 1.8, 5.0]",
+    "CBn2_R[2.5, 1.8, 5.0]",
 
-    "expr::CBn2_L('CBn1_L', CBn1_L)",
-    "expr::CBn2_R('CBn1_R', CBn1_R)"
+    "CBmass2[3.551, 3.49, 3.58]",
+    "sigma_bkg[0.081, 0, 3]",
+
+    "dlth_chic0_chic1[0, -2, 2]",
+    "r_chic0_chic1[0.035, 0, 0.2]",
+
+    "p0_CBmass1[3.506, 3.45, 3.54]",
+    "p1_CBmass1[-0.001, -0.1, 0.1]",
+
+    "p0_CBsigma1[0.0047, 0.0003, 0.02]",
+    "p1_CBsigma1[0.0012, -1, 1]",
+
+    "p0_mu_bkg[3.228, 2, 4]",
+    "p1_mu_bkg[-0.014, -1, 1]"
   ],
 
   "proto_parameters": [
-    ["Nchic1", "[10000, 0, 200000]"],
-    ["Nbkg", "[30000, 0, 300000]"],
+    ["Nchic1", "[6000, 0, 200000]"],
+    ["Nbkg", "[18000, 0, 300000]"],
     ["r_chic2_chic1", "[0.5, 0, 2]"],
-    ["r_chic0_chic1", "[0.03, 0, 0.2]"],
     ["Nchic2", ["(r_chic2_chic1 * Nchic1)", "r_chic2_chic1, Nchic1"]],
-    ["Nchic0", ["(r_chic0_chic1 * Nchic1)", "r_chic0_chic1, Nchic1"]],
-
-
-    ["CBmass1", "[3.506, 3.45, 3.54]"],
-    ["CBsigma1", "[0.005, 0.003, 0.02]"],
-    ["CBmass2", "[3.551, 3.49, 3.58]"],
-    ["CBsigma2", "[0.0055, 0.003, 0.02]"],
-
+    ["CBsigma2", "[0.0066, 0.003, 0.02]"],
     ["lambda_bkg", "[-2.248, -10, 0]"],
-    ["mu_bkg", "[3.225, 2, 4]"],
-    ["sigma_bkg", "[0.086, 0, 10]"],
 
+    ["Nchic0", ["r_chic0_chic1 * (1 + dlth_chic0_chic1 * <costh_HX_fold> * <costh_HX_fold>) * Nchic1",
+                "r_chic0_chic1, dlth_chic0_chic1, Nchic1"]],
 
+    ["CBmass1", ["p0_CBmass1 + p1_CBmass1 * <costh_HX_fold>", "p0_CBmass1, p1_CBmass1"]],
+    ["CBsigma1", ["p0_CBsigma1 + p1_CBsigma1 * <costh_HX_fold>", "p0_CBsigma1, p1_CBsigma1"]],
+
+    ["mu_bkg", ["p0_mu_bkg + p1_mu_bkg * <costh_HX_fold>", "p0_mu_bkg, p1_mu_bkg"]],
 
     ["PES", ["(CBmass1 - m_psiPDG) / (m_chic1PDG - m_psiPDG)", "CBmass1, m_psiPDG, m_chic1PDG"]],
     ["CBmass0", ["PES * (m_chic0PDG - m_psiPDG) + m_psiPDG", "PES, m_chic0PDG, m_psiPDG"]],
@@ -82,6 +92,8 @@
   "fix_vars": [
     {"CBn1_L": 3.2},
     {"CBn1_R": 2.5},
+    {"CBn2_L": 3.2},
+    {"CBn2_R": 2.5},
     {"CBalpha1_L": 0.483},
     {"CBalpha1_R": 2.029},
     {"CBalpha2_L": 0.561},
@@ -89,6 +101,6 @@
   ],
 
   "plot_config": {
-    "legpos": [0.2, 0.65, 0.34, 0.85]
+    "legpos": [0.2, 0.45, 0.34, 0.7]
   }
 }
