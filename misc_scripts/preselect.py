@@ -128,7 +128,7 @@ def main(args):
 
     selections['trigger'] = sf.trigger_sel_(args.trigger)
     selections['muon'] = get_muon_sel(args.muon)
-    # selections['vtx prob'] = sf.vtx_prob_sel
+    selections['vtx prob'] = sf.vtx_prob_sel
     selections['photon sel'] = sf.photon_sel_(sf.flat_pt(0.4, 1.5))
     selections['jpsi kin sel'] = get_jpsi_sel(args.jpsi)
     selections['lifetime cut'] = get_lt_selection(args.mc, 2.5)
