@@ -50,7 +50,7 @@ def func_cov(func, free_params):
     jaco = func_m.jacobian(sp.Matrix(free_params))
     cov = _cov_matrix(free_params)
 
-    return jaco.T.dot(cov.dot(jaco))
+    return jaco * cov * jaco.T
 
 
 def _lambda_theta(j, simplified=True):
