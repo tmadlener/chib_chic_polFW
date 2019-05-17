@@ -405,9 +405,28 @@ class BinnedFitModel(object):
         return cans
 
 
-    def plot_simvar_graphs(self, wsp, simvars):
+    def plot_simvar_graphs(self, wsp, simvars, sym_uncer=False):
         """
-        plots and returns TGraphs for all the simple proto-parameters
+        Create TGraphs for all the "simple" proto parameters
+
+        Args:
+            wsp (ROOT.RooWorkspace): Workspace holding the fit results from a
+                simultaneous fit.
+            simvars (list of strings): List of proto parameter names that do not
+                have a functional dependency but instead are independent for
+                each bin.
+            sym_uncer (boolean, optional): Return the graphs with symmetric
+                uncertainties instead of asymmetric ones (False)
+
+        Returns:
+            list of TGraphAsymmErrors: Graphs of the passed proto_parameters as
+                a function of the binning variables. For each bin in either
+                direction a graph is created as a function of the other
+                direction. The name of the returned graph indicates on which
+                variable the graph depends and in which bin of the other
+                variable the values are taken from.
+                E.g.: 'p_v_var1_bin_0' means that parameter 'p' is plotted as a
+                function of 'var1' in bin 0 of 'var2'
         """
         #auxiliary definitions
         bin_var_X = self.bin_vars[0]
@@ -439,14 +458,15 @@ class BinnedFitModel(object):
                     vals.append([get_var(wsp, p_getname.format(param=param, x_var=bin_var_X, y_var=bin_var_Y, i=i, j=j)) for j in xrange(len(self.binning[bintovar]) - 1)])
 
                 #plot graphs as a function of binning var
-                graph = self.plot_free_pars(wsp, bin_var, vals)
+                graph = self.plot_free_pars(wsp, bin_var, vals, sym_uncer)
 
                 #setting the correct mean (errors adjust accordingly), setting graph name
                 for i in xrange(len(self.binning[1-bintovar]) - 1):
                     g_mean = np.array([bin_means['__'.join([bin_var, b_getname.format(x_var=bin_var_X, y_var=bin_var_Y, i=i, j=j)])] for j in xrange(len(self.binning[bintovar]) - 1)])
                     graph[i] = assign_x(graph[i], g_mean)
                     # graph name of the form [y_axis]_v_[x_axis]_bin_[bin of other bin_var]
-                    graph[i].SetName('{}_v_{}_bin_{}'.format(param, bin_var, i))
+                    sym_add = '_sym_uncer' if sym_uncer else ''
+                    graph[i].SetName('{}_v_{}_bin_{}{}'.format(param, bin_var, i, sym_add))
                     graphs.append(graph[i])
 
         return graphs
@@ -531,34 +551,37 @@ class BinnedFitModel(object):
         return meanval
 
 
-    def plot_free_pars(self, wsp, bin_var, vals_var):
+    def plot_free_pars(self, wsp, bin_var, vals_var, sym_uncer=False):
         """
         function that does the plotting of a parameter as a function of either
         binning variable
         """
         graph = []
 
-        var_nr = self.bin_vars.index(bin_var)
-        bin_borders = self.binning[var_nr]
+        binb = self.binning[self.bin_vars.index(bin_var)]
 
         dependent = isinstance(vals_var[0][0], r.RooFormulaVar)
+        # Needed for dependent parameter uncertainties
+        fit_res = wsp.genobj('fit_res_two_dim')
 
-        for xplot in xrange(len(vals_var)):
-            #TODO: define uncertainties for dependent vars
-            if dependent:
-                y_all = [get_var_err(wsp, str(v.getTitle()), wsp.genobj('fit_res_two_dim')) for v in vals_var[xplot]]
-                y_val = np.array([y_all[i][0] for i in xrange(len(vals_var[xplot]))])
-                y_elo = np.array([y_all[i][1] for i in xrange(len(vals_var[xplot]))])
+        for var in vals_var:
+            if dependent or sym_uncer:
+                vals = np.array(
+                    [get_var_err(wsp, v.GetName(), fit_res) for v in var],
+                )
+                y_val = vals[:, 0].astype(float) # weird conversion error other-
+                y_elo = vals[:, 1].astype(float) # wise in constructor below
                 y_ehi = y_elo
             else:
-                y_val = np.array([v.getVal() for v in vals_var[xplot]])
-                y_elo = np.array([v.getErrorLo() for v in vals_var[xplot]]) # this returns negative values
-                y_elo *= -1 # TGraphAsymmErrors expects positive values
-                y_ehi = np.array([v.getErrorHi() for v in vals_var[xplot]])
+                y_val = np.array([v.getVal() for v in var])
+                # RooFit reports lower errors with negative sign, but for
+                # TGraphAsymmErrors they need to be positive
+                y_elo = np.array([-v.getErrorLo() for v in var])
+                y_ehi = np.array([v.getErrorHi() for v in var])
 
             #bin means and errors left to calculate externally because it simplifies the process
-            x_val = np.array([0.5 * (bin_borders[i] + bin_borders[i+1]) for i in xrange(len(bin_borders) - 1)])
-            x_err = np.array([0.5 * (bin_borders[i+1] - bin_borders[i]) for i in xrange(len(bin_borders) - 1)])
+            x_val = np.array([0.5 * np.sum(b) for b in zip(binb[:-1], binb[1:])])
+            x_err = np.array([0.5 * np.diff(b)[0] for b in zip(binb[:-1], binb[1:])])
 
             graph.append(r.TGraphAsymmErrors(len(x_val), x_val, y_val, x_err, x_err, y_elo, y_ehi))
 

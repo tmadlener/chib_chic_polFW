@@ -20,7 +20,7 @@ from utils.two_dim_binned_fitting import BinnedFitModel
 from utils.misc_helpers import cond_mkdir
 
 
-def store_proto_pars(wsp, model, outfile):
+def store_proto_pars(wsp, model, outfile, sym_uncer):
     """
     list of proto params with or without functional dependence
     """
@@ -29,7 +29,7 @@ def store_proto_pars(wsp, model, outfile):
     for title, defn in model.proto_params:
         if isinstance(defn, (tuple, list)):
             v_dep = defn[1].split(', ')
-            if (not any([par_dep in v_dep for par_dep, v_str_dep in model.proto_params])):
+            if not any([par_dep in v_dep for par_dep, _ in model.proto_params]):
                 comvars[title] = defn
         else:
             simvars.append(title)
@@ -43,6 +43,10 @@ def store_proto_pars(wsp, model, outfile):
     sim_graphs = model.plot_simvar_graphs(wsp, simvars)
     for graph in sim_graphs:
         graph.Write('',r.TObject.kWriteDelete)
+
+    if sym_uncer:
+        for graph in model.plot_simvar_graphs(wsp, simvars, sym_uncer):
+            graph.Write('', r.TObject.kWriteDelete)
 
     com_funcs = model.plot_comvar_funcs(wsp, comvars)
     for func in com_funcs:
@@ -72,7 +76,7 @@ def main(args):
     cond_mkdir(outdir)
 
     # Saving the plots
-    for bin_name, bin_borders in model.bins.iteritems():
+    for bin_name in model.bins:
         plotname = '/'.join([outdir, bin_name+'_massfit.pdf'])
         cans[bin_name].SaveAs(plotname)
         parname = '/'.join([outdir, bin_name+'_massfit_res.pdf'])
@@ -80,7 +84,7 @@ def main(args):
 
     if args.graphs:
         outfile = '/'.join([outdir, 'proto_param_graphs.root'])
-        store_proto_pars(wsp, model, outfile)
+        store_proto_pars(wsp, model, outfile, args.symmetric)
 
 
 if __name__ == '__main__':
@@ -100,6 +104,9 @@ if __name__ == '__main__':
                         default=None)
     parser.add_argument('-v', '--verbose', action='store_true', default=False,
                         help='Add some debug information to the produced plots')
+    parser.add_argument('--symmetric', help='Also create graphs with symmetric '
+                        'uncertainties in addition to the ones with asymmetric '
+                        'uncertainties', action='store_true', default=False)
 
 
     clargs = parser.parse_args()
