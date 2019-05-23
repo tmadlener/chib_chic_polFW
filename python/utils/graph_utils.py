@@ -140,7 +140,7 @@ def get_y(graph, point_idx):
     return y
 
 
-def divide_graphs(ngraph, dgraph):
+def divide_graphs(ngraph, dgraph, corr=0):
     """
     Divide the two graphs and return the ratio graph (only in y-direction)
 
@@ -151,6 +151,8 @@ def divide_graphs(ngraph, dgraph):
     Args:
         ngraph (ROOT.TGraph or inheriting): numerator graph
         dgraph (ROOT.TGraph or inheriting): denominator graph
+        corr (float, optional): Correlation coefficient between the two graphs
+            used for calculating possibly correlated uncertainties (default=0)
 
     Returns:
         ROOT.TGraph: ratio of the numerator to denominator graph (in
@@ -179,9 +181,11 @@ def divide_graphs(ngraph, dgraph):
         _, _, dy_lo_err, dy_hi_err = get_errors(dgraph)
 
         r_lo_err = ry_vals * \
-                   np.sqrt((ny_lo_err / ny_vals)**2 + (dy_lo_err / dy_vals)**2)
+                   np.sqrt((ny_lo_err / ny_vals)**2 + (dy_lo_err / dy_vals)**2 -\
+                           2 * corr * ny_lo_err * dy_lo_err / (ny_vals * dy_vals))
         r_hi_err = ry_vals * \
-                   np.sqrt((ny_hi_err / ny_vals)**2 + (dy_hi_err / dy_vals)**2)
+                   np.sqrt((ny_hi_err / ny_vals)**2 + (dy_hi_err / dy_vals)**2 -\
+                           2 * corr * ny_hi_err * dy_hi_err / (ny_vals * dy_vals))
         return r.TGraphAsymmErrors(n_points, nx_vals, ry_vals,
                                    nx_lo_err, nx_hi_err, r_lo_err, r_hi_err)
 
@@ -190,7 +194,8 @@ def divide_graphs(ngraph, dgraph):
         _, dy_errs = get_errors(dgraph)
 
         r_errs = ry_vals * \
-                 np.sqrt((ny_errs / ny_vals)**2 + (dy_errs / dy_vals)**2)
+                 np.sqrt((ny_errs / ny_vals)**2 + (dy_errs / dy_vals)**2 -\
+                         2 * corr * ny_errs * dy_errs / (ny_vals * dy_vals))
         return r.TGraphErrors(n_points, nx_vals, ry_vals, nx_errs, r_errs)
 
     return r.TGraph(n_points, nx_vals, ry_vals)
@@ -418,13 +423,15 @@ def pull_graph(graph, shape):
     return r.TGraph(np.sum(val_vals), xvals[val_vals], pulls[val_vals])
 
 
-def divide_hist(graph, hist):
+def divide_hist(graph, hist, corr=0):
     """
     Divide the graph by the histogram
 
     Args:
         graph (ROOT.TGraph or inheriting): numerator graph
         hist (ROOT.TH1): denominator histogram
+        corr (float, optional): Correlation coefficient between the two inputs
+            used for calculating possibly correlated uncertainties (default=0)
 
     Returns:
         ROOT.TGraph: ratio of the numerator graph and the denominator histogram.
@@ -433,7 +440,7 @@ def divide_hist(graph, hist):
     # since all TGraph types have a constructor from a TH1, it is enough to
     # convert the denominator to the same type and then use the existing
     # functionality to divide graphs
-    return divide_graphs(graph, type(graph)(hist))
+    return divide_graphs(graph, type(graph)(hist), corr)
 
 
 def has_sym_uncer(graph):
