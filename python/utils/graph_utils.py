@@ -512,3 +512,39 @@ def graph_in_range(graph, low, high):
     else:
         return r.TGraph(np.sum(in_range, dtype=int),
                         x_vals[in_range], y_vals[in_range])
+
+
+def subtract_graphs(graph1, graph2, corr=0):
+    """
+    Subtract graph2 from graph1 along the y-direction taking into account a
+    possible (global) correlation between the graph points.
+
+    NOTE: It is assumed that the two graphs align on the x-direction and there
+    are no checks in place to enforce this or to give any warning if it is not
+    the case. The function may fail if the number of points differ between the
+    two graphs.
+
+    Args:
+        graph1 (r.TGraphAsymmErrors):
+        graph2 (r.TGraphAsymmErrors):
+        corr (float): Correlation coefficient between the two graphs, assuming
+            that all points have the same correlation
+
+    Returns:
+        r.TGraphAsymmErrors
+    """
+    TGA = r.TGraphAsymmErrors # less typing
+    if not isinstance(graph1, TGA) or not isinstance(graph2, TGA):
+        logging.error('Subtracting graphs is currently only implemented for '
+                      'TGraphAsymmErrors')
+        return None
+
+    exl, exh, eyl1, eyh1 = get_errors(graph1)
+    _, _, eyl2, eyh2 = get_errors(graph2)
+    xvals = np.array(graph1.GetX())
+    diff = np.array(graph1.GetY()) - np.array(graph2.GetY())
+
+    eyl = np.sqrt(-2 * corr * eyl1 * eyl2 + eyl1**2 + eyl2**2)
+    eyh = np.sqrt(-2 * corr * eyh1 * eyh2 + eyh1**2 + eyh2**2)
+
+    return TGA(len(eyl), xvals, diff, exl, exh, eyl, eyh)
