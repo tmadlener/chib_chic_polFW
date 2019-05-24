@@ -12,6 +12,8 @@ import logging
 logging.basicConfig(level=logging.INFO,
                     format='%(levelname)s: %(message)s')
 
+from scipy.optimize import minimize
+
 from utils.misc_helpers import get_vals_from_rwbuffer, make_iterable
 
 @decorator
@@ -548,3 +550,36 @@ def subtract_graphs(graph1, graph2, corr=0):
     eyh = np.sqrt(-2 * corr * eyh1 * eyh2 + eyh1**2 + eyh2**2)
 
     return TGA(len(eyl), xvals, diff, exl, exh, eyl, eyh)
+
+
+def fit_to_graph(graph, template):
+    """
+    Fit the passed template graph to the graph to obtain the normalization
+    of the template graph
+
+    Args:
+        graph (ROOT.TGraphAsymmErrors): Data graph to which the template is
+            fitted
+        template (ROOT.TGraph or inheriting): The template graph from which only
+            the y-values are used. There is no check whether the x-axes of the
+            two graphs are compatible!
+
+    Returns:
+        norm, chi2: The normalization value and the minimal chi2 value of the
+            fit procedure.
+    """
+    tval = np.array(template.GetY())
+    gval = np.array(graph.GetY())
+    _, _, elow, ehigh = get_errors(graph)
+
+    def _chisquare((norm,)):
+        """Calculate the chi2 value associated to a given norm"""
+        pred = norm * tval
+        diff = gval - pred
+        # If the prediction is below the graph use low uncertainties else high
+        err = (diff < 0) * elow + (diff > 0) * ehigh
+        return np.sum(diff**2 / err**2)
+
+    mres = minimize(_chisquare, (tval / gval)[0], method='nelder-mead')
+
+    return mres.x[0], mres.fun
