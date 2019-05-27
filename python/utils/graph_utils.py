@@ -14,7 +14,9 @@ logging.basicConfig(level=logging.INFO,
 
 from scipy.optimize import minimize
 
-from utils.misc_helpers import get_vals_from_rwbuffer, make_iterable
+from utils.misc_helpers import (
+    get_vals_from_rwbuffer, make_iterable, get_bin_edges
+)
 
 @decorator
 def out_of_range_default(func, *args):
@@ -583,3 +585,31 @@ def fit_to_graph(graph, template):
     mres = minimize(_chisquare, (tval / gval)[0], method='nelder-mead')
 
     return mres.x[0], mres.fun
+
+
+def get_x_binning(graph):
+    """
+    Get the binning along the x-axis (assuming that it is a closed binning)
+
+    Args:
+        graph (ROOT.TGraphErrors, or ROOT.TGraphAsymmErrors): Graph for which
+            the central values and the uncertainties along the x-direction
+            define a binning
+
+    Returns:
+        np.array: The bin-edges of the binning along the x-direction
+    """
+    x_vals = np.array(graph.GetX())
+    if isinstance(graph, r.TGraphErrors):
+        x_err, _ = get_errors(graph)
+        low_edges = x_vals - x_err
+        high_edges = x_vals + x_err
+    elif isinstance(graph, r.TGraphAsymmErrors):
+        xlo, xhi, _, _ = get_errors(graph)
+        low_edges = x_vals - xlo
+        high_edges = x_vals + xhi
+    else:
+        logging.error('Cannot determine binning of graph of type'
+                      .format(type(graph)))
+
+    return get_bin_edges(zip(low_edges, high_edges))
