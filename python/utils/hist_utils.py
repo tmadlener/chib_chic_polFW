@@ -1052,3 +1052,18 @@ def rebin_1d_binning(hist, targ_binning):
             rebin_vals[rbin] += orig_vals[obin]
 
     return from_array(rebin_vals, targ_binning)
+
+
+def sum_hists(hists):
+    """
+    Sum all the passed histograms and return the summed histogram
+    """
+    entries = np.array(
+        [get_array(h) for h in hists]
+    )
+    errors = np.array(
+        [get_array(h, errors=True) for h in hists]
+    )
+    sum_entries = np.sum(entries, axis=0)
+    sum_errors = np.sqrt(np.sum(errors**2, axis=0))
+    return from_array(sum_entries, get_binning(hists[0]), errors=sum_errors)
