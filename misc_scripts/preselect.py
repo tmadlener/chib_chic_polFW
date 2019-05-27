@@ -131,7 +131,7 @@ def main(args):
     selections['vtx prob'] = sf.vtx_prob_sel
     selections['photon sel'] = sf.photon_sel_(sf.flat_pt(0.4, 1.5))
     selections['jpsi kin sel'] = get_jpsi_sel(args.jpsi)
-    selections['lifetime cut'] = get_lt_selection(args.mc, 2.5)
+    selections['lifetime cut'] = get_lt_selection(args.mc, args.lifetime)
     selections['deta cut (MC only)'] = get_deta_sel(args.deta)
     # selections['chis mass cut'] = sf.chic_mass_sel # not strictly necessary from a PS point of view
     # To ensure rectangular region in costh-phi
@@ -173,6 +173,9 @@ if __name__ == '__main__':
                         help='Specify the muon selection. Either a number, which'
                         ' will then be used as a flat pt cut or \'loose\' for '
                         'the loose selection.')
+    parser.add_argument('-l', '--lifetime', help='Specify the lifetime cut that '
+                        'should be used (lifetime significance is used as cut '
+                        'variable)', type=float, default=2.5)
     parser.add_argument('--mc', help='do mc selection (no lifetime cut)',
                         action='store_true', default=False)
     parser.add_argument('--deta', help='Apply the deta selection (only possible'
