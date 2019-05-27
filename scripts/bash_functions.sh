@@ -345,3 +345,11 @@ function run_sim_fits() {
     cd -
 }
 export -f run_sim_fits
+
+function chi2prob() {
+    local chi2=${1}
+    local ndf=${2}
+
+    python -c "from scipy.stats import chi2; print(chi2.sf("${chi2}","${ndf}"))"
+}
+export -f chi2prob
