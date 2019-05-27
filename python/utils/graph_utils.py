@@ -612,4 +612,8 @@ def get_x_binning(graph):
         logging.error('Cannot determine binning of graph of type'
                       .format(type(graph)))
 
+    # Avoid some numerical problems by rounding to the 6th decimal place
+    low_edges = np.round(low_edges, 6)
+    high_edges = np.round(high_edges, 6)
+
     return get_bin_edges(zip(low_edges, high_edges))
