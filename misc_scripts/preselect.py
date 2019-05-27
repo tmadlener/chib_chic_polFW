@@ -128,7 +128,7 @@ def main(args):
 
     selections['trigger'] = sf.trigger_sel_(args.trigger)
     selections['muon'] = get_muon_sel(args.muon)
-    selections['vtx prob'] = sf.vtx_prob_sel
+    selections['vtx prob'] = sf.vtx_prob_sel_(args.vtxprob)
     selections['photon sel'] = sf.photon_sel_(sf.flat_pt(0.4, 1.5))
     selections['jpsi kin sel'] = get_jpsi_sel(args.jpsi)
     selections['lifetime cut'] = get_lt_selection(args.mc, args.lifetime)
@@ -176,6 +176,8 @@ if __name__ == '__main__':
     parser.add_argument('-l', '--lifetime', help='Specify the lifetime cut that '
                         'should be used (lifetime significance is used as cut '
                         'variable)', type=float, default=2.5)
+    parser.add_argument('-v', '--vtxprob', help='Specify the desired vtx prob '
+                        'cut value', default=0.01, type=float)
     parser.add_argument('--mc', help='do mc selection (no lifetime cut)',
                         action='store_true', default=False)
     parser.add_argument('--deta', help='Apply the deta selection (only possible'

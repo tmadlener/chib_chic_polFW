@@ -210,10 +210,22 @@ def prompt_sel(dfr, ctau_sigma=2.5):
 prompt_sel.requires = ['Jpsict', 'JpsictErr']
 
 
+@deprecated_soon('vtx_prob_sel_')
 def vtx_prob_sel(df, prob=0.01):
     """Select only the events with vtx probability larger than 0.01"""
     return df.vtxProb > prob
 vtx_prob_sel.requires = ['vtxProb']
+
+
+def vtx_prob_sel_(prob=0.01):
+    """
+    Create a vertex probability selection functor that selects events that have
+    a vtx probability greater than the passed value
+    """
+    sel_func = lambda d: d.vtxProb > prob
+    sel_func.requires = ['vtxProb']
+    return sel_func
+
 
 def deta_sel(df, deta_max=0.015):
     """
