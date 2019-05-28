@@ -579,7 +579,7 @@ def fit_to_graph(graph, template):
         pred = norm * tval
         diff = gval - pred
         # If the prediction is below the graph use low uncertainties else high
-        err = (diff < 0) * elow + (diff > 0) * ehigh
+        err = (diff > 0) * elow + (diff < 0) * ehigh
         return np.sum(diff**2 / err**2)
 
     mres = minimize(_chisquare, (tval / gval)[0], method='nelder-mead')
