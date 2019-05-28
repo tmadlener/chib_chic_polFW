@@ -37,4 +37,7 @@ if [[ -z "${CHIB_CHIC_POLFW_DIR+x}" ]] || $(check_args_flag "--force" ${@}); the
     else
         export LATEX_EXE=pdflatex
     fi
+
+    # create a random number that can be used to shift the fitted value of delta lambda to avoid unblinding
+    export RANDOM_DELTA_LAMBDA_SHIFT=$(get_rand 271828182845904)
 fi

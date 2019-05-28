@@ -353,3 +353,14 @@ function chi2prob() {
     python -c "from scipy.stats import chi2; print(chi2.sf("${chi2}","${ndf}"))"
 }
 export -f chi2prob
+
+# Get a random number possibly using a seed
+function get_rand() {
+    if [[ $# -gt 0 ]]; then
+        local seed=${1}
+    else
+        local seed="None"
+    fi
+
+    echo $(python -c "import random; random.seed("${seed}"); print(random.random() * random.randint(-10 , 10))")
+}
