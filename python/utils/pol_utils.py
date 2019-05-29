@@ -56,10 +56,9 @@ def ang_dist_2d(costh, phi, lam):
 
 def costh_ratio_1d(costh, lam1, lam2):
     """
-    Ratio of W(costh | lam1) / W(costh | lam2)
+    Ratio of W(costh | lam1) / W(costh | lam2) without proper normalization
 
-    R(costh | lam1, lam2) = (3 + lam2) / (3 + lam1) * \
-        (1 + lam1 * costh**2) / (1 + lam2 * costh**2)
+    R(costh | lam1, lam2) = (1 + lam1 * costh**2) / (1 + lam2 * costh**2)
 
     Args:
         costh (np.array): cos(theta) for all of the events for which the
@@ -71,7 +70,7 @@ def costh_ratio_1d(costh, lam1, lam2):
        np.array: Values of R(costh | lam1, lam2) at the passed values
     """
     costh2 = costh**2
-    return (3 + lam2) / (3 + lam1) * (1 + lam1 * costh2) / (1 + lam2 * costh2)
+    return (1 + lam1 * costh2) / (1 + lam2 * costh2)
 
 
 def ang_dist_lth(costh, lth):
