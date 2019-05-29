@@ -5,6 +5,8 @@ Script to calculate ppd values for a given input ratio
 
 import os
 
+from itertools import combinations
+
 import numpy as np
 import pandas as pd
 
@@ -16,7 +18,10 @@ from scipy.stats import norm
 from utils.graph_utils import scale_graph, get_errors
 from utils.pol_utils import costh_ratio_1d
 from utils.data_handling import store_dataframe
+from utils.hist_utils import hist1d, hist2d
 
+NBINS_1D = 2000
+NBINS_2D = 200
 
 # For now use an "unknown" but constant shift to avoid early unblinding
 RAND_DLTH_SHIFT = float(os.environ['RANDOM_DELTA_LAMBDA_SHIFT'])
@@ -28,6 +33,11 @@ RATIO_NAME = 'r_chic2_chic1_v_costh_HX_fold_bin_0'
 NORM_SIGMA = 0.025
 NORM_MU = 0.5
 
+XRANGES = {
+    'dlth': [-4.7, -1.75],
+    'lth': [-0.33333, 1],
+    'norm': [NORM_MU - 5 * NORM_SIGMA, NORM_MU + 5 * NORM_SIGMA]
+}
 
 def get_ratio_graph(rfile):
     """
@@ -92,6 +102,49 @@ def calc_ppd(graph, norm_v, lth_v, dlth_v):
     return np.exp(-0.5 * chi2_vals)
 
 
+def ppd_1d(data, var):
+    """
+    Get the 1d ppd histogram for a given variable
+    """
+    xran = XRANGES.get(var, None)
+    bounds = {'min': xran[0], 'max': xran[1], 'nbins': NBINS_1D}
+
+    return hist1d(data.loc[:, var], weights=data.ppd / data.norm_weight,
+                  **bounds)
+
+
+def ppd_2d(data, var1, var2):
+    """
+    Get the 2d ppd histogram for a given variable
+    """
+    xran = XRANGES.get(var1)
+    yran = XRANGES.get(var2)
+
+    bounds = {'xmin': xran[0], 'xmax': xran[1], 'nbinsx': NBINS_2D,
+              'ymin': yran[0], 'ymax': yran[1], 'nbinsy': NBINS_2D}
+
+    return hist2d(data.loc[:, var1], data.loc[:, var2],
+                  weights=data.ppd / data.norm_weight, **bounds)
+
+
+def produce_ppd_hists(data):
+    """
+    Make the PPD histograms from the passed data
+    """
+    hists = []
+    for var in ['lth', 'dlth', 'norm']:
+        vhist = ppd_1d(data, var)
+        vhist.SetName('ppd_1d_{}'.format(var))
+        hists.append(vhist)
+
+    for var1, var2 in combinations(['lth', 'dlth', 'norm'], 2):
+        vhist = ppd_2d(data, var1, var2)
+        vhist.SetName('ppd_2d_{}_{}'.format(var1, var2))
+        hists.append(vhist)
+
+    return hists
+
+
 def main(args):
     """Main"""
     ratiofile = r.TFile.Open(args.ratiofile)
@@ -112,10 +165,16 @@ def main(args):
         'ppd': calc_ppd(ratio_graph, norm_vals, lth_vals, dlth_vals)
     })
 
+    if not args.hists_only:
+        store_dataframe(dfr, args.scanfile, tname='ppd_vals')
 
+    outfile = r.TFile.Open(args.scanfile, 'update')
+    outfile.cd()
+    hists = produce_ppd_hists(dfr)
+    for hist in hists:
+        hist.Write()
 
-    store_dataframe(dfr, args.scanfile, tname='ppd_vals')
-
+    outfile.Close()
 
 
 if __name__ == '__main__':
@@ -129,6 +188,9 @@ if __name__ == '__main__':
     parser.add_argument('-n', '--number-extractions', help='Number of parameters'
                         'values that should be tested', type=int,
                         default=1000000)
+    parser.add_argument('--hists-only', default=False, action='store_true',
+                        help='Do not put the scan values into a TTree, but only '
+                        'store the histograms')
 
 
     clargs = parser.parse_args()
