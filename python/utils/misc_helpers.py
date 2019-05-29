@@ -887,3 +887,43 @@ def fmt_float(number, use_exp=None):
 
     fmt_str = '{{:.{}f}}'.format(MAX_N_DIGITS)
     return fmt_str.format(number)
+
+
+def quantile(vals, quant, weights=None):
+    """
+    Get the quantile from the values using weights
+
+    Calculates the quantiles of the possibly weighted distribution of vals, by
+    building the empirical CDF and then doing an interpolation on the inverse to
+    get the values corresponding to a given quantile.
+
+    Args:
+        vals (np.array): Values for which the quantiles should be calculated
+        quant (array like): The quantiles (between 0 and 1) which should be
+            determined
+        weights (np.array, optional): Array of weights of the same length as
+            vals. Each entry will be used to weight the corresponding value in
+            vals.
+
+    Returns:
+         quantile(s): float or nd.array. The quantiles of the possibly weighted
+             distribution of vals.
+    """
+    sort_idx = np.argsort(vals)
+    sort_vals = vals[sort_idx]
+    if weights is not None:
+        sort_weights = weights[sort_idx]
+    else:
+        sort_weights = np.ones_like(sort_vals)
+
+    part_sum = np.cumsum(sort_weights)
+
+    # Calcualte the empirical distribution function by dividing the partial sums
+    # By the total sum
+    ecdf = part_sum / part_sum[-1]
+
+    # In principle it would be enough now to find the element for which the ecdf
+    # exceeds the desired quantile(s), but it is easier to do this for more
+    # than one quantile by simply interpolating on the "inverse" ecdf to find
+    # the values at which the quantiles are.
+    return np.interp(quant, ecdf, sort_vals)
