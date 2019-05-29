@@ -25,7 +25,7 @@ RAND_DLTH_SHIFT = float(os.environ['RANDOM_DELTA_LAMBDA_SHIFT'])
 RATIO_NAME = 'r_chic2_chic1_v_costh_HX_fold_bin_0'
 
 # The width and center of the Gaussian importance sampling kernel for the norm
-NORM_SIGMA = 0.1
+NORM_SIGMA = 0.025
 NORM_MU = 0.5
 
 
