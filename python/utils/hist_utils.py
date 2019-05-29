@@ -18,7 +18,7 @@ from root_numpy import __version__ as rnp_version
 
 from utils.misc_helpers import (
     make_iterable, create_random_str, get_vals_from_rwbuffer, replace_all,
-    is_divisable, get_bin_centers
+    is_divisable, get_bin_centers, quantile
 )
 
 def draw_var_to_hist(tree, hist, var, cut='', weight=None):
@@ -293,33 +293,25 @@ def get_quantiles(hist, quantiles):
     """
     Get the (approximate) quantiles from the passed histogram
 
-    Depending on the binning it is possible that the quantiles are not exactly
-    at the desired values. In this case, the upper bound of the bin, that exceeds
-    the quantile will be used.
+    The quantiles are calculated by building the empirical CDF (ecdf) from the
+    histogram (excluding under- and overflow) and then interpolating the
+    inverted ecdf to get the desired quantiles.
 
     Args:
         hist (ROOT.TH1): histogram of distribution for which quantile cuts
             should be determined
-        quantiles (list): quantile values between 0 and 1
+        quantiles (float or array like): quantile values between 0 and 1
 
     Returns:
         list: x-value at the upper bounds of the bins that exceed the quantiles
+
+    See also:
+        misc_helpers.quantile
     """
-    integral = hist.Integral()
-    # calculate the cumulative sum of the bin entries, excluding under- and
-    # overflow
-    cum_sum = np.cumsum([hist[i] for i in xrange(1, hist.GetNbinsX() +1)])
-    cum_sum /= integral # normalize
+    bin_centers = get_bin_centers(get_binning(hist))
+    hist_vals = get_array(hist)
+    return quantile(bin_centers, quantiles, weights=hist_vals)
 
-    # get the first indices in the normalized cumulative sum array that are
-    # greater or equal to the desired quantiles
-    q_bins = [np.where(cum_sum >= q)[0][0] for q in quantiles]
-
-    x_axis = hist.GetXaxis()
-    # when retrieving the upper bound adjust for the indexing in ROOT histograms
-    # (starts at 1 and ends at Nbins for the "nominal" bins, 0 is underflow,
-    # Nbins + 1 is overflow)
-    return [x_axis.GetBinUpEdge(b + 1) for b in q_bins]
 
 
 def divide(num, denom, option='', **kwargs):
