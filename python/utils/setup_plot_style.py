@@ -4,6 +4,8 @@ https://twiki.cern.ch/twiki/bin/view/CMS/Internal/FigGuidelines
 """
 import ROOT as r
 
+from utils.misc_helpers import make_iterable
+
 def set_TDR_style():
     tdr_style = r.TStyle('tdr_style', 'Style for P-TDR')
 
@@ -220,7 +222,7 @@ def add_auxiliary_info(pad, years, pos='right', mc=False, prelim=False):
     latex = setup_basic_latex()
 
     # lumi info
-    lumi_text = ' + '.join([LUMINOSITY[y] for y in years])
+    lumi_text = ' + '.join([LUMINOSITY[str(y)] for y in make_iterable(years)])
     add_lumi_info(pad, lumi_text)
 
     if pos == 'right':
