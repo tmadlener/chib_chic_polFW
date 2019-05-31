@@ -34,7 +34,7 @@ NORM_SIGMA = 0.025
 NORM_MU = 0.5
 
 XRANGES = {
-    'dlth': [-4.7, -1.75],
+    'dlth': [76, 79.5],
     'lth': [-0.33333, 1],
     'norm': [NORM_MU - 5 * NORM_SIGMA, NORM_MU + 5 * NORM_SIGMA]
 }
@@ -55,7 +55,7 @@ def get_scan_points(n_points):
     Get a tuple of np.arrays of scan values that should be used
     """
     norm_vals = np.random.normal(NORM_MU, NORM_SIGMA, n_points)
-    lth_vals = np.random.uniform(-0.33334, 1, n_points)
+    lth_vals = np.random.uniform(-1./3., 1, n_points)
     # Generate the delta lambdas such that they actually are physically allowed
     # delta lambda values, by generating lambda2 and subtracting lambda1 from it
     # The alternative of generating delta lambda flat, leads to coverage where

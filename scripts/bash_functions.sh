@@ -362,5 +362,5 @@ function get_rand() {
         local seed="None"
     fi
 
-    echo $(python -c "import random; random.seed("${seed}"); print(random.random() * random.randint(-10 , 10))")
+    echo $(python -c "import random; random.seed("${seed}"); print(random.uniform(7, 100))")
 }
