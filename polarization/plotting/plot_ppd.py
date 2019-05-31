@@ -10,20 +10,13 @@ r.gROOT.SetBatch()
 from utils.plot_helpers import mkplot, default_attributes
 from utils.setup_plot_style import set_TDR_style, add_auxiliary_info
 from utils.plot_decoration import YLABELS
-from utils.hist_utils import rebin, _get_y_max_hist
+from utils.hist_utils import _get_y_max_hist
+
+from common_func import get_scaled_ppd
 
 
 YLABELS.update({'norm': 'N'})
 ATTR = default_attributes(size=0)
-
-def get_scaled_ppd(hfile, var, nbins=100):
-    """
-    Get the ppd scaled to unity
-    """
-    ppd = hfile.Get('ppd_1d_{}'.format(var))
-    ppd = rebin(ppd, [(0, nbins)])
-    ppd.Scale(1 / ppd.Integral())
-    return ppd
 
 
 def make_lth_plot(hfile):
