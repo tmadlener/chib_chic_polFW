@@ -364,3 +364,11 @@ function get_rand() {
 
     echo $(python -c "import random; random.seed("${seed}"); print(random.uniform(7, 100))")
 }
+
+# Get the path of a file or directory
+# Takes as single argument a relative path to a file and returns the full path
+# See: https://stackoverflow.com/a/3915420
+function realpath() {
+    echo "$(cd "$(dirname "$1")"; pwd -P)/$(basename "$1")"
+}
+export -f realpath
