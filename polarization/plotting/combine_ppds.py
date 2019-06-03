@@ -20,7 +20,7 @@ def get_combined_ppd(inputfiles, var):
     """
     Get the combined ppd from all inputfiles
     """
-    ppds = [get_scaled_ppd(f, var, 200) for f in inputfiles]
+    ppds = [get_scaled_ppd(f, var) for f in inputfiles]
     # PPDs all have the same binning
     ppd_binning = get_binning(ppds[0])
 

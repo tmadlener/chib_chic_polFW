@@ -5,12 +5,13 @@ Common functionality for scanning / plotting / combining PPDs
 
 from utils.hist_utils import rebin
 
-def get_scaled_ppd(hfile, var, nbins=100):
+def get_scaled_ppd(hfile, var, nbins=None):
     """
     Get the ppd scaled to unity
     """
     ppd = hfile.Get('ppd_1d_{}'.format(var))
-    ppd = rebin(ppd, [(0, nbins)])
+    if nbins is not None:
+        ppd = rebin(ppd, [(0, nbins)])
     ppd.Scale(1 / ppd.Integral())
     return ppd
 
