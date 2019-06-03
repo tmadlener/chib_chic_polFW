@@ -44,7 +44,9 @@ PLOT_LABELS_LATEX = {
     'Nchic2': r'$N^{\chi_{c2}}$',
     'Nchic0': r'$N^{\chi_{c0}}$',
     'Nbkg': r'$N^{\text{Bkg}}$',
-    'r_chic0_chic1': r'$N^{\chi_{c0}} / N^{\chi_{c1}}$'
+    'r_chic0_chic1': r'$N^{\chi_{c0}} / N^{\chi_{c1}}$',
+    'dlth': r'$\Delta\lambda_{\vartheta}$',
+    'lth': r'$\lambda_{\vartheta}(\chi_{c1})$'
 }
 
 
