@@ -7,32 +7,24 @@ import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
 
-from utils.plot_helpers import mkplot, default_attributes
+from utils.plot_helpers import mkplot, get_y_max
 from utils.setup_plot_style import set_TDR_style, add_auxiliary_info
-from utils.plot_decoration import YLABELS
-from utils.hist_utils import _get_y_max_hist
 
-from common_func import get_scaled_ppd
-
-
-YLABELS.update({'norm': 'N'})
-ATTR = default_attributes(size=0)
-
+from common_func import get_scaled_ppd, plot_lth, plot_dlth, plot_norm
 
 def make_lth_plot(hfile):
     """
     Make the lambda1 plot
     """
     ppd = get_scaled_ppd(hfile, 'lth', 100)
-    ppdmax = _get_y_max_hist(ppd)
-
-    can = mkplot(ppd, xLabel=YLABELS['lth'], yLabel='PPD [a.u.]',
-                 drawOpt='hist', attr=ATTR, xRange=[-1, 1])
+    ppdmax = get_y_max(ppd)
+    can = plot_lth(ppd)
     add_auxiliary_info(can, 2012, prelim=True)
+
     mkplot(r.TLine(-0.3333, 0, -0.3333, ppdmax * 1.1, ), can=can, drawOpt='same',
            attr=[{'color': 12, 'line': 7, 'width': 2}])
 
-    phist =  can.pltables[0]
+    phist = can.pltables[0]
     phist.GetYaxis().SetMaxDigits(3)
 
     return can
@@ -43,10 +35,7 @@ def make_dlth_plot(hfile):
     Make the delta_lambda plot
     """
     ppd = get_scaled_ppd(hfile, 'dlth', 200)
-    ppdmax = ppd.GetBinCenter(ppd.GetMaximumBin())
-
-    can = mkplot(ppd, xLabel=YLABELS['dlth'], yLabel='PPD [a.u.]',
-                 drawOpt='hist', attr=ATTR, xRange=[ppdmax - 2, ppdmax + 2])
+    can = plot_dlth(ppd)
     add_auxiliary_info(can, 2012, prelim=True)
 
     phist =  can.pltables[0]
@@ -60,9 +49,7 @@ def make_norm_plot(hfile):
     Make the norm plot
     """
     ppd = get_scaled_ppd(hfile, 'norm', 200)
-
-    can = mkplot(ppd, xLabel=YLABELS['norm'], yLabel='PPD [a.u.]',
-                 drawOpt='hist', attr=ATTR, xRange=[0.375, 0.625])
+    can = plot_norm(ppd)
     add_auxiliary_info(can, 2012, prelim=True)
 
     phist =  can.pltables[0]
