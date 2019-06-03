@@ -132,9 +132,6 @@ def ppd_1d(data, var):
     bounds = {'min': xran[0], 'max': xran[1],
               'nbins': get_number_bins(xran, BIN_WIDTH_1D)}
 
-    import pprint
-    pprint.pprint(bounds)
-
     return hist1d(data.loc[:, var], weights=data.ppd / data.norm_weight,
                   **bounds)
 
