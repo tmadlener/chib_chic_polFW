@@ -143,8 +143,8 @@ def ppd_2d(data, var1, var2):
     xran = XRANGES.get(var1)
     yran = XRANGES.get(var2)
 
-    bounds = {'xmin': xran[0], 'xmax': xran[1], 'nbinsx': NBINS_2D,
-              'ymin': yran[0], 'ymax': yran[1], 'nbinsy': NBINS_2D}
+    bounds = {'minx': xran[0], 'maxx': xran[1], 'nbinsx': NBINS_2D,
+              'miny': yran[0], 'maxy': yran[1], 'nbinsy': NBINS_2D}
 
     return hist2d(data.loc[:, var1], data.loc[:, var2],
                   weights=data.ppd / data.norm_weight, **bounds)
