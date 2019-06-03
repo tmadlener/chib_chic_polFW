@@ -20,7 +20,15 @@ from utils.pol_utils import costh_ratio_1d
 from utils.data_handling import store_dataframe
 from utils.hist_utils import hist1d, hist2d
 
-NBINS_1D = 2000
+
+# Define a bin width for the 1d histogram that allows to determine the quantiles
+# from the histograms deviating from the ones obtained directly from the
+# unbinned sample.
+# For a bin width of 0.0005 the deviations is in the order of 2.5e-4. This
+# scales pretty linearly with the bin-width
+BIN_WIDTH_1D = 0.0005
+
+# The number of bins used for the 2d ppd histograms in each direction.
 NBINS_2D = 200
 
 # For now use an "unknown" but constant shift to avoid early unblinding
@@ -102,12 +110,30 @@ def calc_ppd(graph, norm_v, lth_v, dlth_v):
     return np.exp(-0.5 * chi2_vals)
 
 
+def get_number_bins(vrange, bwidth):
+    """
+    Get a number of bins that ensures that each bin is at least bwidth wide but
+    also makes it possible to easily rebin the histogram in case it is needed
+    """
+    n_bins = np.diff(vrange)[0] / bwidth
+    # Chosing a number of bins that allows to rebin the histogram with a maximum
+    # factor of 200. This allows to always get histograms with 200, 100, 80, 50,
+    # etc bins
+    n_bins /= (25 * 16) # 5**2 * 2**4
+
+    return np.ceil(n_bins).astype(int) * 25 * 16
+
+
 def ppd_1d(data, var):
     """
     Get the 1d ppd histogram for a given variable
     """
     xran = XRANGES.get(var, None)
-    bounds = {'min': xran[0], 'max': xran[1], 'nbins': NBINS_1D}
+    bounds = {'min': xran[0], 'max': xran[1],
+              'nbins': get_number_bins(xran, BIN_WIDTH_1D)}
+
+    import pprint
+    pprint.pprint(bounds)
 
     return hist1d(data.loc[:, var], weights=data.ppd / data.norm_weight,
                   **bounds)
