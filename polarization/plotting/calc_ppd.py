@@ -42,7 +42,7 @@ NORM_SIGMA = 0.025
 NORM_MU = 0.5
 
 XRANGES = {
-    'dlth': [76, 79.5],
+    'dlth': [76.9, 80.1], # Make sure that this covers the whole range # Make sure that this covers the whole range
     'lth': [-0.33333, 1],
     'norm': [NORM_MU - 5 * NORM_SIGMA, NORM_MU + 5 * NORM_SIGMA]
 }
