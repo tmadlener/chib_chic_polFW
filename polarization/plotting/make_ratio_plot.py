@@ -24,7 +24,7 @@ from utils.hist_utils import project, divide, rebin_1d_binning
 from utils.graph_utils import divide_hist
 
 
-RATIO_NAME = 'r_chic2_chic1_v_costh' # from model
+RATIO_NAME = 'r_chic2_chic1_v_costh_HX_fold_bin_0' # from model
 XLABELS = {'phi': '#varphi^{HX}_{fold}', 'costh': '|cos#vartheta^{HX}|'}
 XRANGES = {'phi': [0, 90], 'costh': [0, 1]}
 YLABEL = 'N^{#chi_{c2}} / N^{#chi_{c1}}'
@@ -278,6 +278,13 @@ def main(args):
 
     can.SaveAs(args.outfile)
 
+    if args.saveto is not None:
+        outfile = r.TFile(args.saveto, 'recreate')
+        outfile.cd()
+        graph.SetName('r_chic2_chic1_v_costh_HX_fold_bin_0')
+        graph.Write()
+        outfile.Close()
+
 
 
 if __name__ == '__main__':
@@ -299,6 +306,9 @@ if __name__ == '__main__':
                         default=None)
     parser.add_argument('--mc', action='store_true', default=False,
                         help='Put \'Simulation\' on plot')
+    parser.add_argument('-s', '--saveto', help='Save the plotted graph into '
+                        'the specified root file if an argument is passed',
+                        default=None)
 
     dir_sel = parser.add_mutually_exclusive_group()
     dir_sel.add_argument('--costh', action='store_const', dest='direction',
