@@ -12,11 +12,11 @@ r.PyConfig.IgnoreCommandLineOptions = True
 import glob
 import json
 import re
-from os import path, environ
+from os import path
 
 from collections import OrderedDict
 
-from utils.reporting import open_tex_file
+from utils.reporting import open_tex_file, create_figure
 from utils.plot_decoration import PLOT_LABELS_LATEX
 from utils.misc_helpers import parse_binning, parse_func_var
 from utils.roofit_utils import param_str
@@ -34,16 +34,6 @@ LABEL_BASE = {'phi_HX_fold': r'${1:.0f} < {0} < {2:.0f}$',
 # maximum number of figures per page
 MAX_FIG_P_PAGE = 6
 SORT_RGX = re.compile(r'_([0-9]+)_massfit\.pdf')
-
-try:
-    LATEX_EXE = environ['LATEX_EXE']
-except KeyError:
-    LATEX_EXE = 'pdflatex'
-
-
-PLOT_COMMAND = r'\includegraphics[width=0.5\linewidth]'
-if LATEX_EXE == 'xelatex':
-    PLOT_COMMAND = r'\rootfig{0.475}'
 
 # Define an order such that the similar plots always appear next to each other
 DESIRED_PLOT_ORDER = [
@@ -119,44 +109,6 @@ def get_param_plot_names(indir):
         plots[label] = pname
 
     return plots
-
-
-def create_subfloat(plot, label):
-    """
-    Create a subfloat entry
-    """
-    return (r'\subfloat[][LABEL]{PLTCMD{PLOT}}'
-            .replace('LABEL', label).replace('PLOT', plot)
-            .replace('PLTCMD', PLOT_COMMAND))
-
-
-def create_figure(plots):
-    """
-    Make the latex figure
-    """
-    ret_str = []
-
-    fig_started = False
-    for iplot, (label, pname) in enumerate(plots.iteritems()):
-        if iplot % MAX_FIG_P_PAGE == 0:
-            if fig_started:
-                ret_str.append(r'\end{figure}')
-                ret_str.append('')
-                fig_started = False
-            if not fig_started:
-                ret_str.append(r'\begin{figure}')
-                ret_str.append('')
-                fig_started = True
-
-        ret_str.append(create_subfloat(pname, label))
-
-        if iplot % 2 != 0:
-            ret_str.append('')
-
-    if fig_started:
-        ret_str.append(r'\end{figure}')
-
-    return '\n'.join(ret_str)
 
 
 def create_fit_param_table(frfile, fit_config):
