@@ -53,7 +53,6 @@
     "CBn2_R[2.5, 1.8, 5.0]",
 
     "CBmass2[3.551, 3.49, 3.58]",
-    "sigma_bkg[0.081, 0, 3]",
 
     "dlth_chic0_chic1[0, -2, 2]",
     "r_chic0_chic1[0.035, 0, 0.2]",
@@ -65,7 +64,9 @@
     "p1_CBsigma1[0.0012, -1, 1]",
 
     "p0_mu_bkg[3.228, 2, 4]",
-    "p1_mu_bkg[-0.014, -1, 1]"
+    "p1_mu_bkg[-0.014, -1, 1]",
+
+    "sigma_bkg[0.081, 0, 1]"
   ],
 
   "proto_parameters": [
@@ -74,15 +75,15 @@
     ["r_chic2_chic1", "[0.5, 0, 2]"],
     ["Nchic2", ["(r_chic2_chic1 * Nchic1)", "r_chic2_chic1, Nchic1"]],
     ["CBsigma2", "[0.0066, 0.003, 0.02]"],
-    ["lambda_bkg", "[-2.248, -10, 0]"],
 
-    ["Nchic0", ["r_chic0_chic1 * (1 + dlth_chic0_chic1 * <costh_HX_fold> * <costh_HX_fold>) * Nchic1",
+    ["Nchic0", ["r_chic0_chic1 / (1 + dlth_chic0_chic1 * <costh_HX_fold> * <costh_HX_fold>) * Nchic1",
                 "r_chic0_chic1, dlth_chic0_chic1, Nchic1"]],
 
     ["CBmass1", ["p0_CBmass1 + p1_CBmass1 * <costh_HX_fold>", "p0_CBmass1, p1_CBmass1"]],
     ["CBsigma1", ["p0_CBsigma1 + p1_CBsigma1 * <costh_HX_fold>", "p0_CBsigma1, p1_CBsigma1"]],
 
     ["mu_bkg", ["p0_mu_bkg + p1_mu_bkg * <costh_HX_fold>", "p0_mu_bkg, p1_mu_bkg"]],
+    ["lambda_bkg", "[-2.248, -3, 1.5]"],
 
     ["PES", ["(CBmass1 - m_psiPDG) / (m_chic1PDG - m_psiPDG)", "CBmass1, m_psiPDG, m_chic1PDG"]],
     ["CBmass0", ["PES * (m_chic0PDG - m_psiPDG) + m_psiPDG", "PES, m_chic0PDG, m_psiPDG"]],
