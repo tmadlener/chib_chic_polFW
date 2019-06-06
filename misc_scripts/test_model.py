@@ -11,10 +11,11 @@ logging.basicConfig(level=logging.INFO,
 
 import numpy as np
 import pandas as pd
-from root_numpy import array2tree
 
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
+
+from root_numpy import array2tree
 
 from utils.two_dim_binned_fitting import BinnedFitModel
 from utils.roofit_utils import try_factory, get_var, ws_import
