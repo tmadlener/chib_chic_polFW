@@ -16,7 +16,7 @@ r.PyConfig.IgnoreCommandLineOptions = True
 from scipy.stats import norm
 
 from utils.graph_utils import scale_graph, get_errors
-from utils.pol_utils import costh_ratio_1d
+from utils.pol_utils import costh_ratio_1d, phi_ratio_1d
 from utils.data_handling import store_dataframe
 from utils.hist_utils import hist1d, hist2d
 
@@ -35,7 +35,7 @@ NBINS_2D = 200
 RAND_DLTH_SHIFT = float(os.environ['RANDOM_DELTA_LAMBDA_SHIFT'])
 
 # The name of the ratio graph in the fit files
-RATIO_NAME = 'r_chic2_chic1_v_costh_HX_fold_bin_0'
+RATIO_NAME = 'r_chic2_chic1_v_{}_HX_fold_bin_0'
 
 # The width and center of the Gaussian importance sampling kernel for the norm
 NORM_SIGMA = 0.025
@@ -44,45 +44,60 @@ NORM_MU = 0.5
 XRANGES = {
     'dlth': [76.9, 80.1], # Make sure that this covers the whole range # Make sure that this covers the whole range
     'lth': [-0.33333, 1],
-    'norm': [NORM_MU - 5 * NORM_SIGMA, NORM_MU + 5 * NORM_SIGMA]
+    'norm': [NORM_MU - 5 * NORM_SIGMA, NORM_MU + 5 * NORM_SIGMA],
+    'kappa': [-1, 1],
+    'dkappa': [-2, 2],
 }
 
-def get_ratio_graph(rfile):
+def get_ratio_graph(rfile, var='costh'):
     """
     Get the ratio graph from the file and re scale it such that the first point
     lies at 0.5. This allows for an easier importance sampling of the
     normalization, since the absolute value of the normalization doesn't really
     matter.
     """
-    graph = rfile.Get(RATIO_NAME)
+    graph = rfile.Get(RATIO_NAME.format(var))
     return scale_graph(graph, 0.5 / graph.GetY()[0])
 
 
-def get_scan_points(n_points):
+def get_scan_points(n_points, var='costh'):
     """
     Get a tuple of np.arrays of scan values that should be used
     """
     norm_vals = np.random.normal(NORM_MU, NORM_SIGMA, n_points)
-    lth_vals = np.random.uniform(-1./3., 1, n_points)
-    # Generate the delta lambdas such that they actually are physically allowed
-    # delta lambda values, by generating lambda2 and subtracting lambda1 from it
-    # The alternative of generating delta lambda flat, leads to coverage where
-    # it is impossible physically.
-    dlth_vals = np.random.uniform(-0.6, 1, n_points) - lth_vals
+    if var == 'costh':
+        lth_vals = np.random.uniform(-1./3., 1, n_points)
+        # Generate the delta lambdas such that they actually are physically
+        # allowed delta lambda values, by generating lambda2 and subtracting
+        # lambda1 from it The alternative of generating delta lambda flat,
+        # leads to coverage where it is impossible physically.
+        dlth_vals = np.random.uniform(-0.6, 1, n_points) - lth_vals
 
-    return norm_vals, lth_vals, dlth_vals
+        return pd.DataFrame({
+            'norm': norm_vals,
+            'lth': lth_vals,
+            'dlth': dlth_vals + RAND_DLTH_SHIFT
+        })
+    if var == 'phi':
+        kappa = np.random.uniform(-1, 1, n_points)
+        dkappa = np.random.uniform(-1, 1, n_points) - kappa
+        return pd.DataFrame({
+            'norm': norm_vals,
+            'kappa': kappa,
+            'dkappa': dkappa
+        })
 
 
 def calc_chi2(graph, func):
     """
     Calculate the chi2 between the graph and all passed values of norm, lth and
-    dlth
+    dlth (resp. kappa1 and kappa2)
     """
-    costh_v = np.array(graph.GetX())
+    x_v = np.array(graph.GetX())
     ratio_v = np.array(graph.GetY())
     _, _, err_lo, err_hi = get_errors(graph)
 
-    func_vals = func(costh_v)
+    func_vals = func(x_v)
 
     # Again let numpy broadcasting to the lifting of getting everything into the
     # correct shapes. Since ratio_v and the error arrays are only 1 dimensional
@@ -93,19 +108,38 @@ def calc_chi2(graph, func):
     return np.sum( (diff**2) / err**2, axis=0)
 
 
-def calc_ppd(graph, norm_v, lth_v, dlth_v):
+def calc_ppd(graph, dfr, var='costh'):
     """
     Calculate the ppd using the given graph and all the passed values
     """
-    def fit_func(costh):
+    def fit_func_costh(costh):
         """
         Get the actual fitting function (also correct for the random dlth shift)
         with only costh as free parameter left
         """
         # let numpy broadcasting do its magic to get the costh values in
+        norm_v= dfr.loc[:, 'norm'].values
+        lth_v = dfr.loc[:, 'lth'].values
+        dlth_v = dfr.loc[:, 'dlth'].values - RAND_DLTH_SHIFT
         return norm_v * costh_ratio_1d(costh[:, None], lth_v + dlth_v, lth_v)
 
-    chi2_vals = calc_chi2(graph, fit_func)
+    def fit_func_phi(phi):
+        """
+        Get the actual fitting function (also correct for the random shift)
+        with only phi as parameter left
+        """
+        norm_v = dfr.loc[:, 'norm'].values,
+        kappa_v = dfr.loc[:, 'kappa'].values
+        dkappa_v = dfr.loc[:, 'dkappa'].values
+
+        return norm_v * phi_ratio_1d(phi[:, None], kappa_v + dkappa_v, kappa_v)
+
+
+    if var == 'costh':
+        chi2_vals = calc_chi2(graph, fit_func_costh)
+    if var == 'phi':
+        chi2_vals = calc_chi2(graph, fit_func_phi)
+
 
     return np.exp(-0.5 * chi2_vals)
 
@@ -150,17 +184,21 @@ def ppd_2d(data, var1, var2):
                   weights=data.ppd / data.norm_weight, **bounds)
 
 
-def produce_ppd_hists(data):
+def produce_ppd_hists(data, direction='costh'):
     """
     Make the PPD histograms from the passed data
     """
+    variables = {
+        'costh': ['lth', 'dlth', 'norm'],
+        'phi': ['kappa', 'dkappa', 'norm']
+    }
     hists = []
-    for var in ['lth', 'dlth', 'norm']:
+    for var in variables[direction]:
         vhist = ppd_1d(data, var)
         vhist.SetName('ppd_1d_{}'.format(var))
         hists.append(vhist)
 
-    for var1, var2 in combinations(['lth', 'dlth', 'norm'], 2):
+    for var1, var2 in combinations(variables[direction], 2):
         vhist = ppd_2d(data, var1, var2)
         vhist.SetName('ppd_2d_{}_{}'.format(var1, var2))
         hists.append(vhist)
@@ -171,29 +209,21 @@ def produce_ppd_hists(data):
 def main(args):
     """Main"""
     ratiofile = r.TFile.Open(args.ratiofile)
-    ratio_graph = get_ratio_graph(ratiofile)
+    ratio_graph = get_ratio_graph(ratiofile, args.direction)
 
-    norm_vals, lth_vals, dlth_vals = get_scan_points(args.number_extractions)
-
-    dfr = pd.DataFrame({
-        'norm': norm_vals,
-        'lth': lth_vals,
-        # Before storing shift the delta lambda values by a constant random
-        # shift
-        'dlth': dlth_vals + RAND_DLTH_SHIFT,
-        # Maybe we do not need to store this since we can always calculate it
-        # from the norm values if the center and width of the sampling kernel
-        # does not change
-        'norm_weight': norm.pdf(norm_vals, NORM_MU, NORM_SIGMA),
-        'ppd': calc_ppd(ratio_graph, norm_vals, lth_vals, dlth_vals)
-    })
+    dfr = get_scan_points(args.number_extractions, args.direction)
+    # Maybe we do not need to store this since we can always calculate it from
+    # the norm values if the center and width of the sampling kernel does not
+    # change. But for now store it for convenience
+    dfr['norm_weight'] = norm.pdf(dfr.loc[:, 'norm'], NORM_MU, NORM_SIGMA)
+    dfr['ppd'] = calc_ppd(ratio_graph, dfr, args.direction)
 
     if not args.hists_only:
         store_dataframe(dfr, args.scanfile, tname='ppd_vals')
 
     outfile = r.TFile.Open(args.scanfile, 'update')
     outfile.cd()
-    hists = produce_ppd_hists(dfr)
+    hists = produce_ppd_hists(dfr, args.direction)
     for hist in hists:
         hist.Write()
 
@@ -214,6 +244,16 @@ if __name__ == '__main__':
     parser.add_argument('--hists-only', default=False, action='store_true',
                         help='Do not put the scan values into a TTree, but only '
                         'store the histograms')
+
+    dir_sel = parser.add_mutually_exclusive_group()
+    dir_sel.add_argument('--costh', action='store_const', dest='direction',
+                         const='costh',
+                         help='Assume that the ratio is vs costh')
+    dir_sel.add_argument('--phi', action='store_const', dest='direction',
+                         const='phi', help='Assume that the ratio is vs phi')
+    parser.set_defaults(direction='costh')
+
+
 
 
     clargs = parser.parse_args()

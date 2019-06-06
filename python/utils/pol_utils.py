@@ -73,6 +73,25 @@ def costh_ratio_1d(costh, lam1, lam2):
     return (1 + lam1 * costh2) / (1 + lam2 * costh2)
 
 
+def phi_ratio_1d(phi, kappa1, kappa2):
+    """
+    Ratio of W(phi | kappa1) / W(phi | kappa2) without proper normalization
+
+    R(phi | kappa1, kappa2) = (1 + kappa1 * cos(2*phi)) / (1 + kappa2 * cos(2*phi))
+
+    Args:
+        phi (np.array): phi in degrees for all events for which the function
+            should be evaluated
+        kappa1 (np.array or float): kappa1
+        kappa2 (np.array or float): kappa2
+
+    Returns:
+        np.array: Values of R(phi | kappa1, kappa2) at the passed values
+    """
+    cos2phi = np.cos(phi * np.pi / 90)
+    return (1 + kappa1 * cos2phi) / (1 + kappa2 * cos2phi)
+
+
 def ang_dist_lth(costh, lth):
     """
     1D angular distribution pdf in costh
