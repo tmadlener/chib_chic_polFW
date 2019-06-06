@@ -22,6 +22,7 @@ from utils.data_handling import (
 import utils.selection_functions as sf
 from utils.plot_helpers import mkplot
 from utils.constants import m_psiPDG
+from utils.misc_helpers import select_bin
 
 
 # variables that are in the file after the preselection
@@ -122,6 +123,16 @@ def get_state_sel(is_mc, state):
         return sf.state_sel(state)
 
 
+def get_costh_sel(max_costh):
+    """
+    Get the costh selection (if any)
+    """
+    if max_costh is None:
+        return sf.all_sel()
+
+    return select_bin('abs(costh_HX_fold)', 0, max_costh)
+
+
 def main(args):
     """Main"""
     selections = OrderedDict()
@@ -137,6 +148,8 @@ def main(args):
     # To ensure rectangular region in costh-phi
     # selections['costh'] = lambda d: d.costh_HX_fold.abs() < 0.625
     selections['state_sel'] = get_state_sel(args.mc, args.state)
+    selections['costh_sel'] = get_costh_sel(args.max_costh)
+
 
     global VARIABLES
     VARIABLES.extend(sf.collect_requirements(selections.values()))
@@ -185,6 +198,8 @@ if __name__ == '__main__':
     parser.add_argument('--hist', help='Produce a histogram that shows the '
                         'effects of the different cuts', default=False,
                         action='store_true')
+    parser.add_argument('--max-costh', help='Cut |costh_HX| at this value',
+                        type=float, default=None)
 
     state_sel = parser.add_mutually_exclusive_group()
     state_sel.add_argument('--all', action='store_const', dest='state',
