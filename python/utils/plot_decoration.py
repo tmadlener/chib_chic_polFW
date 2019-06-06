@@ -64,3 +64,5 @@ PHI_RAN = [0, 90]
 
 CTH_PLOT = {'xRange': CTH_RAN, 'xLabel': CTH_LAB}
 PHI_PLOT = {'xRange': PHI_RAN, 'xLabel': PHI_LAB}
+
+VAR_PLOT = {'phi': PHI_PLOT, 'costh': CTH_PLOT}

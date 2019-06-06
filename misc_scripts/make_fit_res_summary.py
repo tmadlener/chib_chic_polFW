@@ -71,7 +71,7 @@ def get_fit_res_names(indir, bin_var, binning):
     """
     Get the list of fit_res files
     """
-    plot_files = glob.glob(path.join(indir, 'JpsiPt_0_costh_HX_fold_?_massfit.pdf'))
+    plot_files = glob.glob(path.join(indir, 'JpsiPt_0_*_HX_fold_?_massfit.pdf'))
     plots = OrderedDict()
     for iplot, pname in enumerate(sorted(plot_files, key=get_bin_idx)):
         label = LABEL_BASE[bin_var].format(NICE_VARS[bin_var],
@@ -81,27 +81,36 @@ def get_fit_res_names(indir, bin_var, binning):
     return plots
 
 
-def get_plot_idx(plotname):
+def get_plot_idx_func(bin_var):
     """
-    Get the sort index for the graph plots, such that they are matched against
-    the DESIRED_PLOT_ORDER
+    Get the function that returns the sort index for graph plots, such that they
+    are matched against DESIRED_PLOT_ORDER
     """
-    try:
-        pdfname = plotname.split('/')[-1]
-        return DESIRED_PLOT_ORDER.index(pdfname.replace('_v_costh.pdf', ''))
-    except ValueError:
-        pass
-    return len(DESIRED_PLOT_ORDER)
+    repl_string = '_v_{}.pdf'.format(bin_var)
+
+    def get_plot_idx(plotname):
+        """
+        Closure over repl_string doing the actual work
+        """
+        try:
+            pdfname = plotname.split('/')[-1]
+            return DESIRED_PLOT_ORDER.index(pdfname.replace(repl_string, ''))
+        except ValueError:
+            pass
+        return len(DESIRED_PLOT_ORDER)
+
+    return get_plot_idx
 
 
-def get_param_plot_names(indir):
+def get_param_plot_names(indir, bin_var):
     """
     Get the list of param v costh graphs
     """
-    param_files = glob.glob(path.join(indir, '*_v_costh.pdf'))
+    param_files = glob.glob(path.join(indir, '*_v_{}.pdf'.format(bin_var)))
     plots = OrderedDict()
-    for iplot, pname in enumerate(sorted(param_files, key=get_plot_idx)):
-        label = path.basename(pname).replace('_v_costh.pdf', '')
+    for iplot, pname in enumerate(sorted(param_files,
+                                         key=get_plot_idx_func(bin_var))):
+        label = path.basename(pname).replace('_v_{}.pdf'.format(bin_var), '')
         if label in PLOT_LABELS_LATEX:
             label = PLOT_LABELS_LATEX[label]
         else:
@@ -144,7 +153,8 @@ def main(args):
     bin_var, binning = get_binning(fit_config)
     fit_plots = get_fit_res_names(args.plotdir, bin_var, binning)
 
-    graph_plots = get_param_plot_names(args.plotdir)
+    graph_plots = get_param_plot_names(args.plotdir,
+                                       bin_var.replace('_HX_fold', ''))
 
     with open_tex_file(args.outfile) as tex_file:
         tex_file.write(r'\paragraph{Free parameters}')

@@ -3,6 +3,8 @@
 Script to make the plots of the proto parameters of the simultaneous binned fits
 """
 
+import re
+
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.ProcessLine('gErrorIgnoreLevel = 1001')
@@ -11,14 +13,14 @@ r.gROOT.SetBatch()
 from utils.plot_helpers import (
     mkplot, default_attributes, setup_latex, put_on_latex
 )
-from utils.plot_decoration import YLABELS, FIX_RANGES, CTH_PLOT
+from utils.plot_decoration import YLABELS, FIX_RANGES, VAR_PLOT
 from utils.misc_helpers import cond_mkdir
 from utils.data_handling import list_obj
 from utils.setup_plot_style import set_basic_style
 
 # common name of all the plots against costh
 # NOTE: Assuming that only one pT bin is done
-BIN_BASE = '_v_costh_HX_fold'
+BIN_BASE = r'_v_(costh|phi)_HX_fold'
 
 def load_graphs(rfile, no_ratio=True):
     """
@@ -29,10 +31,10 @@ def load_graphs(rfile, no_ratio=True):
     func_names = list_obj(rfile, 'TF1', BIN_BASE)
 
     graphs_funcs = {
-        n.replace(BIN_BASE + '_bin_0', ''): rfile.Get(n) for n in graph_names
+        re.sub(BIN_BASE + '_bin_0', '', n): rfile.Get(n) for n in graph_names
     }
     graphs_funcs.update({
-        n.replace(BIN_BASE, ''): rfile.Get(n) for n in func_names
+        re.sub(BIN_BASE, '', n): rfile.Get(n) for n in func_names
     })
 
     if no_ratio:
@@ -41,7 +43,7 @@ def load_graphs(rfile, no_ratio=True):
     return graphs_funcs
 
 
-def make_plot(pname, param_fg):
+def make_plot(pname, param_fg, bin_var):
     """
     Make plot for one parameter graph or function and return the canvas
     """
@@ -49,7 +51,7 @@ def make_plot(pname, param_fg):
                  attr=default_attributes(open_markers=False),
                  yLabel=YLABELS.get(pname, pname),
                  yRange=FIX_RANGES.get(pname, None),
-                 **CTH_PLOT)
+                 **VAR_PLOT[bin_var])
 
     # If TF1, simply assume that it is a polynomial for now and also put the
     # parameters onto the plot
@@ -74,6 +76,14 @@ def make_plot(pname, param_fg):
     return can
 
 
+def get_bin_var(rfile):
+    """
+    Determine whether the binning is done in costh or phi
+    """
+    graph_names = list(list_obj(rfile, 'TGraphAsymmErrors', 'costh_HX_fold'))
+    return 'costh' if graph_names else 'phi'
+
+
 def main(args):
     """Main"""
     graphf = r.TFile.Open(args.graphfile)
@@ -81,9 +91,10 @@ def main(args):
     graphs = load_graphs(graphf, args.no_ratio)
 
     cond_mkdir(args.outdir)
+    bin_var = get_bin_var(graphf)
     for name, graph in graphs.iteritems():
-        can = make_plot(name, graph)
-        can.SaveAs('{}/{}_v_costh.pdf'.format(args.outdir, name))
+        can = make_plot(name, graph, bin_var)
+        can.SaveAs('{}/{}_v_{}.pdf'.format(args.outdir, name, bin_var))
 
 
 if __name__ == '__main__':
