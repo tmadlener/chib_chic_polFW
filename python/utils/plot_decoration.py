@@ -29,7 +29,9 @@ YLABELS = {
     'r_chic0_chic1': 'N^{#chi_{c0}} / N^{#chi_{c1}}',
     'r_chic2_chic1': 'N^{#chi_{c2}} / N^{#chi_{c1}}',
     'dlth': '#Delta#lambda_{#vartheta}',
-    'lth': '#lambda_{#vartheta}(#chi_{c1})'
+    'lth': '#lambda_{#vartheta}(#chi_{c1})',
+    'lph': '#lambda_{#varphi}(#chi_{c1})',
+    'dlph': '#Delta#lambda_{#varphi}'
 }
 
 PLOT_LABELS_LATEX = {

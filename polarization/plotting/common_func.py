@@ -40,6 +40,7 @@ def plot_lth(ppd):
                  drawOpt='hist', attr=ATTR, xRange=[-1, 1])
     return can
 
+
 def plot_dlth(ppd):
     """
     Make the 1d plot of the dlth ppd
@@ -56,4 +57,23 @@ def plot_norm(ppd):
     """
     can = mkplot(ppd, xLabel=YLABELS['norm'], yLabel='PPD [a.u.]',
                  drawOpt='hist', attr=ATTR, xRange=[0.375, 0.625])
+    return can
+
+
+def plot_dlph(ppd):
+    """
+    Make the 1d plot of the dlph ppd
+    """
+    ppdmax = ppd.GetBinCenter(ppd.GetMaximumBin())
+    can = mkplot(ppd, xLabel=YLABELS['dlph'], yLabel='PPD [a.u.]',
+                 drawOpt='hist', attr=ATTR, xRange=[ppdmax - 0.2, ppdmax + 0.2])
+    return can
+
+
+def plot_lph(ppd):
+    """
+    Make the 1d plot of the lph ppd
+    """
+    can = mkplot(ppd, xLabel=YLABELS['lph'], yLabel='PPD [a.u.]',
+                 drawOpt='hist', attr=ATTR, xRange=[-1, 1])
     return can
