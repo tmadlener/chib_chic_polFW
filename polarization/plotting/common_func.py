@@ -77,3 +77,22 @@ def plot_lph(ppd):
     can = mkplot(ppd, xLabel=YLABELS['lph'], yLabel='PPD [a.u.]',
                  drawOpt='hist', attr=ATTR, xRange=[-1, 1])
     return can
+
+
+def plot_ltilde(ppd):
+    """
+    Make the 1d plot of the lambda_tilde ppd
+    """
+    can = mkplot(ppd, xLabel=YLABELS['ltilde'], yLabel='PPD [a.u.]',
+                 drawOpt='hist', attr=ATTR, xRange=[-1, 1])
+    return can
+
+
+def plot_dltilde(ppd):
+    """
+    Make the 1d plot of the delta_lambdatilde ppd
+    """
+    ppdmax = ppd.GetBinCenter(ppd.GetMaximumBin())
+    can = mkplot(ppd, xLabel=YLABELS['dltilde'], yLabel='PPD [a.u.]',
+                 drawOpt='hist', attr=ATTR, xRange=[ppdmax -2, ppdmax + 2])
+    return can

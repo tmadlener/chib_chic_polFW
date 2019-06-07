@@ -145,3 +145,17 @@ def w_costh_phi(set_vals=None, fix_norm=False, fix_lambdas=False):
         func.FixParameter(ipar, func.GetParameter(ipar))
 
     return func
+
+
+def lambda_tilde(lth, lph):
+    """
+    Calculate lambda_tilde for the passed values of lambda_theta and lambda_phi
+
+    Args:
+        lth (np.array or float): lambda_theta
+        lph (np.array or float): lambda_phi
+
+    Returns:
+        np.array or float: lambda_tilde for the passed values
+    """
+    return (lth + 3 * lph) / (1 - lph)

@@ -31,7 +31,9 @@ YLABELS = {
     'dlth': '#Delta#lambda_{#vartheta}',
     'lth': '#lambda_{#vartheta}(#chi_{c1})',
     'lph': '#lambda_{#varphi}(#chi_{c1})',
-    'dlph': '#Delta#lambda_{#varphi}'
+    'dlph': '#Delta#lambda_{#varphi}',
+    'ltilde': '#tilde{#lambda}(#chi_{c1})',
+    'dltilde': '#Delta#tilde{#lambda}'
 }
 
 PLOT_LABELS_LATEX = {

@@ -11,7 +11,8 @@ from utils.plot_helpers import mkplot, get_y_max
 from utils.setup_plot_style import set_TDR_style, add_auxiliary_info
 
 from common_func import (
-    get_scaled_ppd, plot_lth, plot_dlth, plot_norm, plot_dlph, plot_lph
+    get_scaled_ppd, plot_lth, plot_dlth, plot_norm, plot_dlph, plot_lph,
+    plot_ltilde, plot_dltilde
 )
 
 
@@ -20,7 +21,9 @@ PLOT_FUNC = {
     'dlph': plot_dlph,
     'lph': plot_lph,
     'norm_phi': plot_norm,
-    'norm_costh': plot_norm
+    'norm_costh': plot_norm,
+    'ltilde': plot_ltilde,
+    'dltilde': plot_dltilde
 }
 
 def make_nice(can):
@@ -65,7 +68,6 @@ def make_simple_plot(var, n_bins=200):
     """
     Make an ordinary 1d plot, without anything fancy going on
     """
-
     def _make_plot(hfile):
         """
         Make the plot
@@ -85,7 +87,9 @@ PLOT_FUNCTIONS = {
     'dlth': make_simple_plot('dlth'),
     'dlph': make_simple_plot('dlph', 400),
     'norm_costh': make_simple_plot('norm_costh'),
-    'norm_phi': make_simple_plot('norm_phi')
+    'norm_phi': make_simple_plot('norm_phi'),
+    'ltilde': make_simple_plot('ltilde'),
+    'dltilde': make_simple_plot('dltilde'),
 }
 
 

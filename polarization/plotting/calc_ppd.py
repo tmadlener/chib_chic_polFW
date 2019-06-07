@@ -21,7 +21,7 @@ r.PyConfig.IgnoreCommandLineOptions = True
 from scipy.stats import norm
 
 from utils.graph_utils import scale_graph, get_errors
-from utils.pol_utils import costh_ratio_1d, phi_ratio_1d
+from utils.pol_utils import costh_ratio_1d, phi_ratio_1d, lambda_tilde
 from utils.data_handling import store_dataframe
 from utils.hist_utils import hist1d, hist2d
 from utils.misc_helpers import _get_var
@@ -60,6 +60,9 @@ XRANGES = {
     'lth2': [78, 79.8],
     'lph2': [27.7, 28.9],
     'ltp2': [-0.45, 0.45],
+    'ltilde' : [-1, 1],
+    'ltilde2': [-1.05 + RAND_DLTH_SHIFT, 1.05 + RAND_DLTH_SHIFT],
+    'dltilde': [-2.1 + RAND_DLPH_SHIFT, 2.1 + RAND_DLPH_SHIFT]
 }
 
 PPD_2D_COMBS = (
@@ -287,7 +290,16 @@ def produce_ppd_hists(data):
 
         'dlth': lambda d: d.lth_2 - d.lth_1,
         'dlph': lambda d: d.lph_2 - d.lph_1,
-        'dltp': lambda d: d.ltp_2 - d.ltp_1
+        'dltp': lambda d: d.ltp_2 - d.ltp_1,
+
+        # We have to play some serious things here to have the random shfit in place
+        'ltilde': lambda d: lambda_tilde(d.lth_1, d.lph_1),
+        'ltilde2': lambda d: lambda_tilde(d.lth_2 - RAND_DLTH_SHIFT,
+                                          d.lph_2 - RAND_DLPH_SHIFT) + \
+        RAND_DLTH_SHIFT,
+        'dltilde': lambda d: lambda_tilde(d.lth_2 - RAND_DLTH_SHIFT,
+                                          d.lph_2 - RAND_DLPH_SHIFT) - \
+        lambda_tilde(d.lth_1, d.lph_1) + RAND_DLPH_SHIFT
     }
 
     hists = []
