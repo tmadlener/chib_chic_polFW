@@ -24,7 +24,7 @@ from utils.hist_utils import project, divide, rebin_1d_binning
 from utils.graph_utils import divide_hist
 
 
-RATIO_NAME = 'r_chic2_chic1_v_costh_HX_fold_bin_0' # from model
+RATIO_NAME = 'r_chic2_chic1_v_{}_HX_fold_bin_0' # from model
 XLABELS = {'phi': '#varphi^{HX}_{fold}', 'costh': '|cos#vartheta^{HX}|'}
 XRANGES = {'phi': [0, 90], 'costh': [0, 1]}
 YLABEL = 'N^{#chi_{c2}} / N^{#chi_{c1}}'
@@ -244,11 +244,11 @@ def make_plot_comp_ana_shapes(graph, variable, is_mc=False):
     return can
 
 
-def get_graph(graphfile, corrmap, corr):
+def get_graph(graphfile, corrmap, corr, var):
     """
     Get the graph from the file and possibly apply corrections
     """
-    graph = graphfile.Get(RATIO_NAME)
+    graph = graphfile.Get(RATIO_NAME.format(var))
     if corr:
         graph = divide_hist(graph, corrmap)
     return graph
@@ -267,12 +267,12 @@ def main(args):
     var = args.direction
     corrmap = get_correction_map(var, chi1_cf, chi2_cf)
 
-    graph = get_graph(cntfile, corrmap, not args.uncorr)
+    graph = get_graph(cntfile, corrmap, not args.uncorr, args.direction)
     can = make_plot_comp_ana_shapes(graph, var, args.mc)
 
     if args.compgraph is not None:
         cmpfile = r.TFile.Open(args.compgraph)
-        cmpgraph = get_graph(cmpfile, corrmap, not args.uncorr)
+        cmpgraph = get_graph(cmpfile, corrmap, not args.uncorr, args.direction)
 
         mkplot(cmpgraph, can=can, drawOpt='samePE', attr=RATIO_ATTR[1:])
 
@@ -281,7 +281,7 @@ def main(args):
     if args.saveto is not None:
         outfile = r.TFile(args.saveto, 'recreate')
         outfile.cd()
-        graph.SetName('r_chic2_chic1_v_costh_HX_fold_bin_0')
+        graph.SetName(RATIO_NAME.format(args.direction))
         graph.Write()
         outfile.Close()
 
