@@ -88,7 +88,7 @@ def phi_ratio_1d(phi, kappa1, kappa2):
     Returns:
         np.array: Values of R(phi | kappa1, kappa2) at the passed values
     """
-    cos2phi = np.cos(phi * np.pi / 90)
+    cos2phi = np.cos(to_rad(phi) * 2)
     return (1 + kappa1 * cos2phi) / (1 + kappa2 * cos2phi)
 
 
