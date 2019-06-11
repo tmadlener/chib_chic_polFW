@@ -26,6 +26,8 @@ from utils.data_handling import store_dataframe
 from utils.hist_utils import hist1d, hist2d
 from utils.misc_helpers import _get_var
 
+from common_func import cond_chi1_lth_lph, cond_chi2_lth_lph
+
 
 # Define a bin width for the 1d histogram that allows to determine the quantiles
 # from the histograms deviating from the ones obtained directly from the
@@ -39,7 +41,6 @@ NBINS_2D = 200
 
 # For now use an "unknown" but constant shift to avoid early unblinding
 RAND_DLTH_SHIFT = float(os.environ['RANDOM_DELTA_LAMBDA_SHIFT'])
-RAND_DLPH_SHIFT = float(os.environ['RANDOM_DELTA_LAMPHI_SHIFT'])
 
 # The name of the ratio graph in the fit files
 RATIO_NAME = 'r_chic2_chic1_v_{}_HX_fold_bin_0'
@@ -48,36 +49,93 @@ RATIO_NAME = 'r_chic2_chic1_v_{}_HX_fold_bin_0'
 NORM_SIGMA = 0.025
 NORM_MU = 0.5
 
+LTH_1_BOUNDS, LPH_1_BOUNDS = (-1./3., 1), (-1./3., 1./3.)
+LTH_2_BOUNDS, LPH_2_BOUNDS = (-0.6, 1), (-np.sqrt(5) / 5, np.sqrt(5) / 5)
+
 XRANGES = {
     'dlth': [76.8, 80.2], # Make sure that this covers the whole range # Make sure that this covers the whole range
-    'lth': [-0.33333, 1],
+    'lth': LTH_1_BOUNDS,
     'norm_costh': [NORM_MU - 5 * NORM_SIGMA, NORM_MU + 5 * NORM_SIGMA],
     'norm_phi': [NORM_MU - 5 * NORM_SIGMA, NORM_MU + 5 * NORM_SIGMA],
-    'lph': [-1./3., 1./3.],
-    'dlph': [27.5, 29.3],
-    'ltp': [-0.42, 0.42],
-    'dltp': [-0.85, 0.85],
+    'lph': LPH_1_BOUNDS,
+    'dlph': [-1./3 - np.sqrt(5) / 5, 1./3 + np.sqrt(5) / 5],
     'lth2': [78, 79.8],
-    'lph2': [27.7, 28.9],
-    'ltp2': [-0.45, 0.45],
+    'lph2': LPH_2_BOUNDS,
     'ltilde' : [-1, 1],
-    'ltilde2': [-1.05 + RAND_DLTH_SHIFT, 1.05 + RAND_DLTH_SHIFT],
-    'dltilde': [-2.1 + RAND_DLPH_SHIFT, 2.1 + RAND_DLPH_SHIFT]
+    # min / max lambda_tilde 2 = -1 / +3
+    'ltilde2': [-1.05 + RAND_DLTH_SHIFT, 3.05 + RAND_DLTH_SHIFT],
+    'dltilde': [-2.1 + RAND_DLTH_SHIFT, 4.1 + RAND_DLTH_SHIFT]
 }
 
+
+# Variables (resp. how to compute them for which 1d plots will be produced)
+PPD_VARIABLES = {
+    'lth': 'lth_1', 'lph': 'lph_1', #'ltp': 'ltp_1',
+    'lth2': 'lth_2', 'lph2': 'lph_2', #'ltp2': 'ltp_2', # debugging
+
+    'norm_phi': 'norm_phi',
+    'norm_costh': 'norm_cth',
+
+    'dlth': lambda d: d.lth_2 - d.lth_1,
+    'dlph': lambda d: d.lph_2 - d.lph_1,
+
+    # We have to play some serious things here to have the random shfit in place
+    'ltilde': lambda d: lambda_tilde(d.lth_1, d.lph_1),
+    'ltilde2': lambda d: lambda_tilde(d.lth_2 - RAND_DLTH_SHIFT, d.lph_2) + \
+                         RAND_DLTH_SHIFT,
+    'dltilde': lambda d: lambda_tilde(d.lth_2 - RAND_DLTH_SHIFT, d.lph_2) - \
+                         lambda_tilde(d.lth_1, d.lph_1) + RAND_DLTH_SHIFT
+}
+
+
+# 2D combinations of available variables from above
 PPD_2D_COMBS = (
     ('lth', 'lph'),
-    ('lth', 'ltp'),
-    ('lph', 'ltp'),
-
     ('lth2', 'lph2'),
-    ('lth2', 'ltp2'),
-    ('lph2', 'ltp2'),
-
     ('lth', 'dlth'),
     ('lph', 'dlph'),
-    ('ltp', 'dltp'),
 )
+
+
+def w_norm(dfr):
+    """Get the normalization importance sampling correction weight"""
+    return 1 / (dfr.norm_w_cth * dfr.norm_w_phi)
+
+
+def w_ppd(dfr):
+    """Get the full ppd weight (2d)"""
+    return dfr.w_ppd_costh * dfr.w_ppd_phi * w_norm(dfr)
+
+
+def sel_const_2d(dfr):
+    """
+    Get the weight constraining the 2d prior to the physically allowed regions.
+    Can also be used as selection in apply_selections
+    """
+    return (cond_chi1_lth_lph(dfr.lth_1, dfr.lph_1) &
+            cond_chi2_lth_lph(dfr.lth_2 - RAND_DLTH_SHIFT, dfr.lph_2))
+
+
+# Weight (functions) for producing different prior and ppd distributions
+# (Used to only have to do the majority of calculations once and then filling
+# histograms accordingly to have different definitions of priors)
+PPD_WEIGHTS = {
+    'prior_{}': None,
+    'prior_{}_norm': w_norm,
+    'prior_{}_norm_costh': lambda d: 1 / d.norm_w_cth,
+    'prior_{}_norm_phi': lambda d: 1 / d.norm_w_phi,
+    'prior_{}_2d_const': sel_const_2d,
+
+    'ppd_{}': w_ppd,
+    'ppd_{}_2d_const': lambda d: w_ppd(d) * sel_const_2d(d),
+
+    'ppd_{}_costh': lambda d: d.w_ppd_costh / d.norm_w_cth,
+    'ppd_{}_costh_2d_const': lambda d: d.w_ppd_costh / d.norm_w_cth * sel_const_2d(d),
+
+    'ppd_{}_phi': lambda d: d.w_ppd_phi / d.norm_w_phi,
+    'ppd_{}_phi_2d_const': lambda d: d.w_ppd_phi / d.norm_w_phi * sel_const_2d(d)
+}
+
 
 def get_ratio_graph(rfile, var='costh'):
     """
@@ -90,71 +148,18 @@ def get_ratio_graph(rfile, var='costh'):
     return scale_graph(graph, 0.5 / graph.GetY()[0])
 
 
-def generate_lambdas(n_points, condition_f, eff=None):
+def generate_lambdas(n_points, lth_bounds, lph_bounds):
     """
-    Generate lambdas such that they satisfy the condition posed by condition_f
+    Generate lambdas flat in 2d in box defined by lth_bounds and lph_bounds
     """
-    logging.debug('Generating lambda values. condition_f = {}'
-                  .format(condition_f.__name__))
+    logging.debug('Generating 2d lambda values for bounds: lth = [{:.2f}, '
+                  '{:.2f}], lph = [{:.2f}, {:.2f}]'
+                  .format(*(lth_bounds + lph_bounds)))
 
-    def gen_lambdas(n_ev):
-        """Generate n_ev values in a cuboid"""
-        # Generate the initial values in a cuboid that spans enough to allow
-        # for all possible values for both chic1 and chic2. In this case these
-        # are all defined by the chic2.
-        lth = np.random.uniform(-0.6, 1, n_ev)
-        lph = np.random.uniform(-np.sqrt(5) / 5, np.sqrt(5) / 5, n_ev)
-        ltp = np.random.uniform(-np.sqrt(5) / 5, np.sqrt(5) / 5, n_ev)
+    lth = np.random.uniform(lth_bounds[0], lth_bounds[1], n_points)
+    lph = np.random.uniform(lph_bounds[0], lph_bounds[1], n_points)
 
-        return lth, lph, ltp
-
-    n_valid = 0
-
-    n_gen_points = n_points
-    # If an efficiency is provided generate more events according to
-    # the efficiency
-    if eff is not None and eff < 1:
-        n_gen_points = int(n_points / eff)
-        logging.debug('Using eff = {:.2f} and generating {} events per loop'
-                      .format(eff, n_gen_points))
-
-    valid_lth, valid_lph, valid_ltp = np.array([]), np.array([]), np.array([])
-    # Keep looping until we have enough events
-    while n_valid < n_points:
-        lth, lph, ltp = gen_lambdas(n_gen_points)
-        valid = condition_f(lth, lph, ltp)
-        logging.debug('{} / {} generated tuples satisfy the condition function'
-                      .format(np.sum(valid), n_gen_points))
-
-        valid_lth = np.concatenate((valid_lth, lth[valid]))
-        valid_lph = np.concatenate((valid_lph, lph[valid]))
-        valid_ltp = np.concatenate((valid_ltp, ltp[valid]))
-
-        n_valid += np.sum(valid)
-
-    return valid_lth[:n_points], valid_lph[:n_points], valid_ltp[:n_points]
-
-
-def cond_chi1_lambdas(lth, lph, ltp):
-    """
-    Check whether the values of lth, lph and ltp satisfy the condition of
-    Eq. 27 of PRD 83, 096001 (2011)
-    """
-    cond1 = (lth >= -1./3.) & (lth <= 1)
-    cond2 = np.abs(lph) <= ((1 - lth) * 0.25)
-    cond3 = (2.25 * (lth - 1./3.)**2 + 6 * ltp**2) <= 1
-    cond4 = np.abs(ltp) <= np.sqrt(3) * 0.5 * (lph + 1./3.)
-    cond5 = ((lph > 1./9.) & (( (6 * lph - 1)**2 + 6 * ltp**2 ) <= 1)) | (lph <= 1./9.)
-
-    return cond1 & cond2 & cond3 & cond4 & cond5
-
-
-def cond_chi2_lambdas(lth, lph, ltp):
-    """
-    Check whether the values of lth, lph and ltp satisfy the condition of
-    Eq. 28 of PRD 83, 096001 (2011)
-    """
-    return (0.3125 * (lth - 0.2)**2 + lph**2 + ltp**2) <= 0.2
+    return lth, lph
 
 
 def get_scan_points(n_points):
@@ -166,14 +171,18 @@ def get_scan_points(n_points):
     norm_phi_vals = np.random.normal(NORM_MU, NORM_SIGMA, n_points)
     norm_cth_vals = np.random.normal(NORM_MU, NORM_SIGMA, n_points)
 
-    lth_1, lph_1, ltp_1 = generate_lambdas(n_points, cond_chi1_lambdas, 0.16)
-    lth_2, lph_2, ltp_2 = generate_lambdas(n_points, cond_chi2_lambdas, 0.52)
+    # lth_1, lph_1, ltp_1 = generate_lambdas(n_points, cond_chi1_lambdas, 0.16)
+    # lth_2, lph_2, ltp_2 = generate_lambdas(n_points, cond_chi2_lambdas, 0.52)
+
+    lth_1, lph_1 = generate_lambdas(n_points, LTH_1_BOUNDS, LPH_1_BOUNDS)
+    lth_2, lph_2 = generate_lambdas(n_points, LTH_2_BOUNDS, LPH_2_BOUNDS)
+
 
     return pd.DataFrame({
         'norm_phi': norm_phi_vals,
         'norm_cth': norm_cth_vals,
-        'lth_1': lth_1, 'lph_1': lph_1, 'ltp_1': ltp_1,
-        'lth_2': lth_2, 'lph_2': lph_2, 'ltp_2': ltp_2,
+        'lth_1': lth_1, 'lph_1': lph_1,# 'ltp_1': ltp_1,
+        'lth_2': lth_2, 'lph_2': lph_2,# 'ltp_2': ltp_2,
     })
 
 
@@ -182,6 +191,8 @@ def calc_chi2(graph, func):
     Calculate the chi2 between the graph and all passed values of norm, lth and
     dlth (resp. kappa1 and kappa2)
     """
+    logging.debug('Calculating chi2 for graph \'{}\' and function \'{}\''
+                  .format(graph.GetName(), func.__name__))
     x_v = np.array(graph.GetX())
     ratio_v = np.array(graph.GetY())
     _, _, err_lo, err_hi = get_errors(graph)
@@ -208,6 +219,7 @@ def calc_ppd(cth_graph, phi_graph, dfr):
     """
     Calculate the ppd using the given graphs and all the passed values
     """
+    logging.info('Calculating ppd values')
     def fit_func_costh(costh):
         """
         Get the actual fitting function (also correct for the random dlth shift)
@@ -233,7 +245,11 @@ def calc_ppd(cth_graph, phi_graph, dfr):
     chi2_costh = calc_chi2(cth_graph, fit_func_costh)
     chi2_phi = calc_chi2(phi_graph, fit_func_phi)
 
-    return np.exp(-0.5 * (chi2_costh + chi2_phi))
+    dfr['w_ppd_costh'] = np.exp(-0.5 * chi2_costh)
+    dfr['w_ppd_phi'] = np.exp(-0.5 * chi2_phi)
+    dfr['w_ppd'] = dfr.w_ppd_costh * dfr.w_ppd_phi
+
+    return dfr
 
 
 def get_number_bins(vrange, bwidth):
@@ -250,19 +266,20 @@ def get_number_bins(vrange, bwidth):
     return np.ceil(n_bins).astype(int) * 25 * 16
 
 
-def ppd_1d(data, var, vfunc, weights=None):
+def ppd_1d(data, var, vfunc, name_fmt, weights=None):
     """
     Get the 1d ppd histogram for a given variable
     """
     xran = XRANGES.get(var, None)
     bounds = {'min': xran[0], 'max': xran[1],
-              'nbins': get_number_bins(xran, BIN_WIDTH_1D)}
+              'nbins': get_number_bins(xran, BIN_WIDTH_1D),
+              'name': name_fmt.format('1d_' + var)}
 
     return hist1d(_get_var(data, vfunc), weights=weights,
                   **bounds)
 
 
-def ppd_2d(data, var1, vfunc1, var2, vfunc2, weights=None):
+def ppd_2d(data, var1, vfunc1, var2, vfunc2, name_fmt, weights=None):
     """
     Get the 2d ppd histogram for a given variable
     """
@@ -270,7 +287,8 @@ def ppd_2d(data, var1, vfunc1, var2, vfunc2, weights=None):
     yran = XRANGES.get(var2)
 
     bounds = {'minx': xran[0], 'maxx': xran[1], 'nbinsx': NBINS_2D,
-              'miny': yran[0], 'maxy': yran[1], 'nbinsy': NBINS_2D}
+              'miny': yran[0], 'maxy': yran[1], 'nbinsy': NBINS_2D,
+              'name': name_fmt.format('_'.join(['2d', var1, var2]))}
 
     return hist2d(_get_var(data, vfunc1), _get_var(data, vfunc2),
                   weights=weights, **bounds)
@@ -281,53 +299,27 @@ def produce_ppd_hists(data):
     Make the PPD histograms from the passed data
     """
     logging.info('Producing prior and posterior probability density histograms')
-    variables = {
-        'lth': 'lth_1', 'lph': 'lph_1', 'ltp': 'ltp_1',
-        'lth2': 'lth_2', 'lph2': 'lph_2', 'ltp2': 'ltp_2', # debugging
 
-        'norm_phi': 'norm_phi',
-        'norm_costh': 'norm_cth',
-
-        'dlth': lambda d: d.lth_2 - d.lth_1,
-        'dlph': lambda d: d.lph_2 - d.lph_1,
-        'dltp': lambda d: d.ltp_2 - d.ltp_1,
-
-        # We have to play some serious things here to have the random shfit in place
-        'ltilde': lambda d: lambda_tilde(d.lth_1, d.lph_1),
-        'ltilde2': lambda d: lambda_tilde(d.lth_2 - RAND_DLTH_SHIFT,
-                                          d.lph_2 - RAND_DLPH_SHIFT) + \
-        RAND_DLTH_SHIFT,
-        'dltilde': lambda d: lambda_tilde(d.lth_2 - RAND_DLTH_SHIFT,
-                                          d.lph_2 - RAND_DLPH_SHIFT) - \
-        lambda_tilde(d.lth_1, d.lph_1) + RAND_DLPH_SHIFT
+    # # Calculate the weights only once, since they will not change afterwards
+    weights_names = {
+        n: f(data) if f is not None else None for n, f in PPD_WEIGHTS.iteritems()
     }
 
     hists = []
 
-    # Calculate the weights only once
-    w_norm = 1 / data.norm_w_cth / data.norm_w_phi
-    w_ppd_norm = data.w_ppd * w_norm
 
-    for var, vfunc in variables.iteritems():
-        logging.debug('Filling 1d histogram for {}'.format(var))
-        vprior = ppd_1d(data, var, vfunc, w_norm)
-        vprior.SetName('prior_1d_{}'.format(var))
-        hists.append(vprior)
+    for var, vfunc in PPD_VARIABLES.iteritems():
+        logging.debug('Filling 1d histograms for {}'.format(var))
 
-        vppd = ppd_1d(data, var, vfunc, w_ppd_norm)
-        vppd.SetName('ppd_1d_{}'.format(var))
-        hists.append(vppd)
+        for name, weight in weights_names.iteritems():
+            hists.append(ppd_1d(data, var, vfunc, name, weight))
 
     for var1, var2 in PPD_2D_COMBS:
-        logging.debug('Filling 2d histogram for {} v {}'.format(var1, var2))
-        vfunc1, vfunc2 = variables[var1], variables[var2]
-        vprior = ppd_2d(data, var1, vfunc1, var2, vfunc2, w_norm)
-        vprior.SetName('prior_2d_{}_{}'.format(var1, var2))
-        hists.append(vprior)
+        logging.debug('Filling 2d histograms for {} v {}'.format(var1, var2))
+        vfunc1, vfunc2 = PPD_VARIABLES[var1], PPD_VARIABLES[var2]
 
-        vppd = ppd_2d(data, var1, vfunc1, var2, vfunc2, w_ppd_norm)
-        vppd.SetName('ppd_2d_{}_{}'.format(var1, var2))
-        hists.append(vppd)
+        for name, weight in weights_names.iteritems():
+            hists.append(ppd_2d(data, var1, vfunc1, var2, vfunc2, name, weight))
 
     return hists
 
@@ -346,11 +338,10 @@ def main(args):
     # change. But for now store it for convenience
     dfr['norm_w_cth'] = norm.pdf(dfr.loc[:, 'norm_cth'], NORM_MU, NORM_SIGMA)
     dfr['norm_w_phi'] = norm.pdf(dfr.loc[:, 'norm_phi'], NORM_MU, NORM_SIGMA)
-    dfr['w_ppd'] = calc_ppd(costh_ratio, phi_ratio, dfr)
+    calc_ppd(costh_ratio, phi_ratio, dfr)
 
     # For now shift some values by a constant random number
     dfr['lth_2'] += RAND_DLTH_SHIFT
-    dfr['lph_2'] += RAND_DLPH_SHIFT
 
     if not args.hists_only:
         store_dataframe(dfr, args.scanfile, tname='ppd_vals')

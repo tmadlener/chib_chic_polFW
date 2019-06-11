@@ -40,5 +40,4 @@ if [[ -z "${CHIB_CHIC_POLFW_DIR+x}" ]] || $(check_args_flag "--force" ${@}); the
 
     # create a random number that can be used to shift the fitted value of delta lambda to avoid unblinding
     export RANDOM_DELTA_LAMBDA_SHIFT=$(get_rand 271828182845904)
-    export RANDOM_DELTA_LAMPHI_SHIFT=$(get_rand 314159265358979)
 fi

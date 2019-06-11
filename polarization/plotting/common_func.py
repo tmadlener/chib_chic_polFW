@@ -3,6 +3,8 @@
 Common functionality for scanning / plotting / combining PPDs
 """
 
+import numpy as np
+
 from utils.hist_utils import rebin
 from utils.plot_helpers import mkplot, default_attributes
 from utils.plot_decoration import YLABELS
@@ -96,3 +98,42 @@ def plot_dltilde(ppd):
     can = mkplot(ppd, xLabel=YLABELS['dltilde'], yLabel='PPD [a.u.]',
                  drawOpt='hist', attr=ATTR, xRange=[ppdmax -2, ppdmax + 2])
     return can
+
+
+
+def cond_chi1_lambdas(lth, lph, ltp):
+    """
+    Check whether the values of lth, lph and ltp satisfy the condition of
+    Eq. 27 of PRD 83, 096001 (2011)
+    """
+    cond1 = (lth >= -1./3.) & (lth <= 1)
+    cond2 = np.abs(lph) <= ((1 - lth) * 0.25)
+    cond3 = (2.25 * (lth - 1./3.)**2 + 6 * ltp**2) <= 1
+    cond4 = np.abs(ltp) <= np.sqrt(3) * 0.5 * (lph + 1./3.)
+    cond5 = ((lph > 1./9.) & (( (6 * lph - 1)**2 + 6 * ltp**2 ) <= 1)) | (lph <= 1./9.)
+
+    return cond1 & cond2 & cond3 & cond4 & cond5
+
+
+def cond_chi2_lambdas(lth, lph, ltp):
+    """
+    Check whether the values of lth, lph and ltp satisfy the condition of
+    Eq. 28 of PRD 83, 096001 (2011)
+    """
+    return (0.3125 * (lth - 0.2)**2 + lph**2 + ltp**2) <= 0.2
+
+
+def cond_chi1_lth_lph(lth, lph):
+    """
+    Check whether the values of lth and lph satisfy the 2d condition of Eq. 27
+    of PRD 83, 096001 (2011)
+    """
+    return (lth >= -1./3.) & (lth <= 1) & (np.abs(lph) <= ((1 - lth) * 0.25))
+
+
+def cond_chi2_lth_lph(lth, lph):
+    """
+    Check whether the values of lth and lph satisfy the 2d condition of Eq. 28
+    of PRD 83, 096001 (2011)
+    """
+    return (0.3125 * (lth - 0.2)**2 + lph**2) <= 0.2
