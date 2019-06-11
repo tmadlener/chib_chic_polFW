@@ -177,7 +177,7 @@ def set_color(pltable, col):
         pltable (ROOT.TObject): Plottable root object
         col (int): Color index to use for the plottable
     """
-    col_attributes = ['SetLineColor', 'SetMarkerColor']
+    col_attributes = ['SetLineColor', 'SetMarkerColor', 'SetTextColor']
     for attr in col_attributes:
         if hasattr(pltable, attr):
             getattr(pltable, attr)(col)
@@ -537,12 +537,19 @@ def put_on_latex(latex, text_info, ndc=False):
         text_info (list of tuples): List containing the position and the
             text to put onto the plot in the format (leftpos, toppos, text)
         ndc (boolean): Use NDC coordinates to draw this TLatex
+
+    Returns:
+        list of ROOT.TLatex: For each entry a copy of the passed in latex is
+            created and put into the list, which is returned.
     """
+    latexes = []
     for left, top, text in text_info:
         if ndc:
-            latex.DrawLatexNDC(left, top, text)
+            latexes.append(latex.DrawLatexNDC(left, top, text))
         else:
-            latex.DrawLatex(left, top, text)
+            latexes.append(latex.DrawLatex(left, top, text))
+
+    return latexes
 
 
 def _set_ratio_properties(hist):
