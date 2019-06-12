@@ -65,6 +65,7 @@ XRANGES = {
     'ltilde' : [-1, 1],
     # min / max lambda_tilde 2 = -1 / +3
     'ltilde2': [-1.05 + RAND_DLTH_SHIFT, 3.05 + RAND_DLTH_SHIFT],
+    # NOTE: This is only the full range for lambdas conforming to the 2d relations
     'dltilde': [-2.1 + RAND_DLTH_SHIFT, 4.1 + RAND_DLTH_SHIFT]
 }
 
@@ -273,6 +274,24 @@ def get_number_bins(vrange, bwidth):
     return np.ceil(n_bins).astype(int) * 25 * 16
 
 
+
+def get_var_shifted(dfr, func, name, kwargs):
+    """
+    Hacky way of removing the shift for priors but letting it there for
+    posteriors.
+
+    TODO: Remove this once the analysis is unblinded
+    """
+
+    for var in ['lth2', 'dlth', 'ltilde2', 'dltilde']:
+        if var in name and 'prior' in name:
+            low_bound = kwargs['min'] - RAND_DLTH_SHIFT
+            high_bound = kwargs['max'] - RAND_DLTH_SHIFT
+            return _get_var(dfr, func) - RAND_DLTH_SHIFT, low_bound, high_bound
+
+    return _get_var(dfr, func), kwargs['min'], kwargs['max']
+
+
 def ppd_1d(data, var, vfunc, name_fmt, weights=None):
     """
     Get the 1d ppd histogram for a given variable
@@ -282,8 +301,11 @@ def ppd_1d(data, var, vfunc, name_fmt, weights=None):
               'nbins': get_number_bins(xran, BIN_WIDTH_1D),
               'name': name_fmt.format('1d_' + var)}
 
-    return hist1d(_get_var(data, vfunc), weights=weights,
-                  **bounds)
+    # TODO: Remove after unblinding
+    vals, low, high = get_var_shifted(data, vfunc, name_fmt.format(var), bounds)
+    bounds['min'] = low
+    bounds['max'] = high
+    return hist1d(vals, weights=weights, **bounds)
 
 
 def ppd_2d(data, var1, vfunc1, var2, vfunc2, name_fmt, weights=None):
@@ -297,8 +319,17 @@ def ppd_2d(data, var1, vfunc1, var2, vfunc2, name_fmt, weights=None):
               'miny': yran[0], 'maxy': yran[1], 'nbinsy': NBINS_2D,
               'name': name_fmt.format('_'.join(['2d', var1, var2]))}
 
-    return hist2d(_get_var(data, vfunc1), _get_var(data, vfunc2),
-                  weights=weights, **bounds)
+    # TODO: Remove after unblinding
+    vals1, low1, high1 = get_var_shifted(data, vfunc1, name_fmt.format(var1),
+                                        {'min': bounds['minx'], 'max': bounds['maxx']})
+    bounds['minx'] = low1
+    bounds['maxx'] = high1
+    vals2, low2, high2 = get_var_shifted(data, vfunc2, name_fmt.format(var2),
+                                         {'min': bounds['miny'], 'max': bounds['maxy']})
+    bounds['miny'] = low2
+    bounds['maxy'] = high2
+
+    return hist2d(vals1, vals2, weights=weights, **bounds)
 
 
 def produce_ppd_hists(data):
