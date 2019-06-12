@@ -385,13 +385,14 @@ def main(args):
         store_dataframe(dfr, args.scanfile, tname='ppd_vals')
 
 
-    outfile = r.TFile.Open(args.scanfile, 'update')
-    outfile.cd()
-    hists = produce_ppd_hists(dfr)
-    for hist in hists:
-        hist.Write()
+    if not args.no_hists:
+        outfile = r.TFile.Open(args.scanfile, 'update')
+        outfile.cd()
+        hists = produce_ppd_hists(dfr)
+        for hist in hists:
+            hist.Write()
 
-    outfile.Close()
+        outfile.Close()
 
 
 if __name__ == '__main__':
@@ -411,6 +412,9 @@ if __name__ == '__main__':
     parser.add_argument('--hists-only', default=False, action='store_true',
                         help='Do not put the scan values into a TTree, but only '
                         'store the histograms')
+    parser.add_argument('--no-hists', default=False, action='store_true',
+                        help='Do not make histograms but only store the TTree '
+                        'into the scanfile')
 
     clargs = parser.parse_args()
     main(clargs)
