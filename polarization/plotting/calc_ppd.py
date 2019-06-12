@@ -20,7 +20,7 @@ r.PyConfig.IgnoreCommandLineOptions = True
 
 from scipy.stats import norm
 
-from utils.graph_utils import scale_graph, get_errors
+from utils.graph_utils import get_errors
 from utils.pol_utils import costh_ratio_1d, phi_ratio_1d, lambda_tilde
 from utils.data_handling import store_dataframe
 from utils.hist_utils import hist1d, hist2d
@@ -47,7 +47,8 @@ RATIO_NAME = 'r_chic2_chic1_v_{}_HX_fold_bin_0'
 
 # The width and center of the Gaussian importance sampling kernel for the norm
 NORM_SIGMA = 0.025
-NORM_MU = 0.5
+NORM_MU_CTH = 0.5
+NORM_MU_PHI = 0.5
 
 LTH_1_BOUNDS, LPH_1_BOUNDS = (-1./3., 1), (-1./3., 1./3.)
 LTH_2_BOUNDS, LPH_2_BOUNDS = (-0.6, 1), (-np.sqrt(5) / 5, np.sqrt(5) / 5)
@@ -55,8 +56,8 @@ LTH_2_BOUNDS, LPH_2_BOUNDS = (-0.6, 1), (-np.sqrt(5) / 5, np.sqrt(5) / 5)
 XRANGES = {
     'dlth': [76.8, 80.2], # Make sure that this covers the whole range # Make sure that this covers the whole range
     'lth': LTH_1_BOUNDS,
-    'norm_costh': [NORM_MU - 5 * NORM_SIGMA, NORM_MU + 5 * NORM_SIGMA],
-    'norm_phi': [NORM_MU - 5 * NORM_SIGMA, NORM_MU + 5 * NORM_SIGMA],
+    'norm_costh': [NORM_MU_CTH - 5 * NORM_SIGMA, NORM_MU_CTH + 5 * NORM_SIGMA],
+    'norm_phi': [NORM_MU_PHI - 5 * NORM_SIGMA, NORM_MU_PHI + 5 * NORM_SIGMA],
     'lph': LPH_1_BOUNDS,
     'dlph': [-1./3 - np.sqrt(5) / 5, 1./3 + np.sqrt(5) / 5],
     'lth2': [78, 79.8],
@@ -139,13 +140,23 @@ PPD_WEIGHTS = {
 
 def get_ratio_graph(rfile, var='costh'):
     """
-    Get the ratio graph from the file and re scale it such that the first point
-    lies at 0.5. This allows for an easier importance sampling of the
-    normalization, since the absolute value of the normalization doesn't really
-    matter.
+    Get the ratio graph from the file and set the center of the corresponding
+    importance sampling kernel such that it is "efficient"
     """
     graph = rfile.Get(RATIO_NAME.format(var))
-    return scale_graph(graph, 0.5 / graph.GetY()[0])
+    if var == 'costh':
+        global NORM_MU_CTH
+        # The costh ratio is normalized to its value at 0
+        NORM_MU_CTH = graph.GetY()[0]
+        logging.debug('Setting NORM_MU_CTH = {:.2f}'.format(NORM_MU_CTH))
+    if var == 'phi':
+        const = r.TF1('const', '[0]', 0, 90)
+        graph.Fit(const, 'SEX0q0')
+        global NORM_MU_PHI
+        NORM_MU_PHI = const.GetParameter(0)
+        logging.debug('Setting NORM_MU_PHI = {:.2f}'.format(NORM_MU_PHI))
+
+    return graph
 
 
 def generate_lambdas(n_points, lth_bounds, lph_bounds):
@@ -168,21 +179,17 @@ def get_scan_points(n_points):
     """
     logging.info('Generating random scan points: n_points = {}'.format(n_points))
     logging.debug('Generating norm values')
-    norm_phi_vals = np.random.normal(NORM_MU, NORM_SIGMA, n_points)
-    norm_cth_vals = np.random.normal(NORM_MU, NORM_SIGMA, n_points)
-
-    # lth_1, lph_1, ltp_1 = generate_lambdas(n_points, cond_chi1_lambdas, 0.16)
-    # lth_2, lph_2, ltp_2 = generate_lambdas(n_points, cond_chi2_lambdas, 0.52)
+    norm_phi_vals = np.random.normal(NORM_MU_PHI, NORM_SIGMA, n_points)
+    norm_cth_vals = np.random.normal(NORM_MU_CTH, NORM_SIGMA, n_points)
 
     lth_1, lph_1 = generate_lambdas(n_points, LTH_1_BOUNDS, LPH_1_BOUNDS)
     lth_2, lph_2 = generate_lambdas(n_points, LTH_2_BOUNDS, LPH_2_BOUNDS)
 
-
     return pd.DataFrame({
         'norm_phi': norm_phi_vals,
         'norm_cth': norm_cth_vals,
-        'lth_1': lth_1, 'lph_1': lph_1,# 'ltp_1': ltp_1,
-        'lth_2': lth_2, 'lph_2': lph_2,# 'ltp_2': ltp_2,
+        'lth_1': lth_1, 'lph_1': lph_1,
+        'lth_2': lth_2, 'lph_2': lph_2,
     })
 
 
@@ -336,8 +343,8 @@ def main(args):
     # Maybe we do not need to store this since we can always calculate it from
     # the norm values if the center and width of the sampling kernel does not
     # change. But for now store it for convenience
-    dfr['norm_w_cth'] = norm.pdf(dfr.loc[:, 'norm_cth'], NORM_MU, NORM_SIGMA)
-    dfr['norm_w_phi'] = norm.pdf(dfr.loc[:, 'norm_phi'], NORM_MU, NORM_SIGMA)
+    dfr['norm_w_cth'] = norm.pdf(dfr.loc[:, 'norm_cth'], NORM_MU_CTH, NORM_SIGMA)
+    dfr['norm_w_phi'] = norm.pdf(dfr.loc[:, 'norm_phi'], NORM_MU_PHI, NORM_SIGMA)
     calc_ppd(costh_ratio, phi_ratio, dfr)
 
     # For now shift some values by a constant random number
