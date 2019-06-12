@@ -31,8 +31,11 @@ YLABELS = {
     'dlth': '#Delta#lambda_{#vartheta}',
     'lth': '#lambda_{#vartheta}(#chi_{c1})',
     'lph': '#lambda_{#varphi}(#chi_{c1})',
+    'lth2': '#lambda_{#vartheta}(#chi_{c2})',
+    'lph2': '#lambda_{#varphi}(#chi_{c2})',
     'dlph': '#Delta#lambda_{#varphi}',
     'ltilde': '#tilde{#lambda}(#chi_{c1})',
+    'ltilde2': '#tilde{#lambda}(#chi_{c2})',
     'dltilde': '#Delta#tilde{#lambda}'
 }
 
