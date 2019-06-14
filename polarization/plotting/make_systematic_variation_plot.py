@@ -59,6 +59,10 @@ def get_largest_dev_graph(diff_graphs):
     max_dev = np.max(y_vals, axis=0)
     min_dev = -np.min(y_vals, axis=0)
 
+    # Clean up negative values so that the graphs can be plotted
+    max_dev *= (max_dev > 0)
+    min_dev *= (min_dev > 0)
+
     # Assume that all of them have the same binning
     elo, ehi, _, _ = get_errors(diff_graphs[0])
     xval = np.array(diff_graphs[0].GetX())
@@ -67,7 +71,7 @@ def get_largest_dev_graph(diff_graphs):
                                min_dev, max_dev)
 
 
-def create_outfile(fname, param, centg, vargs, svargs, rsvargs, ldgraph):
+def create_outfile(fname, param, centg, vargs, svargs, rsvargs, dvargs, ldgraph):
     """
     Store graphs into one rootfile for easier retrieval later
     """
@@ -90,6 +94,11 @@ def create_outfile(fname, param, centg, vargs, svargs, rsvargs, ldgraph):
         graph.SetName('_'.join(['var', str(igr), param, 'scaled_rel_diff']))
         graph.Write()
 
+    for igr, graph in enumerate(dvargs):
+        graph.SetName('_'.join(['var', str(igr), param, 'diff']))
+        graph.Write()
+
+
     outfile.Close()
 
 
@@ -100,13 +109,15 @@ def process_param(cfile, vfiles, param, outfile=None):
 
     scaled_vgraphs = get_scaled_graphs(vgraphs, cgraph)
     rel_scaled_vgraphs = get_diff(scaled_vgraphs, cgraph, rel=True)
+    diff_non_scaled_vgraphs = get_diff(vgraphs, cgraph, rel=False)
 
     largest_dev_graph = get_largest_dev_graph(rel_scaled_vgraphs)
 
 
     if outfile is not None:
         create_outfile(outfile, param, cgraph, vgraphs, scaled_vgraphs,
-                       rel_scaled_vgraphs, largest_dev_graph)
+                       rel_scaled_vgraphs, diff_non_scaled_vgraphs,
+                       largest_dev_graph)
 
     # for testing / development
     # can = mkplot(rel_scaled_vgraphs, drawOpt='PE', **CTH_PLOT)
@@ -132,6 +143,9 @@ def main(args):
     set_basic_style()
     cgraph_file = r.TFile.Open(args.centralfile)
     var_files = [r.TFile.Open(f) for f in args.variationfiles if f != args.centralfile]
+
+    from pprint import pprint
+    pprint(var_files)
 
     for param in args.params.split(','):
         process_param(cgraph_file, var_files, param, 'all_systematic_graphs.root')
