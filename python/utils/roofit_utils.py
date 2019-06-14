@@ -272,7 +272,7 @@ def get_var_graph(wsp, snap_base, var, n_bins, binning=None, bin_means=None,
                                err_lo, err_hi)
 
 
-def set_var(wsp, varname, val, create=False):
+def set_var(wsp, varname, val, create=False, err=None):
     """
     Set the passed value to the variable in the workspace. If the variable is
     not already present, create it first.
@@ -282,12 +282,18 @@ def set_var(wsp, varname, val, create=False):
         if not create:
             logging.error('Variable \'{}\' is not present in workspace'
                           .format(varname))
+            return
         else:
             logging.debug('Variable \'{}\' not already present in workspace. '
                           'Creating it.'.format(varname))
             wsp.factory("{}[{}]".format(varname, val))
+            var = get_var(wsp, varname)
     else:
         var.setVal(val)
+
+    # At this point we definitely have the variable
+    if err is not None:
+        var.setError(err)
 
 
 def fix_params(wsp, param_vals):
@@ -358,3 +364,47 @@ def param_str(wsp, param):
 
     return r'${} \pm {}$'.format(fmt_float(val),
                                  fmt_float(var.getError(), var_exp.astype(int)))
+
+
+def eval_pdf(pdf, var, values):
+    """
+    Evaluate a RooAbsPdf at all passed values
+
+    NOTE:
+    This has to be done in a bit a cumbersome fashion, since evaluate is not
+    directly exposed and even if it was it does not take an argument at which
+    the pdf should be evaluated.
+
+    This function does not take into account any normalization! This is a
+    RooFit "oddity" that actually makes sense (although I never can keep the
+    reasoning for it in memory for longer than a few hours)
+
+    In order to be able to compare the numbers that are returned from this
+    function with the return value for another RooAbsPdf they have to be
+    multiplied by a factor that relates the pdfs such that they are correctly
+    normalized against each other. The easiest way for the current purpose is
+    to use the respective yields
+
+    Args:
+        pdf (ROOT.RooAbsPdf): The pdf function that should be evaluated
+        var (ROOT.RooAbsReal): The variable for which the pdf should be
+            evaluated at the passed values
+        values (np.array of floats): All values for which the pdf should be
+            evaluated.
+
+    Returns:
+        np.array: The values of the passed pdf at the passed variable values
+    """
+    logging.debug('Evaluating pdf {} along variable {} at {} values'.
+                  format(pdf.GetName(), var, len(values)))
+    vals = np.ones_like(values)
+    # Necessary to have the resulting pdf normalized to 1 on the range of the
+    # variable. Only with this do the relative normalizations using the yields
+    # make sense and give the expected results. Keeping it outside the loop to
+    # avoid creating it everytime
+    var_set = r.RooArgSet(var)
+    for idx, val in enumerate(values):
+        var.setVal(val)
+        vals[idx] = pdf.getVal(var_set)
+
+    return vals
