@@ -131,7 +131,7 @@ struct sel_config {
 
   std::unique_ptr<Selector> getPhotonSelector() const {
     if (photon_sel) {
-      return std::make_unique<MinPtMaxEtaSelector>(0.41, 1.5);
+      return std::make_unique<MinPtMaxEtaSelector>(0.40, 1.5);
     }
     return std::make_unique<AllSelector>();
   }
@@ -166,7 +166,7 @@ struct store_config {
   bool storeHists{false};
   int nBinsCosth{40};
   int nBinsPhi{24};
-  int nBinsPt{18};
+  int nBinsPt{4};
   int nBinsRap{2};
 
   std::array<int, 4> getNBins() const { return {nBinsCosth, nBinsPhi, nBinsPt, nBinsRap}; }

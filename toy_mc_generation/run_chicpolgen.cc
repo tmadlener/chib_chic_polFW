@@ -38,7 +38,6 @@ int main(int argc, char *argv[])
   const auto psiRapMin = parser.getOptionVal<double>("--psiRapMin", 0);
   const auto sampling = parser.getOptionVal<bool>("--sampling", false);
 
-
   // muon and photon selection
   const auto muonSel = parser.getOptionVal<bool>("--muonSel", false);
   const auto photonSel = parser.getOptionVal<bool>("--photonSel", false);
@@ -78,6 +77,16 @@ int main(int argc, char *argv[])
   store_config store_conf;
   store_conf.storeBranches = storeBranches;
   store_conf.storeHists = storeHists;
+
+  // Avoid storing too many pT bins and reduce them in width until there is an acceptably low number of them
+  // NOTE: Currently tuned to have 1 GeV wide bins from 8 - 12 and 12 - 16/18 GeV and 4 GeV wide bins from
+  // 18 - 50, resp. 2 GeV wide bins from 18/16 - 30
+  int nBinsPt = int(psiPtMax - psiPtMin);
+  while (nBinsPt >= 10) {
+    nBinsPt /= 2;
+  }
+  store_conf.nBinsPt = nBinsPt;
+
 
   chicpolgen(config, sel_conf, store_conf);
 

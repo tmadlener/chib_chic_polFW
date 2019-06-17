@@ -7,31 +7,36 @@ set -e
 # SETTINGS FOR RUNNING THE GENERATION ON THE BATCH SYSTEM #
 ###########################################################
 # number of events to generate
-NEVENTS=10000000
+NEVENTS=200000000
 # NACCEPT=1500000  # run until at least as many events are accepted (comment to exhaust NEVENTS)
 
 # Start N_JOBS each generating NEVENTS events (set to 1 or comment to start only one job)
-N_JOBS=10
+ N_JOBS=50
 
 # efficiency files
-MUON_EFFS=$(pwd)/EffFiles/single_muon_effs_noTracking_L3ptg2_final_fit.root
 # MUON_EFFS=$(pwd)/EffFiles/single_muon_effs_noTracking_L3ptg2_final_graph_MC.root
-PHOTON_EFFS=$(pwd)/EffFiles/photon_effs_param.root
+MUON_EFFS=$(pwd)/EffFiles/single_muon_effs_noTracking_L3ptg2_final_fit.root
+# PHOTON_EFFS=$(pwd)/EffFiles/photon_effs_param.root
+PHOTON_EFFS=$(pwd)/EffFiles/photon_effs_param_integrated.root
 
 # output base directory
 # OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/acceptance_correction_maps_data/high_stat_costh_phi_maps/gen_HX_4d_histogram_2rap_bins_post_fix/min_muPt_5p6/no_sampling/with_folding/
-OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/acceptance_correction_maps_data/gen_HX/reco_level_postfix/no_rap_dep_sign_flip/test_samples
-# OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/acceptance_correction_maps_data/gen_HX/test_folding_hists/
+# OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/acceptance_correction_maps_data/gen_HX/reco_level_postfix/no_rap_dep_sign_flip/test_samples
+# OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/acceptance_correction_maps_data/gen_HX/reco_level_samples_larger_pt_window/
+# OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/acceptance_correction_maps_data/gen_CS/special_phi_scenarios_large_pt_window/
+# OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/acceptance_correction_maps_data/gen_HX/gen_level_samples/with_jpsi_cut_w_add_data/
+# OUTBASEDIR=/afs/hephy.at/data/tmadlener01/ChicPol/Chic2012/ToyMC/gen_level_samples_w_jpsi_cut/additional_vars/
+OUTBASEDIR=${WORK}/ChiPol/chic2_chic1_ratios/toy_mc_data_gen_new/final_results/correction_maps/jpsipt_18_50_mu3p5/nominal_mu_effs_integrated_gamma/
 
 # use the CS frame as natural frame
 USE_CS_FRAME=0
 
 # Store only the angular variables
-STORE_ONLY_ANGLES=1
+STORE_ONLY_ANGLES=0
 
 # Store only costh-phi histograms (at different stages)
 # NOTE: If this is enabled then no TTree will be stored
-STORE_ONLY_HISTS=0
+STORE_ONLY_HISTS=1
 
 # Store efficiencies
 STORE_EFFS=1
@@ -43,8 +48,8 @@ RM_SOURCE=0
 
 # kinematic range to accept J/psis in
 JPSI_SEL=true
-JPSI_MINPT=8
-JPSI_MAXPT=20
+JPSI_MINPT=18
+JPSI_MAXPT=50
 JPSI_MAXRAP=1.2
 JPSI_MINRAP=0 # min ABSOLUTE rapidity for selection
 
@@ -58,8 +63,8 @@ MUON_SEL=true
 PHOTON_SEL=true
 
 # pT range to generate chic in
-CHIC1_GENPTRANGE="7.5:35"
-CHIC2_GENPTRANGE="7.5:35"
+CHIC1_GENPTRANGE="16.5:70"
+CHIC2_GENPTRANGE="16.5:70"
 # CHIC1_GENPTRANGE="9.1286:78.9975" # same as "real MC"
 # CHIC2_GENPTRANGE="9.2456:80.01"   # same as "real MC"
 
@@ -67,15 +72,22 @@ CHIC2_GENPTRANGE="7.5:35"
 # comment if you do not want to generate chic1
 # CHIC1_HELICITIES=(2./3. 0 1)
 # CHIC1_HELICITIES=(1./3.)
-CHIC1_HELICITIES=(2./3. 0)
-# CHIC1_HELICITIES=(0)
+CHIC1_HELICITIES=(2./3.)
+# CHIC1_HELICITIES=(14./73.)
+# CHIC1_HELICITIES=(0 1)
+# CHIC1_HELICITIES=(18./31 14./33. 2./9. 1 22./29. 6./7. 10./11.)
+# CHIC1_HELICITIES=(1 22./29. 10./11.)
 
 # Which chic2 helicities should be generated (NOTE: need R1 and R2, separated by comma)
 # comment if you do not want to generate chic2
 # CHIC2_HELICITIES=(2./5.,2./5. 0,0 0,1)
 # CHIC2_HELICITIES=(1./3.,0)
-CHIC2_HELICITIES=(2./5.,2./5. 0,0)
-# CHIC2_HELICITIES=(0,1)
+# CHIC2_HELICITIES=(2./5.,2./5. 0,0)
+# CHIC2_HELICITIES=(0,25./58.)
+# CHIC2_HELICITIES=(0,1 0,0)
+CHIC2_HELICITIES=(2./5.,2./5.)
+# CHIC2_HELICITIES=(0,25./106.)
+
 
 # other additional arguments that should be passed to run_chicpolgen
 # NOTE: these will be overridden by arguments created from settings above!
@@ -121,13 +133,14 @@ fi
 
 if [[ ${STORE_ONLY_HISTS} -eq 0 ]]; then
     if [[ ${STORE_ONLY_ANGLES} -eq 1 ]]; then
-        ADD_ARGS=${ADD_ARGS}" $(echo --storeBranches {costh,phi}_{HX,PX,CS})" # use echo to expand braces
+        # ADD_ARGS=${ADD_ARGS}" $(echo --storeBranches {costh,phi}_{HX,PX,CS})" # use echo to expand braces
+        ADD_ARGS=${ADD_ARGS}" $(echo --storeBranches {costh,phi}_HX)" # use echo to expand braces
         # ADD_ARGS=${ADD_ARGS}" $(echo cosTH_{PX,CS,HX}_sm)" # psi angle in chi restframe
         # ADD_ARGS=${ADD_ARGS}" $(echo chicMass)"
-        ADD_ARGS=${ADD_ARGS}" $(echo Jpsi{Pt,Rap})" # also need Jpsi pT and rapidity for acceptance maps
+        ADD_ARGS=${ADD_ARGS}" $(echo Jpsi{Pt,Rap,Mass})" # also need Jpsi pT and rapidity for acceptance maps
         if [[ ${STORE_EFFS} -eq 1 ]]; then
             ADD_ARGS=${ADD_ARGS}" $(echo {gamma,lep{P,N}}_eff_sm)"
-            # ADD_ARGS=${ADD_ARGS}" $(echo {photon,mu{P,N}}{Pt,Eta})"
+            ADD_ARGS=${ADD_ARGS}" $(echo {photon,mu{P,N}}{Pt,Eta})"
         fi
     fi
 else
