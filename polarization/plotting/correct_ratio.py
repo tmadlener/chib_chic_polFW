@@ -129,6 +129,7 @@ def get_corrected_ratio(data, wsp, model):
     """
     Get the corrected ratio in all bins
     """
+    corr_ratio = []
     # NOTE: Assuming here that the bins are ordered correctly AND that the
     for label, bounds in model.bins.iteritems():
         selections = []
@@ -142,21 +143,19 @@ def get_corrected_ratio(data, wsp, model):
         chi2_w = bin_data.loc[:, 'corr_chi2'] * chi2_prob
         chi1_corr = np.sum(chi1_w)
         chi2_corr = np.sum(chi2_w)
-        chi1_err = np.sqrt(np.sum(chi1_w**2))
-        chi2_err = np.sqrt(np.sum(chi2_w**2))
+        corr_ratio.append(chi2_corr / chi1_corr)
 
-        # Store the variables into the workspace following the same naming
-        # conventions as the model does, so that we can use the model to create
-        # the yield graphs for us
-        set_var(wsp, '_'.join(['Nchic1_corr', label]), chi1_corr, err=chi1_err,
-                              create=True)
-        set_var(wsp, '_'.join(['Nchic2_corr', label]), chi2_corr, err=chi2_err,
-                              create=True)
+    # Assume that the relative uncertainties are unchanged for the corrected and
+    # the uncorrected graph and use them to determine the uncertainties of the
+    # corrected graph
+    uncorr_graph = get_graph(wsp, model, 'r_chic2_chic1')
+    xlo, xhi, err_lo, err_hi = get_errors(uncorr_graph)
+    xvals, yvals = np.array(uncorr_graph.GetX()), np.array(uncorr_graph.GetY())
+    corr_ratio = np.array(corr_ratio)
 
-    chi1_graph = get_graph(wsp, model, 'Nchic1_corr')
-    chi2_graph = get_graph(wsp, model, 'Nchic2_corr')
-
-    return divide_graphs(chi2_graph, chi1_graph)
+    return r.TGraphAsymmErrors(len(corr_ratio), xvals, corr_ratio, xlo, xhi,
+                               err_lo / yvals * corr_ratio,
+                               err_hi / yvals * corr_ratio)
 
 
 def main(args):
