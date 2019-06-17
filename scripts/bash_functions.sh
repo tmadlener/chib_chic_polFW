@@ -372,3 +372,10 @@ function realpath() {
     echo "$(cd "$(dirname "$1")"; pwd -P)/$(basename "$1")"
 }
 export -f realpath
+
+# Function to merge all root files from different batch jobs into one file and removes the input files
+function merge_batch() {
+    local basename=${1}
+    hadd -f ${basename}.root ${basename}_????????.root && rm ${basename}_????????.root
+}
+export -f merge_batch
