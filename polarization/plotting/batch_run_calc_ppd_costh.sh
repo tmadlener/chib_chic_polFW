@@ -16,5 +16,5 @@ calc_ppd=${CHIB_CHIC_POLFW_DIR}/polarization/plotting/calc_ppd.py
 
 outdir=$(dirname ${outfile})
 
-run_sandboxed ${outdir} ${calc_ppd} --number-extractions ${nevents} --hists-only \
+run_sandboxed ${outdir} ${calc_ppd} --costh --number-extractions ${nevents} --hists-only \
               ${ratiofile} $(basename ${outfile})

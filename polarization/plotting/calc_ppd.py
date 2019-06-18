@@ -5,8 +5,6 @@ Script to calculate ppd values for a given input ratio
 
 import os
 
-from itertools import combinations
-
 import numpy as np
 import pandas as pd
 
@@ -90,15 +88,6 @@ PPD_VARIABLES = {
 }
 
 
-# 2D combinations of available variables from above
-PPD_2D_COMBS = (
-    ('lth', 'lph'),
-    ('lth2', 'lph2'),
-    ('lth', 'dlth'),
-    ('lph', 'dlph'),
-)
-
-
 def w_norm(dfr):
     """Get the normalization importance sampling correction weight"""
     return 1 / (dfr.norm_w_cth * dfr.norm_w_phi)
@@ -118,28 +107,7 @@ def sel_const_2d(dfr):
             cond_chi2_lth_lph(dfr.lth_2 - RAND_DLTH_SHIFT, dfr.lph_2))
 
 
-# Weight (functions) for producing different prior and ppd distributions
-# (Used to only have to do the majority of calculations once and then filling
-# histograms accordingly to have different definitions of priors)
-PPD_WEIGHTS = {
-    'prior_{}': None,
-    'prior_{}_norm': w_norm,
-    'prior_{}_norm_costh': lambda d: 1 / d.norm_w_cth,
-    'prior_{}_norm_phi': lambda d: 1 / d.norm_w_phi,
-    'prior_{}_2d_const': sel_const_2d,
-
-    'ppd_{}': w_ppd,
-    'ppd_{}_2d_const': lambda d: w_ppd(d) * sel_const_2d(d),
-
-    'ppd_{}_costh': lambda d: d.w_ppd_costh / d.norm_w_cth,
-    'ppd_{}_costh_2d_const': lambda d: d.w_ppd_costh / d.norm_w_cth * sel_const_2d(d),
-
-    'ppd_{}_phi': lambda d: d.w_ppd_phi / d.norm_w_phi,
-    'ppd_{}_phi_2d_const': lambda d: d.w_ppd_phi / d.norm_w_phi * sel_const_2d(d)
-}
-
-
-def get_ratio_graph(rfile, var='costh'):
+def get_ratio_graph(rfile, var):
     """
     Get the ratio graph from the file and set the center of the corresponding
     importance sampling kernel such that it is "efficient"
@@ -151,6 +119,8 @@ def get_ratio_graph(rfile, var='costh'):
         NORM_MU_CTH = graph.GetY()[0]
         logging.debug('Setting NORM_MU_CTH = {:.2f}'.format(NORM_MU_CTH))
     if var == 'phi':
+        # For phi simply assume that it will be roughly constant and center the
+        # kernel around this constant
         const = r.TF1('const', '[0]', 0, 90)
         graph.Fit(const, 'SEX0q0')
         global NORM_MU_PHI
@@ -174,24 +144,41 @@ def generate_lambdas(n_points, lth_bounds, lph_bounds):
     return lth, lph
 
 
-def get_scan_points(n_points):
+def get_scan_points(n_points, var, use_costh=False):
     """
-    Get a DataFrame of scan values that should be used for scanning the PPD
+    Get a DataFrame of scan values that should be used for scanning the PPD.
+    Depending on which direction is scanned and whether or not the costh ratio is
+    also used for the scanning of the phi ratio, different values will be
+    generated
     """
     logging.info('Generating random scan points: n_points = {}'.format(n_points))
     logging.debug('Generating norm values')
-    norm_phi_vals = np.random.normal(NORM_MU_PHI, NORM_SIGMA, n_points)
-    norm_cth_vals = np.random.normal(NORM_MU_CTH, NORM_SIGMA, n_points)
+    if var == 'phi':
+        norm_phi_vals = np.random.normal(NORM_MU_PHI, NORM_SIGMA, n_points)
+    if var == 'costh' or use_costh:
+        norm_cth_vals = np.random.normal(NORM_MU_CTH, NORM_SIGMA, n_points)
 
     lth_1, lph_1 = generate_lambdas(n_points, LTH_1_BOUNDS, LPH_1_BOUNDS)
     lth_2, lph_2 = generate_lambdas(n_points, LTH_2_BOUNDS, LPH_2_BOUNDS)
 
-    return pd.DataFrame({
-        'norm_phi': norm_phi_vals,
-        'norm_cth': norm_cth_vals,
-        'lth_1': lth_1, 'lph_1': lph_1,
-        'lth_2': lth_2, 'lph_2': lph_2,
-    })
+    ret_dict = {
+        'lth_1': lth_1, 'lth_2': lth_2,
+        # necessary for possibility of storing 2d priors results
+        'lph_1': lph_1, 'lph_2': lph_2,
+    }
+
+    if var == 'phi':
+        ret_dict.update(
+            {'norm_phi': norm_phi_vals,
+             'norm_w_phi': norm.pdf(norm_phi_vals, NORM_MU_PHI, NORM_SIGMA)}
+        )
+    if var == 'costh' or use_costh:
+        ret_dict.update(
+            {'norm_cth': norm_cth_vals,
+             'norm_w_cth': norm.pdf(norm_cth_vals, NORM_MU_CTH, NORM_SIGMA)}
+        )
+
+    return pd.DataFrame(ret_dict)
 
 
 def calc_chi2(graph, func):
@@ -223,7 +210,7 @@ def calc_kappa(lth, lph, costh_range=0.625):
     return (3 - costh_range**2) / (3 + lth * costh_range**2) * lph
 
 
-def calc_ppd(cth_graph, phi_graph, dfr):
+def calc_ppd(ratio_graph, dfr, var, cth_graph, max_costh):
     """
     Calculate the ppd using the given graphs and all the passed values
     """
@@ -245,17 +232,25 @@ def calc_ppd(cth_graph, phi_graph, dfr):
         with only phi as parameter left
         """
         norm_v = dfr.loc[:, 'norm_phi'].values
-        kappa1_v = calc_kappa(dfr.lth_1, dfr.lph_1, 0.625).values
-        kappa2_v = calc_kappa(dfr.lth_2, dfr.lph_2, 0.625).values
+        kappa1_v = calc_kappa(dfr.lth_1, dfr.lph_1, max_costh).values
+        kappa2_v = calc_kappa(dfr.lth_2, dfr.lph_2, max_costh).values
 
         return norm_v * phi_ratio_1d(phi[:, None], kappa2_v, kappa1_v)
 
-    chi2_costh = calc_chi2(cth_graph, fit_func_costh)
-    chi2_phi = calc_chi2(phi_graph, fit_func_phi)
 
-    dfr['w_ppd_costh'] = np.exp(-0.5 * chi2_costh)
-    dfr['w_ppd_phi'] = np.exp(-0.5 * chi2_phi)
-    dfr['w_ppd'] = dfr.w_ppd_costh * dfr.w_ppd_phi
+    if var == 'costh':
+        chi2_costh = calc_chi2(ratio_graph, fit_func_costh)
+    if cth_graph is not None:
+        chi2_costh = calc_chi2(cth_graph, fit_func_costh)
+
+    if var == 'costh' or cth_graph is not None:
+        dfr['w_ppd_costh'] = np.exp(-0.5 * chi2_costh)
+
+    if var == 'phi':
+        chi2_phi = calc_chi2(ratio_graph, fit_func_phi)
+        dfr['w_ppd_phi'] = np.exp(-0.5 * chi2_phi)
+        if cth_graph is not None:
+            dfr['w_ppd'] = dfr.w_ppd_costh * dfr.w_ppd_phi
 
     return dfr
 
@@ -272,7 +267,6 @@ def get_number_bins(vrange, bwidth):
     n_bins /= (25 * 16) # 5**2 * 2**4
 
     return np.ceil(n_bins).astype(int) * 25 * 16
-
 
 
 def get_var_shifted(dfr, func, name, kwargs):
@@ -332,27 +326,117 @@ def ppd_2d(data, var1, vfunc1, var2, vfunc2, name_fmt, weights=None):
     return hist2d(vals1, vals2, weights=weights, **bounds)
 
 
-def produce_ppd_hists(data):
+def get_weights_names(data, var, use_costh):
+    """
+    Get the dictionary of weights for which histograms should be produced.
+    Depending on which variable is used in the fits and whether or not costh is
+    used in conjunction with phi, different weights will be returned
+    """
+    weight_fs = {}
+    if var == 'costh':
+        weight_fs.update({
+            'prior_{}': None,
+            'prior_{}_norm': lambda d: 1 / d.norm_w_cth,
+            'prior_{}_2d_const': sel_const_2d,
+            'prior_{}_norm_2d_const': lambda d: sel_const_2d(d) / d.norm_w_cth,
+
+            'ppd_{}': lambda d: d.w_ppd_costh / d.norm_w_cth,
+            'ppd_{}_2d_const': lambda d: sel_const_2d(d) * d.w_ppd_costh / d.norm_w_cth
+        })
+    if var == 'phi':
+        weight_fs.update({
+            'prior_{}': None,
+            'prior_{}_2d_const': sel_const_2d,
+        })
+        if use_costh:
+            weight_fs.update({
+                'prior_{}_norm': w_norm,
+                'prior_{}_norm_costh': lambda d: 1 / d.norm_w_cth,
+                'prior_{}_norm_phi': lambda d: 1 / d.norm_w_phi,
+                'prior_{}_norm_2d_const': lambda d: w_norm(d) * sel_const_2d(d),
+
+                'ppd_{}': w_ppd,
+                'ppd_{}_2d_const': lambda d: w_ppd(d) * sel_const_2d(d),
+
+                'ppd_{}_costh': lambda d: d.w_ppd_costh / d.norm_w_cth,
+                'ppd_{}_phi': lambda d: d.w_ppd_phi / d.norm_w_phi,
+                'ppd_{}_costh_2d_const': lambda d: d.w_ppd_costh / d.norm_w_cth * sel_const_2d(d),
+                'ppd_{}_phi_2d_const': lambda d: d.w_ppd_phi / d.norm_w_phi * sel_const_2d(d),
+            })
+        else:
+            weight_fs.update({
+                'prior_{}_norm': lambda d: 1 / d.norm_w_phi,
+                'prior_{}_norm_2d_const': lambda d: sel_const_2d(d) / d.norm_w_phi,
+
+                'ppd_{}': lambda d: d.w_ppd_phi / d.norm_w_phi,
+                'ppd_{}_2d_const': lambda d: sel_const_2d(d) * d.w_ppd_phi / d.norm_w_phi
+            })
+
+    return {
+        n: f(data) if f is not None else None for n, f in weight_fs.iteritems()
+    }
+
+
+def get_ppd_variables(var, use_costh):
+    """
+    Get the variables for which prior and posterior distribution histograms
+    should be generated
+    """
+    if var == 'phi':
+        if use_costh:
+            return PPD_VARIABLES
+        else:
+            variables = ['lph', 'lph2', 'dlph', 'norm_phi']
+    else:
+        variables = ['lth', 'lth2', 'dlth', 'norm_costh']
+
+    return {v: PPD_VARIABLES[v] for v in variables}
+
+
+def get_ppd_2d_combs(var, use_costh):
+    """
+    Get the combinations of variables for which 2d histograms should be produced
+    """
+    if var == 'phi':
+        combs = [
+            ('lph', 'lph2'),
+            ('lph', 'dlph')
+        ]
+        if use_costh:
+            combs.extend([
+                ('lth', 'lth2'),
+                ('lth', 'lph'),
+                ('lth2', 'lph2'),
+                ('dlth', 'dlph')
+            ])
+    else:
+        combs = [
+            ('lth', 'lth2'),
+            ('lth', 'dlth')
+        ]
+
+    return combs
+
+
+def produce_ppd_hists(data, var, use_costh):
     """
     Make the PPD histograms from the passed data
     """
     logging.info('Producing prior and posterior probability density histograms')
 
-    # # Calculate the weights only once, since they will not change afterwards
-    weights_names = {
-        n: f(data) if f is not None else None for n, f in PPD_WEIGHTS.iteritems()
-    }
+    weights_names = get_weights_names(data, var, use_costh)
+    ppd_variables = get_ppd_variables(var, use_costh)
+    ppd_2d_combs = get_ppd_2d_combs(var, use_costh)
 
     hists = []
 
-
-    for var, vfunc in PPD_VARIABLES.iteritems():
+    for var, vfunc in ppd_variables.iteritems():
         logging.debug('Filling 1d histograms for {}'.format(var))
 
         for name, weight in weights_names.iteritems():
             hists.append(ppd_1d(data, var, vfunc, name, weight))
 
-    for var1, var2 in PPD_2D_COMBS:
+    for var1, var2 in ppd_2d_combs:
         logging.debug('Filling 2d histograms for {} v {}'.format(var1, var2))
         vfunc1, vfunc2 = PPD_VARIABLES[var1], PPD_VARIABLES[var2]
 
@@ -364,19 +448,17 @@ def produce_ppd_hists(data):
 
 def main(args):
     """Main"""
-    cth_file = r.TFile.Open(args.cthratiofile)
-    costh_ratio = get_ratio_graph(cth_file, 'costh')
-    phi_file = r.TFile.Open(args.phiratiofile)
-    phi_ratio = get_ratio_graph(phi_file, 'phi')
+    ratio_file = r.TFile.Open(args.ratiofile)
+    ratio = get_ratio_graph(ratio_file, args.direction)
 
-    dfr = get_scan_points(args.number_extractions)
+    use_costh = args.costh_ratio is not None and args.direction == 'phi'
+    if use_costh:
+        cth_file = r.TFile.Open(args.costh_ratio)
+        costh_ratio = get_ratio_graph(cth_file, 'costh')
 
-    # Maybe we do not need to store this since we can always calculate it from
-    # the norm values if the center and width of the sampling kernel does not
-    # change. But for now store it for convenience
-    dfr['norm_w_cth'] = norm.pdf(dfr.loc[:, 'norm_cth'], NORM_MU_CTH, NORM_SIGMA)
-    dfr['norm_w_phi'] = norm.pdf(dfr.loc[:, 'norm_phi'], NORM_MU_PHI, NORM_SIGMA)
-    calc_ppd(costh_ratio, phi_ratio, dfr)
+    dfr = get_scan_points(args.number_extractions, args.direction, use_costh)
+    calc_ppd(ratio, dfr, args.direction, costh_ratio if use_costh else None,
+             args.max_costh)
 
     # For now shift some values by a constant random number
     dfr['lth_2'] += RAND_DLTH_SHIFT
@@ -388,7 +470,7 @@ def main(args):
     if not args.no_hists:
         outfile = r.TFile.Open(args.scanfile, 'update')
         outfile.cd()
-        hists = produce_ppd_hists(dfr)
+        hists = produce_ppd_hists(dfr, args.direction, use_costh)
         for hist in hists:
             hist.Write()
 
@@ -400,10 +482,11 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Script to do a scan of the '
                                      'parameter space and calculate the PPD for '
                                      'all the parameter values.')
-    parser.add_argument('cthratiofile', help='File containing the input costh '
-                        'ratio')
-    parser.add_argument('phiratiofile', help='File containing the input phi '
-                        'ratio')
+    parser.add_argument('ratiofile', help='File containing the input ratio')
+    # parser.add_argument('cthratiofile', help='File containing the input costh '
+    #                     'ratio')
+    # parser.add_argument('phiratiofile', help='File containing the input phi '
+    #                     'ratio')
     parser.add_argument('scanfile', help='Output file to which the scan values '
                         'are written')
     parser.add_argument('-n', '--number-extractions', help='Number of parameters'
@@ -415,6 +498,21 @@ if __name__ == '__main__':
     parser.add_argument('--no-hists', default=False, action='store_true',
                         help='Do not make histograms but only store the TTree '
                         'into the scanfile')
+    parser.add_argument('--costh-ratio', help='Use the costh ratio stored in the'
+                        ' passed file as well when scanning in the phi direction'
+                        '. This can be useful, because the phi ratio also '
+                        'depends on lambda_theta', default=None)
+    parser.add_argument('--max-costh', help='Maximum costh value (only necesary '
+                        'for phi ratio to calculate kappa)', default=0.625,
+                        type=float)
+
+    dir_sel = parser.add_mutually_exclusive_group()
+    dir_sel.add_argument('--costh', action='store_const', dest='direction',
+                         const='costh',
+                         help='Assume that the ratio is vs costh')
+    dir_sel.add_argument('--phi', action='store_const', dest='direction',
+                         const='phi', help='Assume that the ratio is vs phi')
+    parser.set_defaults(direction='costh')
 
     clargs = parser.parse_args()
     main(clargs)
