@@ -4,6 +4,7 @@ Script to determine the systematic uncertainties
 """
 
 import numpy as np
+import json
 
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
@@ -140,8 +141,11 @@ def main(args):
     cgraph_file = r.TFile.Open(args.centralfile)
     var_files = [r.TFile.Open(f) for f in args.variationfiles if f != args.centralfile]
 
-    from pprint import pprint
-    pprint(var_files)
+    with open('variation_files.json', 'w') as varf:
+        variations = [
+            [i, f.GetName()] for i, f in enumerate(var_files)
+        ]
+        json.dump(variations, varf, indent=2)
 
     for param in args.params.split(','):
         process_param(cgraph_file, var_files, param, 'all_systematic_graphs.root')
