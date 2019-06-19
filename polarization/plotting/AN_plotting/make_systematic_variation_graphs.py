@@ -15,11 +15,7 @@ from utils.plot_helpers import mkplot
 from utils.setup_plot_style import set_basic_style
 from utils.plot_decoration import CTH_PLOT
 
-
-def get_graph(rfile, param):
-    """Get the ratio graph from the file"""
-    return rfile.Get('{}_v_costh_HX_fold_bin_0'.format(param))
-
+from common_utils import get_graph
 
 def get_scaled_graphs(var_graph, cent_graph):
     """
