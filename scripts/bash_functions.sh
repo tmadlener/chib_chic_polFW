@@ -379,3 +379,25 @@ function merge_batch() {
     hadd -f ${basename}.root ${basename}_????????.root && rm ${basename}_????????.root
 }
 export -f merge_batch
+
+# Function to do apply corrections
+function apply_corrections() {
+    if [[ $# -lt 4 ]]; then
+        echo "usage: apply_corrections FITDIR DATAFILE CORRMAPDIR OUTFIlE"
+        return 64
+    fi
+    local fitdir=${1}
+    local datafile=${2}
+    local cmapdir=${3}
+    local outfile=${4}
+
+    local fitfile=${fitdir}/simultaneous_fit_results.root
+    local model=${fitdir}/fit_model.json
+    local chi1corrf=${cmapdir}/chic1_R_2o3/toy_data.root
+    local chi2corrf=${cmapdir}/chic2_R1_2o5_R2_2o5/toy_data.root
+
+    mkdir -p $(dirname ${outfile})
+    python ${CHIB_CHIC_POLFW_DIR}/polarization/plotting/correct_ratio.py --outfile ${outfile} \
+           ${fitfile} ${datafile} ${model} ${chi1corrf} ${chi2corrf}
+}
+export -f apply_corrections
