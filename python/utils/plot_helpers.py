@@ -829,3 +829,17 @@ def get_y_min(pltable):
         float: the minimum observed y value in all passed pltables
     """
     return _get_extremal_value(pltable, 'y', 'min')
+
+
+def increase_label_size(hist, factor):
+    """
+    Increase the label size of the passed histogram by a given factor
+
+    Args:
+        hist (ROOT.TH1): histogram with labels
+        factor (float): Factor by which the label size should be changed for all
+            axes
+    """
+    for axis in 'XYZ':
+        hist.SetLabelSize(hist.GetLabelSize(axis) * factor, axis)
+        hist.SetTitleSize(hist.GetTitleSize(axis) * factor, axis)
