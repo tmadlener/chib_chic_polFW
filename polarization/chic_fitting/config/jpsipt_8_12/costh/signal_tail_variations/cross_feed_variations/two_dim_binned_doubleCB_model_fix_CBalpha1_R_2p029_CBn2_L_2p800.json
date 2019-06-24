@@ -1,0 +1,192 @@
+{
+  "bin_vars": [
+    "JpsiPt", 
+    "abs(costh_HX_fold)"
+  ], 
+  "binning": [
+    "8, 12", 
+    "0, 0.075, 0.15, 0.225, 0.3, 0.375, 0.45"
+  ], 
+  "expression_strings": [
+    "m_psiPDG[3.096916]", 
+    "m_chic0PDG[3.41475]", 
+    "m_chic1PDG[3.51066]", 
+    "m_chic2PDG[3.55620]", 
+    "CBwidth[0.0104]", 
+    "CBalpha1_L[0.57, 0.2, 2.5]", 
+    "CBn1_L[2.5, 1.8, 5.0]", 
+    "CBalpha1_R[0.6, 0.2, 5.0]", 
+    "CBn1_R[2.5, 1.8, 5.0]", 
+    "CBalpha2_L[0.53, 0.2, 2.5]", 
+    "CBalpha2_R[0.6, 0.2, 5.0]", 
+    "CBn2_L[2.5, 1.8, 5.0]", 
+    "CBn2_R[2.5, 1.8, 5.0]", 
+    "CBmass2[3.551, 3.49, 3.58]", 
+    "dlth_chic0_chic1[0, -3, 3]", 
+    "r_chic0_chic1[0.033, 0, 0.2]", 
+    "p0_CBmass1[3.507, 3.45, 3.54]", 
+    "p1_CBmass1[-0.003, -0.1, 0.1]", 
+    "p0_CBsigma1[0.0055, 0.0003, 0.02]", 
+    "p1_CBsigma1[0.002, -1, 1]", 
+    "p0_mu_bkg[3.25, 2, 4]", 
+    "p1_mu_bkg[-0.03, -1, 1]", 
+    "sigma_bkg[0.09, 0, 1]"
+  ], 
+  "fit_range": [
+    3.2, 
+    3.75
+  ], 
+  "fit_variable": "chicMass", 
+  "fix_vars": [
+    {
+      "CBn1_L": 3.2
+    }, 
+    {
+      "CBn1_R": 2.5
+    }, 
+    {
+      "CBn2_L": 2.8
+    }, 
+    {
+      "CBn2_R": 2.5
+    }, 
+    {
+      "CBalpha1_R": 2.029
+    }, 
+    {
+      "CBalpha2_R": 2.219
+    }
+  ], 
+  "full_model": {
+    "name": "M_fullModel", 
+    "type": "SUM"
+  }, 
+  "plot_config": {
+    "legpos": [
+      0.2, 
+      0.45, 
+      0.34, 
+      0.7
+    ]
+  }, 
+  "proto_parameters": [
+    [
+      "Nchic1", 
+      "[2000, 0, 200000]"
+    ], 
+    [
+      "Nbkg", 
+      "[12000, 0, 300000]"
+    ], 
+    [
+      "r_chic2_chic1", 
+      "[0.5, 0, 2]"
+    ], 
+    [
+      "Nchic2", 
+      [
+        "(r_chic2_chic1 * Nchic1)", 
+        "r_chic2_chic1, Nchic1"
+      ]
+    ], 
+    [
+      "CBsigma2", 
+      "[0.007, 0.003, 0.02]"
+    ], 
+    [
+      "Nchic0", 
+      [
+        "r_chic0_chic1 / (1 + dlth_chic0_chic1 * <costh_HX_fold> * <costh_HX_fold>) * Nchic1", 
+        "r_chic0_chic1, dlth_chic0_chic1, Nchic1"
+      ]
+    ], 
+    [
+      "CBmass1", 
+      [
+        "p0_CBmass1 + p1_CBmass1 * <costh_HX_fold>", 
+        "p0_CBmass1, p1_CBmass1"
+      ]
+    ], 
+    [
+      "CBsigma1", 
+      [
+        "p0_CBsigma1 + p1_CBsigma1 * <costh_HX_fold>", 
+        "p0_CBsigma1, p1_CBsigma1"
+      ]
+    ], 
+    [
+      "mu_bkg", 
+      [
+        "p0_mu_bkg + p1_mu_bkg * <costh_HX_fold>", 
+        "p0_mu_bkg, p1_mu_bkg"
+      ]
+    ], 
+    [
+      "lambda_bkg", 
+      "[-1.2, -3, 1.5]"
+    ], 
+    [
+      "PES", 
+      [
+        "(CBmass1 - m_psiPDG) / (m_chic1PDG - m_psiPDG)", 
+        "CBmass1, m_psiPDG, m_chic1PDG"
+      ]
+    ], 
+    [
+      "CBmass0", 
+      [
+        "PES * (m_chic0PDG - m_psiPDG) + m_psiPDG", 
+        "PES, m_chic0PDG, m_psiPDG"
+      ]
+    ], 
+    [
+      "CBsigma0", 
+      [
+        "CBsigma1 * (m_chic0PDG - m_psiPDG) / (m_chic1PDG - m_psiPDG)", 
+        "CBsigma1, m_chic0PDG, m_chic1PDG, m_psiPDG"
+      ]
+    ]
+  ], 
+  "sub_models": [
+    {
+      "event_yield": "Nchic0", 
+      "expression": "RooVoigtian::{}({}, CBmass0, CBsigma0, CBwidth)", 
+      "name": "M_chic0", 
+      "plot": {
+        "color": 901, 
+        "label": "#chi_{c0}", 
+        "line": 7
+      }
+    }, 
+    {
+      "event_yield": "Nchic1", 
+      "expression": "RooDoubleCB::{}({}, CBmass1, CBsigma1, CBalpha1_L, CBn1_L, CBalpha1_R, CBn1_R)", 
+      "name": "M_chic1", 
+      "plot": {
+        "color": 417, 
+        "label": "#chi_{c1}", 
+        "line": 7
+      }
+    }, 
+    {
+      "event_yield": "Nchic2", 
+      "expression": "RooDoubleCB::{}({}, CBmass2, CBsigma2, CBalpha2_L, CBn2_L, CBalpha2_R, CBn2_R)", 
+      "name": "M_chic2", 
+      "plot": {
+        "color": 632, 
+        "label": "#chi_{c2}", 
+        "line": 7
+      }
+    }, 
+    {
+      "event_yield": "Nbkg", 
+      "expression": "RooErfExponential::{}({}, lambda_bkg, mu_bkg, sigma_bkg)", 
+      "name": "M_background", 
+      "plot": {
+        "color": 1, 
+        "label": "Bkg", 
+        "line": 7
+      }
+    }
+  ]
+}
