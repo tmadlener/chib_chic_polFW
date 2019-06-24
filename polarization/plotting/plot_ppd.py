@@ -71,6 +71,30 @@ def make_lph_plot(hfile):
     return can
 
 
+def shift_by_median(ppd):
+    """
+    Shift the ppd by the median to center it around 0
+    """
+    med = get_quantiles(ppd, 0.5)
+    binning = get_binning(ppd)
+    return from_array(get_array(ppd), binning - med, errors=get_array(ppd, errors=True))
+
+
+def make_dlth_plot(hfile):
+    """
+    Make the dlth plot
+    """
+    ppd = get_scaled_ppd(hfile, 'dlth')
+    ppd = rebin(shift_by_median(ppd), [(0, 200)])
+    can = mkplot(ppd,
+                 xLabel= '{0}#minus#bar{{{0}}}'.format(YLABELS['dlth']),
+                 xRange=[-2, 2],
+                 drawOpt='hist', yLabel='PPD [a.u.]')
+
+    make_nice(can)
+    return can
+
+
 def make_simple_plot(var, n_bins=200):
     """
     Make an ordinary 1d plot, without anything fancy going on
@@ -91,7 +115,7 @@ def make_simple_plot(var, n_bins=200):
 PLOT_FUNCTIONS = {
     'lth': make_lth_plot,
     'lph': make_lph_plot,
-    'dlth': make_simple_plot('dlth'),
+    'dlth': make_dlth_plot,
     'dlph': make_simple_plot('dlph', 400),
     'norm_costh': make_simple_plot('norm_costh'),
     'norm_phi': make_simple_plot('norm_phi'),
