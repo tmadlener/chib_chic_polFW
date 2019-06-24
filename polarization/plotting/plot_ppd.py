@@ -6,9 +6,15 @@ Script to make plots from the ppds
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
+r.TGaxis.SetMaxDigits(3)
 
 from utils.plot_helpers import mkplot, get_y_max
 from utils.setup_plot_style import set_TDR_style, add_auxiliary_info
+from utils.hist_utils import (
+    get_binning, get_array, from_array, get_quantiles, rebin
+)
+from utils.plot_decoration import YLABELS
+
 
 from common_func import (
     get_scaled_ppd, plot_lth, plot_dlth, plot_norm, plot_dlph, plot_lph,
@@ -26,12 +32,13 @@ PLOT_FUNC = {
     'dltilde': plot_dltilde
 }
 
+
 def make_nice(can):
     """
     Add auxiliary info and adapt y-axis labeling
     """
     add_auxiliary_info(can, 2012, prelim=True)
-    can.pltables[0].GetYaxis().SetMaxDigits(3)
+    # can.pltables[0].GetYaxis().SetMaxDigits(3)
 
 
 def make_lth_plot(hfile):
@@ -98,7 +105,16 @@ def main(args):
     set_TDR_style()
     ppd_file = r.TFile.Open(args.ppdfile)
 
-    for var, func in PLOT_FUNCTIONS.iteritems():
+    plot_vars = []
+    if 'costh' in args.variables:
+        plot_vars.extend(['lth', 'dlth', 'norm_costh'])
+    if 'phi' in args.variables:
+        plot_vars.extend(['lph', 'dlph', 'norm_phi'])
+    if '_' in args.variables:
+        plot_vars.extend(['ltilde', 'dltilde'])
+
+    for var in plot_vars:
+        func = PLOT_FUNCTIONS[var]
         can = func(ppd_file)
         can.SaveAs('ppd_{}.pdf'.format(var))
 
@@ -109,6 +125,18 @@ if __name__ == '__main__':
                                      'calculated in calc_ppd.py')
     parser.add_argument('ppdfile', help='Root file containing the TTree from the'
                         ' scanning of the parameter space')
+
+    var_sel = parser.add_mutually_exclusive_group()
+    var_sel.add_argument('--costh', action='store_const', dest='variables',
+                         const='costh', help='Make only the plots in costh resp.'
+                         'make the plots for a scan done only in costh')
+    var_sel.add_argument('--phi', action='store_const', dest='variables',
+                         const='phi', help='Make only the plots in phi, resp. '
+                         'make the plots for a scan done only in phi')
+    var_sel.add_argument('--twodim', action='store_const', dest='variables',
+                         const='costh_phi', help='Make all possible plots that '
+                         'can be drawn from a 2d scan')
+    parser.set_defaults(variables='costh')
 
     clargs = parser.parse_args()
     main(clargs)
