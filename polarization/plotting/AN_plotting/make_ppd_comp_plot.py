@@ -68,16 +68,22 @@ def var_graph_wrt_nominal(nom_quants, var_ppd, y_val):
     """
     Get the graph of the variation wrt nominal values
     """
-    var_quants = get_quantiles(var_ppd, QUANTILES)
-    var_lo, var_hi = np.diff(var_quants)
-    nom_lo, nom_hi = np.diff(nom_quants)
+    var_mean, var_rms = var_ppd.GetMean(), var_ppd.GetRMS()
+    err = np.array([calc_err(var_rms, nom_quants[1])])
 
-    errlo = np.array([calc_err(var_lo, nom_lo)], dtype=float)
-    errhi = np.array([calc_err(var_hi, nom_hi)], dtype=float)
+    return r.TGraphErrors(1, np.array([var_mean - nom_quants[0]]),
+                          np.array([y_val], dtype=float), err)
 
-    return r.TGraphAsymmErrors(1, np.array([var_quants[1] - nom_quants[1]]),
-                               np.array(y_val, dtype=float),
-                               errlo, errhi)
+    # var_quants = get_quantiles(var_ppd, QUANTILES)
+    # var_lo, var_hi = np.diff(var_quants)
+    # nom_lo, nom_hi = np.diff(nom_quants)
+
+    # errlo = np.array([calc_err(var_lo, nom_lo)], dtype=float)
+    # errhi = np.array([calc_err(var_hi, nom_hi)], dtype=float)
+
+    # return r.TGraphAsymmErrors(1, np.array([var_quants[1] - nom_quants[1]]),
+    #                            np.array(y_val, dtype=float),
+    #                            errlo, errhi)
 
 
 def get_var_graphs_wrt_nominal(var_files, nom_quants, var):
@@ -123,7 +129,8 @@ def make_var_plot(nom_file, var_files, var):
     nom_lo, nom_hi = np.diff(nom_quants)
     nom_graph = get_nom_graph(len(var_files), nom_lo, nom_hi)
 
-    var_graphs = get_var_graphs_wrt_nominal(var_files, nom_quants, var)
+    # var_graphs = get_var_graphs_wrt_nominal(var_files, nom_quants, var)
+    var_graphs = get_var_graphs_wrt_nominal(var_files, [nom_ppd.GetMean(), nom_ppd.GetRMS()], var)
 
     xran = np.max([nom_lo, nom_hi]) * 1.75
     yran = [-0.25, len(var_files) - 0.75]
