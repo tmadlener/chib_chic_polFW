@@ -19,7 +19,7 @@ from common_utils import get_graph, rescale_graph
 HORIZONTAL_SHIFT = {'costh': 0.015, 'phi':  2}
 # Legend position
 LEGEND_POS = {'costh': (0.675, 0.6, 0.88, 0.72),
-              'phi': (0.675, 0.6, 0.88, 0.72)} # TODO: tune
+              'phi': (0.675, 0.3, 0.88, 0.42)}
 
 def make_ratio_plot(uncorr_ratio, corr_ratio, variable):
     """

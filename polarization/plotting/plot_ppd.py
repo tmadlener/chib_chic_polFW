@@ -60,7 +60,7 @@ def make_lph_plot(hfile):
     """
     Make the lambda_phi 1 plot
     """
-    ppd = get_scaled_ppd(hfile, 'lph', 100)
+    ppd = get_scaled_ppd(hfile, 'lph', 50)
     ppdmax = get_y_max(ppd)
     can = plot_lph(ppd)
 

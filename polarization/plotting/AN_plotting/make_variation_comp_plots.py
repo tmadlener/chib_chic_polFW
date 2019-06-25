@@ -29,17 +29,17 @@ HORIZONTAL_SHIFT = {'costh': 0.01, 'phi':  1}
 # y-ranges for the ratio comparison plots
 YRANGE = {
     'costh': [0.3, 0.6],
-    'phi': [0.3, 0.6] # TODO: tune
+    'phi': [0.25, 0.55]
 }
 # y-ranges for the plots with differences w.r.t. nominal
 YRANGE_DIFF = {
     'costh': [-0.05 , 0.05],
-    'phi': [-0.1 , 0.1] # TODO: tune
+    'phi': [-0.05 , 0.05]
 }
 
 YRANGE_REL_DIFF = {
     'costh': [-5, 5],
-    'phi': [-10, 10] # TODO: tune
+    'phi': [-5, 5]
 }
 
 def get_variation_graphs(graph_file, base, plot_config):
@@ -93,7 +93,7 @@ def make_ratio_comp_plot(graph_file, plot_config, variable):
     pad1.Draw()
     pad1.cd()
 
-    leg = create_legend(0.675, 0.88, 0.2, plot_config, True)
+    leg = create_legend(0.675, 0.88, 0.16, plot_config, True)
     leg.SetTextSize(leg.GetTextSize() * 2)
 
     pad1 = mkplot(cgraph, drawOpt='PE', can=pad1, attr=CENTRAL_ATTR,
@@ -134,7 +134,7 @@ def make_abs_diff_plot(graph_file, plot_config, variable):
     """
     dgraphs = get_variation_graphs(graph_file, '_diff', plot_config)
 
-    leg = create_legend(0.675, 0.88, 0.2, plot_config, False)
+    leg = create_legend(0.675, 0.88, 0.16, plot_config, False)
 
     can = mkplot(shift_graphs(dgraphs, HORIZONTAL_SHIFT[variable], 0),
                  drawOpt='PLEX0',
@@ -156,7 +156,7 @@ def make_rel_diff_plot(graph_file, plot_config, variable):
     rgraphs = [scale_graph(g, 100) for g in rgraphs]
     largest_d_graph = scale_graph(largest_d_graph, 100)
 
-    leg = create_legend(0.675, 0.88, 0.2, plot_config, True)
+    leg = create_legend(0.675, 0.88, 0.16, plot_config, True)
 
     can = mkplot(shift_graphs(rgraphs, HORIZONTAL_SHIFT[variable], 0),
                  drawOpt='PLEX0', yRange=YRANGE_REL_DIFF[variable],

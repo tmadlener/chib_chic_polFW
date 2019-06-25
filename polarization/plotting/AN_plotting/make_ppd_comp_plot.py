@@ -10,6 +10,7 @@ import numpy as np
 
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
+r.gROOT.SetBatch()
 
 from utils.hist_utils import get_quantiles, rebin
 from utils.plot_helpers import (

@@ -68,7 +68,7 @@ def plot_dlph(ppd):
     """
     ppdmax = ppd.GetBinCenter(ppd.GetMaximumBin())
     can = mkplot(ppd, xLabel=YLABELS['dlph'], yLabel='PPD [a.u.]',
-                 drawOpt='hist', attr=ATTR, xRange=[ppdmax - 0.2, ppdmax + 0.2])
+                 drawOpt='hist', attr=ATTR, xRange=[-0.45, 0.45])
     return can
 
 
@@ -77,7 +77,8 @@ def plot_lph(ppd):
     Make the 1d plot of the lph ppd
     """
     can = mkplot(ppd, xLabel=YLABELS['lph'], yLabel='PPD [a.u.]',
-                 drawOpt='hist', attr=ATTR, xRange=[-1, 1])
+                 drawOpt='hist', attr=ATTR, xRange=[-1, 1],
+                 yRange=[0, None])
     return can
 
 

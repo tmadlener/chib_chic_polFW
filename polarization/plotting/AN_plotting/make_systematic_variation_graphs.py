@@ -99,10 +99,10 @@ def create_outfile(fname, param, centg, vargs, svargs, rsvargs, dvargs, ldgraph)
     outfile.Close()
 
 
-def process_param(cfile, vfiles, param, outfile=None):
+def process_param(cfile, vfiles, param, variable, outfile=None):
     """Process one parameter"""
-    cgraph = get_graph(cfile, param)
-    vgraphs = [get_graph(f, param) for f in vfiles]
+    cgraph = get_graph(cfile, param, variable)
+    vgraphs = [get_graph(f, param, variable) for f in vfiles]
 
     scaled_vgraphs = get_scaled_graphs(vgraphs, cgraph)
     rel_scaled_vgraphs = get_diff(scaled_vgraphs, cgraph, rel=True)
@@ -148,7 +148,8 @@ def main(args):
         json.dump(variations, varf, indent=2)
 
     for param in args.params.split(','):
-        process_param(cgraph_file, var_files, param, 'all_systematic_graphs.root')
+        process_param(cgraph_file, var_files, param, args.variable,
+                      'all_systematic_graphs.root')
 
 
 
@@ -166,6 +167,12 @@ if __name__ == '__main__':
                         'parameters for which the systematic uncertainties '
                         'should be produced', default='r_chic2_chic1')
 
+    var_sel = parser.add_mutually_exclusive_group()
+    var_sel.add_argument('--costh', action='store_const', dest='variable',
+                         const='costh', help='Input ratios are vs costh')
+    var_sel.add_argument('--phi', action='store_const', dest='variable',
+                         const='phi', help='Input ratios are vs phi')
+    parser.set_defaults(variable='costh')
 
     clargs = parser.parse_args()
     main(clargs)
