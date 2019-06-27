@@ -4,6 +4,7 @@ Script to make pedagogical plots of the variations of the ratio
 """
 
 import json
+import numpy as np
 
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
@@ -15,7 +16,7 @@ from utils.plot_helpers import (
     mkplot, default_attributes, setup_legend, increase_label_size
 )
 from utils.misc_helpers import create_random_str, cond_mkdir, flatten
-from utils.graph_utils import shift_graph_horizontal, scale_graph
+from utils.graph_utils import shift_graph_horizontal, scale_graph, get_errors
 
 # Attributes for central graph
 CENTRAL_ATTR = [{'color': 1, 'marker': 20, 'size': 1}]
@@ -156,10 +157,20 @@ def make_rel_diff_plot(graph_file, plot_config, variable):
     rgraphs = [scale_graph(g, 100) for g in rgraphs]
     largest_d_graph = scale_graph(largest_d_graph, 100)
 
+    _, _, ylo, yhi = get_errors(largest_d_graph)
+    yran = np.max([np.abs(ylo), np.abs(yhi)])
+    if yran > YRANGE_REL_DIFF[variable][1]:
+        factor = 1.0
+        while yran / factor > YRANGE_REL_DIFF[variable][1]:
+            factor *= 2
+        yran = [v * factor for v in YRANGE_REL_DIFF[variable]]
+    else:
+        yran = YRANGE_REL_DIFF[variable]
+
     leg = create_legend(0.675, 0.88, 0.16, plot_config, True)
 
     can = mkplot(shift_graphs(rgraphs, HORIZONTAL_SHIFT[variable], 0),
-                 drawOpt='PLEX0', yRange=YRANGE_REL_DIFF[variable],
+                 drawOpt='PLEX0', yRange=yran,
                  yLabel='scaled relative difference w.r.t. nominal [%]',
                  leg=leg, legEntries=[v[1] for v in plot_config['variations']],
                  **VAR_PLOT[variable])
