@@ -1,6 +1,6 @@
 {
   "bin_vars": ["JpsiPt", "abs(costh_HX_fold)"],
-  "binning": ["18, 30", "0, 0.075, 0.15, 0.225, 0.3, 0.375, 0.45, 0.625"],
+  "binning": ["18, 30", "0, 0.15, 0.3, 0.375, 0.45, 0.625"],
   "fit_variable": "chicMass",
   "fit_range": [3.25, 3.725],
 
@@ -64,12 +64,12 @@
     "p1_CBsigma1[0.0012, -1, 1]",
 
     "q0_bkg[3.1, 3.0, 3.2]",
-    "alpha_bkg[0.47, 0, 1]"
+    "alpha_bkg[0.4, 0, 1]"
   ],
 
   "proto_parameters": [
     ["Nchic1", "[2000, 0, 200000]"],
-    ["Nbkg", "[8000, 0, 300000]"],
+    ["Nbkg", "[6000, 0, 300000]"],
     ["r_chic2_chic1", "[0.45, 0, 2]"],
     ["Nchic2", ["(r_chic2_chic1 * Nchic1)", "r_chic2_chic1, Nchic1"]],
     ["CBsigma2", "[0.0066, 0.003, 0.02]"],
