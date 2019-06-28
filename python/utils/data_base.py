@@ -18,6 +18,12 @@ logging.basicConfig(level=logging.INFO,
 
 from decorator import decorator
 
+DEFAULT_TRIGGERS = {
+    2012: 'HLT_Dimuon8_Jpsi',
+    2016: 'HLT_Dimuon20_Jpsi',
+    2017: 'HLT_Dimuon20_Jpsi_Barrel_Seagulls'
+}
+
 def default_value_access(def_val, proto_err_msg):
     """
     Decorator for accessing the database 'safely' and getting a warning message
@@ -70,18 +76,24 @@ class JsonDataBase(object):
 
 
     @default_value_access(-1, 'Trigger {2} not found for year {1}')
-    def get_int_lumi(self, year, trigger):
+    def get_int_lumi(self, year, trigger=None):
         """
         Get integrated luminosity for a trigger and a given year
 
         Args:
             year (int or str)
-            trigger (str): full name of trigger path
+            trigger (str, optional): full name of trigger path. If none is
+                passed, then a default trigger for that year returning the
+                total integrated luminosity for that year is returned.
 
         Returns:
             float: The integrated luminosity in fb^-1 or -1 in case of access
                 fail
         """
+        if trigger is None:
+            trigger = DEFAULT_TRIGGERS[int(year)]
+            logging.debug('No trigger passed. Selecting default trigger \'{}\' '
+                          'for year {}'.format(trigger, year))
         logging.debug('Trying to get integrated luminosity for year {} and '
                       'trigger {}'.format(year, trigger))
         return self._get_from_db('int_lumi', lambda d, y, t: d[y][t],

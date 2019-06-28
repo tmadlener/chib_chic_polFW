@@ -5,6 +5,9 @@ https://twiki.cern.ch/twiki/bin/view/CMS/Internal/FigGuidelines
 import ROOT as r
 
 from utils.misc_helpers import make_iterable
+from utils.data_base import JsonDataBase
+
+DATABASE = JsonDataBase()
 
 def set_TDR_style():
     tdr_style = r.TStyle('tdr_style', 'Style for P-TDR')
@@ -190,9 +193,10 @@ def add_lumi_info(pad, lumi_text):
 
 def add_auxiliary_info(pad, years, pos='right', mc=False, prelim=False):
     """Add the auxiliary information to the passed pad"""
-    LUMINOSITY = {'2012': '19.1 fb^{-1} (8 TeV)',
-                  '2016': '4.6 fb^{-1} (13 TeV)',
-                  '2017': '42.4 fb^{-1} (13 TeV)'}
+    def get_lumi(year):
+        return '{} fb^{{-1}} ({} TeV)'.format(
+            DATABASE.get_int_lumi(year), DATABASE.get_energy(year)
+        )
 
     # required text setup
     CMS_TEXT = 'CMS'
@@ -222,7 +226,7 @@ def add_auxiliary_info(pad, years, pos='right', mc=False, prelim=False):
     latex = setup_basic_latex()
 
     # lumi info
-    lumi_text = ' + '.join([LUMINOSITY[str(y)] for y in make_iterable(years)])
+    lumi_text = ' + '.join([get_lumi(y) for y in make_iterable(years)])
     add_lumi_info(pad, lumi_text)
 
     if pos == 'right':

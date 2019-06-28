@@ -5,10 +5,16 @@ Script to make plots from the ppds
 
 import numpy as np
 
+
+import logging
+logging.basicConfig(level=logging.INFO,
+                    format='%(levelname)s: %(message)s')
+
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
 r.TGaxis.SetMaxDigits(3)
+
 
 from utils.plot_helpers import mkplot, get_y_max, setup_latex, put_on_latex
 from utils.setup_plot_style import set_TDR_style, add_auxiliary_info
