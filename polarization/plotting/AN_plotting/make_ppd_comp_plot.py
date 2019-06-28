@@ -12,9 +12,12 @@ import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
 
-from utils.hist_utils import get_quantiles, rebin
+from utils.hist_utils import (
+    get_quantiles, rebin, from_array, get_array, get_binning
+)
 from utils.plot_helpers import (
-    mkplot, setup_latex, put_on_latex, default_colors, default_attributes
+    mkplot, setup_latex, put_on_latex, default_colors, default_attributes,
+    setup_legend
 )
 from utils.setup_plot_style import set_basic_style
 from utils.misc_helpers import cond_mkdir
@@ -85,7 +88,6 @@ def var_graph_wrt_nominal(nom_quants, var_ppd, y_val):
     #                            np.array(y_val, dtype=float),
     #                            errlo, errhi)
 
-
 def get_var_graphs_wrt_nominal(var_files, nom_quants, var):
     """
     Get all the variation graphs
@@ -102,7 +104,6 @@ def get_label(var):
     """
     var_str = YLABELS.get(var, var)
     return '{0} - {0}_{{nominal}}'.format(var_str)
-
 
 
 def get_labels(labels):
@@ -154,6 +155,55 @@ def make_var_plot(nom_file, var_files, var):
     return can
 
 
+def shift_by_median(ppd, median):
+    """Shift the ppd by the passed median"""
+    return from_array(get_array(ppd),
+                      get_binning(ppd) - median,
+                      errors=get_array(ppd, errors=True))
+
+
+def create_legend(xlo, xhi, yhi, n_plots):
+    """
+    Create a legend that fits all of the keys
+    """
+    leg = setup_legend(xlo, yhi - n_plots * 0.045, xhi, yhi)
+    leg.SetTextSize(0.03)
+    return leg
+
+
+def make_ppd_comp_plot(nom_file, var_files, var):
+    """
+    Make a plot comparing the full ppds directly (shifting all of them by the
+    median of the nominal ppd).
+    """
+    n_bins = {'dlth': 100, 'dlph': 400}
+
+    nom_ppd = get_scaled_ppd(nom_file, var)
+    nom_med = get_quantiles(nom_ppd, 0.5)
+    nom_ppd = shift_by_median(rebin(nom_ppd, [(0, n_bins[var])]), nom_med)
+    nom_ppd.Scale(1.0 / nom_ppd.Integral())
+
+    var_ppds = [get_scaled_ppd(f, var, n_bins[var]) for f in var_files.values()]
+    var_ppds = [shift_by_median(p, nom_med) for p in var_ppds]
+    [p.Scale(1.0 / p.Integral()) for p in var_ppds]
+
+    xran = {'dlth': [-2, 2], 'dlph': [-0.5, 0.5]}
+
+    leg = create_legend(0.69, 0.88, 0.94, len(var_ppds) + 1)
+
+    label = '{0} - #bar{0}_{{nominal}}'.format(YLABELS.get(var))
+
+    can = mkplot(nom_ppd, attr=[{'color': 1, 'fillalpha': (1, 0.25)}],
+                 drawOpt='hist', yLabel='PPD [a.u.]',
+                 xLabel=label, xRange=xran[var], yRange=[0, None],
+                 leg=leg, legEntries=['nominal'], legOpt='F')
+
+    mkplot(var_ppds, can=can, drawOpt='histsame',
+           attr=default_attributes(linewidth=2),
+           leg=leg, legEntries=var_files.keys(), legOpt='L')
+    return can
+
+
 def main(args):
     """Main"""
     set_basic_style()
@@ -170,6 +220,11 @@ def main(args):
     can = make_var_plot(nom_file, var_files, args.variable)
     can.SaveAs('{}/comp_ppd_variations_nominal.pdf'.format(args.outdir))
 
+    if args.plot_ppd:
+        set_basic_style()
+        can = make_ppd_comp_plot(nom_file, var_files, args.variable)
+        can.SaveAs('{}/comp_ppds_full_ppds_variations_nominal.pdf'
+                   .format(args.outdir))
 
 
 if __name__ == '__main__':
@@ -180,6 +235,9 @@ if __name__ == '__main__':
                         'configuration')
     parser.add_argument('-o', '--outdir', help='Output directory into which the '
                         'produced plot should be put', default='.')
+    parser.add_argument('--plot-ppd', help='Make a plot where the PPDs are '
+                        'overlaid against each other', action='store_true',
+                        default=False)
 
     var_sel = parser.add_mutually_exclusive_group()
     var_sel.add_argument('--dlth', action='store_const', dest='variable',
