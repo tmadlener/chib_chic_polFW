@@ -3,12 +3,14 @@
 Script to make plots from the ppds
 """
 
+import numpy as np
+
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.SetBatch()
 r.TGaxis.SetMaxDigits(3)
 
-from utils.plot_helpers import mkplot, get_y_max
+from utils.plot_helpers import mkplot, get_y_max, setup_latex, put_on_latex
 from utils.setup_plot_style import set_TDR_style, add_auxiliary_info
 from utils.hist_utils import (
     get_binning, get_array, from_array, get_quantiles, rebin
@@ -86,10 +88,20 @@ def make_dlth_plot(hfile):
     """
     ppd = get_scaled_ppd(hfile, 'dlth')
     ppd = rebin(shift_by_median(ppd), [(0, 200)])
+    ppdmax = get_y_max(ppd)
     can = mkplot(ppd,
                  xLabel= '{0}#minus#bar{{{0}}}'.format(YLABELS['dlth']),
                  xRange=[-2, 2],
                  drawOpt='hist', yLabel='PPD [a.u.]')
+
+    mkplot([r.TLine(v, 0, v, ppdmax * 1.1) for v in [-1.6, 1.3333]], can=can,
+           drawOpt='same', attr=[{'color': 12, 'line': 7, 'width': 2}])
+
+    ltx = setup_latex()
+    put_on_latex(ltx, [
+        (0.65, 0.8, '+{:.2f}'.format(np.diff(get_quantiles(ppd, [0.5, 0.84]))[0])),
+        (0.40, 0.8, '#minus{:.2f}'.format(np.diff(get_quantiles(ppd, [0.16, 0.5]))[0]))
+    ], ndc=True)
 
     make_nice(can)
     return can

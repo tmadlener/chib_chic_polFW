@@ -39,7 +39,8 @@ def plot_lth(ppd):
     Make the 1d plot of the lth ppd
     """
     can = mkplot(ppd, xLabel=YLABELS['lth'], yLabel='PPD [a.u.]',
-                 drawOpt='hist', attr=ATTR, xRange=[-1, 1])
+                 drawOpt='hist', attr=ATTR, xRange=[-1, 1],
+                 yRange=[0, None])
     return can
 
 
