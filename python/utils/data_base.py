@@ -115,6 +115,26 @@ class JsonDataBase(object):
         return self._get_from_db('cms_energy', lambda d, y: d[y], str(year))
 
 
+    @default_value_access(-1, 'Year {1} has no entry for mean pt in pt bin {2}')
+    def get_mean_pt(self, year, pt_bin):
+        """
+        Get the mean (signal) pT for the passed year and pt binned
+
+        Args:
+            year (int or str):
+            pt_bin (tuple): Lower and upper bound of the pt bin
+
+        Returns:
+            float: The mean signal pT of the J/psi in the given pt bin for the
+                passed year
+        """
+        logging.debug('Trying to get mean pt for year {} in pt bin [{}, {}]'
+                      .format(year, *pt_bin))
+        return self._get_from_db('mean_pt',
+                                 lambda d, y, p: d[y]["{}, {}".format(*p)],
+                                 str(year), pt_bin)
+
+
     def _get_from_db(self, main_key, sub_key_func, *sub_keys):
         """
         Main entry point to get something from the database
