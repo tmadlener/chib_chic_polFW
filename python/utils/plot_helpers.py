@@ -388,12 +388,13 @@ def _setup_plot_hist(can, pltables, **kwargs):
         # No frame needed
         return None
 
-    def get_ax_range(plot_range, ax_range):
+    def get_ax_range(plot_range, ax_range, dscale=None):
         """Get the axis default range or the plot range"""
         # depending on the sign of the min and maximum values it is necessary
         # to either add or subtract from the values to have the widening in
         # range go into the right direction
-        dscale = 0.1
+        if dscale is None:
+            dscale = 0.1
         dmin = lambda val: dscale * val if val < 0 else -dscale * val
         dmax = lambda val: dscale * val if val > 0 else -dscale * val
 
@@ -413,10 +414,10 @@ def _setup_plot_hist(can, pltables, **kwargs):
     # Only compute the range from the plots if it is really necessary
     if None in x_range:
         x_plot = (get_x_min(pltables), get_x_max(pltables))
-        x_range = get_ax_range(x_plot, x_range)
+        x_range = get_ax_range(x_plot, x_range, kwargs.pop('xdscale', None))
     if None in y_range:
         y_plot = (get_y_min(pltables), get_y_max(pltables))
-        y_range = get_ax_range(y_plot, y_range)
+        y_range = get_ax_range(y_plot, y_range, kwargs.pop('ydscale', None))
 
     plot_hist = can.DrawFrame(x_range[0], y_range[0], x_range[1], y_range[1])
 
@@ -449,6 +450,10 @@ def mkplot(pltables, **kwargs):
             a None value or even two None values. For any passed value that
             value will be used as axis range, for any None value an appropriate
             value will be determined from the passed pltables
+        [xy]dscale (float, optional): Factor that is used to extend the plot
+            range using the min / max observed value in the plots. The plot
+            range will be (min * (1 - dscale), max * (1 - dscale)). The [xy]Range
+            takes precedence over this one.
         can (ROOT.TCanvas): Do not create new canvas but use passed canvas to
             plot on
         log[xyz] (boolean, optional): Set the [xyz] axis to log scale

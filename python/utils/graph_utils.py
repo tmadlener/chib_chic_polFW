@@ -308,7 +308,18 @@ def _get_y_max_graph(graph):
     """
     Get the maximum y value (discarding uncertainties) of a graph (or graphs)
     """
-    max_vals = [np.max(np.array(g.GetY())) for g in make_iterable(graph)]
+    max_vals = []
+    for graph in make_iterable(graph):
+        yvals = np.array(graph.GetY())
+        if isinstance(graph, r.TGraphAsymmErrors):
+            _, _, _, yerr = get_errors(graph)
+        elif isinstance(graph, r.TGraphErrors):
+            _, yerr = get_errors(graph)
+        else:
+            yerr = np.zeros(graph.GetN())
+
+        max_vals.append(np.max(yvals + yerr))
+
     return np.max(max_vals)
 
 
@@ -316,7 +327,18 @@ def _get_y_min_graph(graph):
     """
     Get the minimum y value (discarding uncertainties) of a graph (or graphs)
     """
-    min_vals = [np.min(np.array(g.GetY())) for g in make_iterable(graph)]
+    min_vals = []
+    for graph in make_iterable(graph):
+        yvals = np.array(graph.GetY())
+        if isinstance(graph, r.TGraphAsymmErrors):
+            _, _, yerr, _ = get_errors(graph)
+        elif isinstance(graph, r.TGraphErrors):
+            _, yerr = get_errors(graph)
+        else:
+            yerr = np.zeros(graph.GetN())
+
+        min_vals.append(np.min(yvals - yerr))
+
     return np.min(min_vals)
 
 
@@ -324,7 +346,18 @@ def _get_x_max_graph(graph):
     """
     Get the maximum x value (discarding uncertainties) of a graph (or graphs)
     """
-    max_vals = [np.max(np.array(g.GetX())) for g in make_iterable(graph)]
+    max_vals = []
+    for graph in make_iterable(graph):
+        xvals = np.array(graph.GetX())
+        if isinstance(graph, r.TGraphAsymmErrors):
+            _, xerr, _, _= get_errors(graph)
+        elif isinstance(graph, r.TGraphErrors):
+            xerr, _ = get_errors(graph)
+        else:
+            xerr = np.zeros(graph.GetN())
+
+        max_vals.append(np.max(xvals + xerr))
+
     return np.max(max_vals)
 
 
@@ -332,7 +365,18 @@ def _get_x_min_graph(graph):
     """
     Get the minimum x value (discarding uncertainties) of a graph (or graphs)
     """
-    min_vals = [np.min(np.array(g.GetX())) for g in make_iterable(graph)]
+    min_vals = []
+    for graph in make_iterable(graph):
+        xvals = np.array(graph.GetX())
+        if isinstance(graph, r.TGraphAsymmErrors):
+            xerr, _, _, _= get_errors(graph)
+        elif isinstance(graph, r.TGraphErrors):
+            xerr, _ = get_errors(graph)
+        else:
+            xerr = np.zeros(graph.GetN())
+
+        min_vals.append(np.min(xvals - xerr))
+
     return np.min(min_vals)
 
 

@@ -4,14 +4,18 @@ Script to make the plots of the proto parameters of the simultaneous binned fits
 """
 
 import re
+import logging
+logging.basicConfig(level=logging.WARNING,
+                    format='%(levelname)s - %(funcName)s: %(message)s')
 
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 r.gROOT.ProcessLine('gErrorIgnoreLevel = 1001')
 r.gROOT.SetBatch()
 
+
 from utils.plot_helpers import (
-    mkplot, default_attributes, setup_latex, put_on_latex
+    mkplot, default_attributes, setup_latex, put_on_latex, get_y_min, get_y_max
 )
 from utils.plot_decoration import YLABELS, FIX_RANGES, VAR_PLOT
 from utils.misc_helpers import cond_mkdir
@@ -47,10 +51,20 @@ def make_plot(pname, param_fg, bin_var):
     """
     Make plot for one parameter graph or function and return the canvas
     """
+    ymin, ymax = get_y_min(param_fg), get_y_max(param_fg)
+    yran = FIX_RANGES.get(pname, None)
+    if yran is not None:
+        if ymin < yran[0] or ymax > yran[1]:
+            logging.debug('Adapting predefined range = {} of {}'
+                          .format(yran, param_fg.GetName()))
+            yran[0] += ((ymin - yran[0]) * 1.1)
+            yran[1] += ((ymax - yran[1]) * 1.1)
+
     can = mkplot(param_fg, drawOpt='PE',
                  attr=default_attributes(open_markers=False),
                  yLabel=YLABELS.get(pname, pname),
-                 yRange=FIX_RANGES.get(pname, None),
+                 yRange=yran,
+                 ydscale=0.15,
                  **VAR_PLOT[bin_var])
 
     # If TF1, simply assume that it is a polynomial for now and also put the
