@@ -50,6 +50,8 @@ NORM_MU_PHI = 0.5
 
 LTH_1_BOUNDS, LPH_1_BOUNDS = (-1./3., 1), (-1./3., 1./3.)
 LTH_2_BOUNDS, LPH_2_BOUNDS = (-0.6, 1), (-np.sqrt(5) / 5, np.sqrt(5) / 5)
+KAPPA_1_BOUNDS = (-0.25, 0.25)
+KAPPA_2_BOUNDS = (-np.sqrt(5) / 6, np.sqrt(5) / 6)
 
 XRANGES = {
     'dlth': [76.8, 80.2], # Make sure that this covers the whole range # Make sure that this covers the whole range
@@ -64,7 +66,10 @@ XRANGES = {
     # min / max lambda_tilde 2 = -1 / +3
     'ltilde2': [-1.05 + RAND_DLTH_SHIFT, 3.05 + RAND_DLTH_SHIFT],
     # NOTE: This is only the full range for lambdas conforming to the 2d relations
-    'dltilde': [-2.1 + RAND_DLTH_SHIFT, 4.1 + RAND_DLTH_SHIFT]
+    'dltilde': [-2.1 + RAND_DLTH_SHIFT, 4.1 + RAND_DLTH_SHIFT],
+    'kappa': KAPPA_1_BOUNDS,
+    'kappa2': KAPPA_2_BOUNDS,
+    'dkappa': np.array(KAPPA_2_BOUNDS) + np.array(KAPPA_1_BOUNDS)
 }
 
 
@@ -72,6 +77,8 @@ XRANGES = {
 PPD_VARIABLES = {
     'lth': 'lth_1', 'lph': 'lph_1', #'ltp': 'ltp_1',
     'lth2': 'lth_2', 'lph2': 'lph_2', #'ltp2': 'ltp_2', # debugging
+    'kappa': 'kappa_1', 'kappa2': 'kappa_2',
+    'dkappa': lambda d: d.kappa_2 - d.kappa_1,
 
     'norm_phi': 'norm_phi',
     'norm_costh': 'norm_cth',
@@ -112,6 +119,11 @@ def get_ratio_graph(rfile, var):
     Get the ratio graph from the file and set the center of the corresponding
     importance sampling kernel such that it is "efficient"
     """
+    if var == 'kappa':
+        # If the fit is done with a flat prior in kappa, we still load the phi
+        # ratio
+        var = 'phi'
+
     graph = rfile.Get(RATIO_NAME.format(var))
     if var == 'costh':
         global NORM_MU_CTH
@@ -153,21 +165,33 @@ def get_scan_points(n_points, var, use_costh=False):
     """
     logging.info('Generating random scan points: n_points = {}'.format(n_points))
     logging.debug('Generating norm values')
-    if var == 'phi':
+    if var == 'phi' or var == 'kappa':
         norm_phi_vals = np.random.normal(NORM_MU_PHI, NORM_SIGMA, n_points)
     if var == 'costh' or use_costh:
         norm_cth_vals = np.random.normal(NORM_MU_CTH, NORM_SIGMA, n_points)
 
-    lth_1, lph_1 = generate_lambdas(n_points, LTH_1_BOUNDS, LPH_1_BOUNDS)
-    lth_2, lph_2 = generate_lambdas(n_points, LTH_2_BOUNDS, LPH_2_BOUNDS)
+    if var != 'kappa':
+        lth_1, lph_1 = generate_lambdas(n_points, LTH_1_BOUNDS, LPH_1_BOUNDS)
+        lth_2, lph_2 = generate_lambdas(n_points, LTH_2_BOUNDS, LPH_2_BOUNDS)
 
-    ret_dict = {
-        'lth_1': lth_1, 'lth_2': lth_2,
-        # necessary for possibility of storing 2d priors results
-        'lph_1': lph_1, 'lph_2': lph_2,
-    }
+        ret_dict = {
+            'lth_1': lth_1, 'lth_2': lth_2,
+            # necessary for possibility of storing 2d priors results
+            'lph_1': lph_1, 'lph_2': lph_2,
+        }
+    else:
+        logging.debug('Generating kappa values for bounds: [{:.2f}, {:.2f}]'
+                      .format(*KAPPA_1_BOUNDS))
+        k_1 = np.random.uniform(KAPPA_1_BOUNDS[0], KAPPA_1_BOUNDS[1], n_points)
+        logging.debug('Generating kappa values for bounds: [{:.2f}, {:.2f}]'
+                      .format(*KAPPA_2_BOUNDS))
+        k_2 = np.random.uniform(KAPPA_2_BOUNDS[0], KAPPA_2_BOUNDS[1], n_points)
 
-    if var == 'phi':
+        ret_dict = {
+            'kappa_1': k_1, 'kappa_2': k_2
+        }
+
+    if var == 'phi' or var == 'kappa':
         ret_dict.update(
             {'norm_phi': norm_phi_vals,
              'norm_w_phi': norm.pdf(norm_phi_vals, NORM_MU_PHI, NORM_SIGMA)}
@@ -238,6 +262,18 @@ def calc_ppd(ratio_graph, dfr, var, cth_graph, max_costh):
         return norm_v * phi_ratio_1d(phi[:, None], kappa2_v, kappa1_v)
 
 
+    def fit_func_phi_kappa(phi):
+        """
+        Get the actual fitting function using the generated kappa values instead
+        of calculating them from lambda_theta and lambda_phi
+        """
+        norm_v = dfr.loc[:, 'norm_phi'].values
+        kappa1_v = dfr.loc[:, 'kappa_1'].values
+        kappa2_v = dfr.loc[:, 'kappa_2'].values
+
+        return norm_v * phi_ratio_1d(phi[:, None], kappa2_v, kappa1_v)
+
+
     if var == 'costh':
         chi2_costh = calc_chi2(ratio_graph, fit_func_costh)
     if cth_graph is not None:
@@ -251,6 +287,10 @@ def calc_ppd(ratio_graph, dfr, var, cth_graph, max_costh):
         dfr['w_ppd_phi'] = np.exp(-0.5 * chi2_phi)
         if cth_graph is not None:
             dfr['w_ppd'] = dfr.w_ppd_costh * dfr.w_ppd_phi
+
+    if var == 'kappa':
+        chi2_kappa = calc_chi2(ratio_graph, fit_func_phi_kappa)
+        dfr['w_ppd_kappa'] = np.exp(-0.5 * chi2_kappa)
 
     return dfr
 
@@ -371,6 +411,12 @@ def get_weights_names(data, var, use_costh):
                 'ppd_{}': lambda d: d.w_ppd_phi / d.norm_w_phi,
                 'ppd_{}_2d_const': lambda d: sel_const_2d(d) * d.w_ppd_phi / d.norm_w_phi
             })
+    if var == 'kappa':
+        weight_fs.update({
+            'prior_{}': None,
+            'prior_{}_norm': lambda d: 1 / d.norm_w_phi,
+            'ppd_{}': lambda d: d.w_ppd_kappa / d.norm_w_phi
+        })
 
     return {
         n: f(data) if f is not None else None for n, f in weight_fs.iteritems()
@@ -387,6 +433,8 @@ def get_ppd_variables(var, use_costh):
             return PPD_VARIABLES
         else:
             variables = ['lph', 'lph2', 'dlph', 'norm_phi']
+    elif var == 'kappa':
+        variables = ['kappa', 'kappa2', 'dkappa', 'norm_phi']
     else:
         variables = ['lth', 'lth2', 'dlth', 'norm_costh']
 
@@ -409,6 +457,11 @@ def get_ppd_2d_combs(var, use_costh):
                 ('lth2', 'lph2'),
                 ('dlth', 'dlph')
             ])
+    elif var == 'kappa':
+        combs = [
+            ('kappa', 'kappa2'),
+            ('kappa', 'dkappa')
+        ]
     else:
         combs = [
             ('lth', 'lth2'),
@@ -461,7 +514,8 @@ def main(args):
              args.max_costh)
 
     # For now shift some values by a constant random number
-    dfr['lth_2'] += RAND_DLTH_SHIFT
+    if args.direction != 'kappa':
+        dfr['lth_2'] += RAND_DLTH_SHIFT
 
     if not args.hists_only:
         store_dataframe(dfr, args.scanfile, tname='ppd_vals')
@@ -512,6 +566,10 @@ if __name__ == '__main__':
                          help='Assume that the ratio is vs costh')
     dir_sel.add_argument('--phi', action='store_const', dest='direction',
                          const='phi', help='Assume that the ratio is vs phi')
+    dir_sel.add_argument('--kappa', action='store_const', dest='direction',
+                         const='kappa', help='Assume that the ratio is in phi. '
+                         'Use a flat prior in the kappa variable instead of the '
+                         'lambda variables')
     parser.set_defaults(direction='costh')
 
     clargs = parser.parse_args()

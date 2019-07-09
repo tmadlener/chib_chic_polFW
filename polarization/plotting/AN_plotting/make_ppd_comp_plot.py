@@ -176,7 +176,7 @@ def make_ppd_comp_plot(nom_file, var_files, var):
     Make a plot comparing the full ppds directly (shifting all of them by the
     median of the nominal ppd).
     """
-    n_bins = {'dlth': 100, 'dlph': 400}
+    n_bins = {'dlth': 100, 'dlph': 400, 'dkappa': 400}
 
     nom_ppd = get_scaled_ppd(nom_file, var)
     nom_med = get_quantiles(nom_ppd, 0.5)
@@ -187,7 +187,7 @@ def make_ppd_comp_plot(nom_file, var_files, var):
     var_ppds = [shift_by_median(p, nom_med) for p in var_ppds]
     [p.Scale(1.0 / p.Integral()) for p in var_ppds]
 
-    xran = {'dlth': [-2, 2], 'dlph': [-0.5, 0.5]}
+    xran = {'dlth': [-2, 2], 'dlph': [-0.5, 0.5], 'dkappa': [-0.5, 0.5]}
 
     leg = create_legend(0.69, 0.88, 0.94, len(var_ppds) + 1)
 
@@ -244,6 +244,8 @@ if __name__ == '__main__':
                          const='dlth', help='PPDs are for delta_lambda theta')
     var_sel.add_argument('--dlph', action='store_const', dest='variable',
                          const='dlph', help='PPDs are for delta_lambda phi')
+    var_sel.add_argument('--dkappa', action='store_const', dest='variable',
+                         const='dkappa', help='PPDs are for delta_kappa')
 
     clargs = parser.parse_args()
     main(clargs)
