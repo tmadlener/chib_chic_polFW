@@ -65,8 +65,6 @@ def main(args):
     ffile = r.TFile.Open(args.fitfile)
     wsp = ffile.Get('ws_mass_fit')
 
-    cans = model.plot(wsp, verbose=args.verbose)
-    canp = model.plot_fit_params(wsp)
 
     if args.outdir is None:
         outdir = dirname(args.fitfile)
@@ -76,11 +74,15 @@ def main(args):
     cond_mkdir(outdir)
 
     # Saving the plots
-    for bin_name in model.bins:
-        plotname = '/'.join([outdir, bin_name+'_massfit.pdf'])
-        cans[bin_name].SaveAs(plotname)
-        parname = '/'.join([outdir, bin_name+'_massfit_res.pdf'])
-        canp[bin_name].SaveAs(parname)
+    if not args.no_plots:
+        cans = model.plot(wsp, verbose=args.verbose)
+        canp = model.plot_fit_params(wsp)
+
+        for bin_name in model.bins:
+            plotname = '/'.join([outdir, bin_name+'_massfit.pdf'])
+            cans[bin_name].SaveAs(plotname)
+            parname = '/'.join([outdir, bin_name+'_massfit_res.pdf'])
+            canp[bin_name].SaveAs(parname)
 
     if args.graphs:
         outfile = '/'.join([outdir, 'proto_param_graphs.root'])
@@ -107,6 +109,8 @@ if __name__ == '__main__':
     parser.add_argument('--symmetric', help='Also create graphs with symmetric '
                         'uncertainties in addition to the ones with asymmetric '
                         'uncertainties', action='store_true', default=False)
+    parser.add_argument('--no-plots', help='Do not produce the fit result pdf '
+                        'plots', action='store_true', default=False)
 
 
     clargs = parser.parse_args()
