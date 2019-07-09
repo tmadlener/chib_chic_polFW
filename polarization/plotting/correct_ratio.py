@@ -108,14 +108,14 @@ def get_state_fractions(bin_data, wsp, model, binname):
     return chi1_pdf_vs / full_pdf_vs, chi2_pdf_vs / full_pdf_vs
 
 
-def get_graph(wsp, model, var):
+def get_graph(wsp, model, var, sym_uncer=False):
     """
     Get the uncorrected graph to get the x-axis coordinates, since that is less
     work then redoing the whole graphing
 
     WARNING: This is pretty brittle and only works for costh and phi graphs
     """
-    graphs = model.plot_simvar_graphs(wsp, [var])
+    graphs = model.plot_simvar_graphs(wsp, [var], sym_uncer)
     names = [g.GetName() for g in graphs]
     idx = next((i for i, n in enumerate(names) if ('costh' in n) or ('phi' in n)), None)
     if idx is None:
@@ -125,10 +125,12 @@ def get_graph(wsp, model, var):
     return graphs[idx]
 
 
-def get_corrected_ratio(data, wsp, model):
+def get_corrected_ratio(data, wsp, model, sym_uncer=False):
     """
     Get the corrected ratio in all bins
     """
+    logging.info('Getting corrected ratio with {} errors'.
+                 format('HESSE' if sym_uncer else 'MINOS'))
     corr_ratio = []
     # NOTE: Assuming here that the bins are ordered correctly AND that the
     for label, bounds in model.bins.iteritems():
@@ -148,7 +150,7 @@ def get_corrected_ratio(data, wsp, model):
     # Assume that the relative uncertainties are unchanged for the corrected and
     # the uncorrected graph and use them to determine the uncertainties of the
     # corrected graph
-    uncorr_graph = get_graph(wsp, model, 'r_chic2_chic1')
+    uncorr_graph = get_graph(wsp, model, 'r_chic2_chic1', sym_uncer)
     xlo, xhi, err_lo, err_hi = get_errors(uncorr_graph)
     xvals, yvals = np.array(uncorr_graph.GetX()), np.array(uncorr_graph.GetY())
     corr_ratio = np.array(corr_ratio)
@@ -170,7 +172,13 @@ def main(args):
 
     data = load_data(args.datafile, model)
 
-    print(data.shape, wsp.data('full_data').numEntries())
+    n_ev_data = data.shape[0]
+    n_ev_wsp = wsp.data('full_data').numEntries()
+    if n_ev_data != n_ev_wsp:
+        logging.warning('Number of events read in from input data file and '
+                        'number of events stored in workspace are not the same')
+    logging.debug('Loaded {} events, workspace contains {} events'
+                  .format(n_ev_data, n_ev_wsp))
 
     chi1_corr_w = get_corr_weights(data, args.chi1corrfile)
     chi2_corr_w = get_corr_weights(data, args.chi2corrfile)
@@ -180,7 +188,7 @@ def main(args):
     # NOTE: This only works only as long as the first variable is not also used
     # for binning!
     variable = model.bin_vars[-1]
-    corr_ratio = get_corrected_ratio(data, wsp, model)
+    corr_ratio = get_corrected_ratio(data, wsp, model, args.symmetric)
     corr_ratio.SetName('r_chic2_chic1_v_{}_bin_0'.format(variable))
 
     outfile = r.TFile.Open(args.outfile, 'recreate')
@@ -206,6 +214,9 @@ if __name__ == '__main__':
                         'construct a chic2 correction map')
     parser.add_argument('-o', '--outfile', help='File into which the corrected '
                         'ratio should be stored', default='corr_ratio.root')
+    parser.add_argument('--symmetric', action='store_true', default=False,
+                        help='Use HESSE uncertainties instead of MINOS '
+                        'uncertainties on the ratio')
 
 
     clargs = parser.parse_args()
