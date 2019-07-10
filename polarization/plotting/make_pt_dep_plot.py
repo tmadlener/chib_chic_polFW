@@ -16,6 +16,7 @@ from utils.plot_decoration import YLABELS
 from utils.data_handling import list_obj
 from utils.graph_utils import get_errors
 from utils.setup_plot_style import set_TDR_style, add_auxiliary_info
+from utils.misc_helpers import cond_mkdir
 
 PCOLOR = default_colors()[0]
 
@@ -36,13 +37,13 @@ LEG_KEYS = {'1': '68 % CI', '2': '95 % CI', '3': '99 % CI'}
 
 def get_graphs(gfile):
     """Get the graphs and the variable for which the graphs are plotted"""
-    graphnames = list_obj(gfile, 'TGraphAsymmErrors', 'v_pt_n_sig_')
+    graphnames = list_obj(gfile, 'TGraphAsymmErrors', r'v_pt_(n_sig|cl)_')
     graphs = OrderedDict()
     for name in graphnames:
         n_sig = name.split('_')[-1]
         graphs[n_sig] = gfile.Get(name)
 
-    var = 'dlth' if 'dlth' in graphs.values()[0].GetName() else 'dlph'
+    var = graphs.values()[0].GetName().split('_')[0]
 
     return var, graphs
 
@@ -57,9 +58,10 @@ def remove_y_errors(graph):
     return r.TGraphAsymmErrors(len(x_vals), x_vals, y_vals, x_lo, x_hi)
 
 
-def make_plot(graphs, variable):
+
+def make_uncer_plot(graphs, variable):
     """
-    Make the graph and return the canvas
+    Make the plot plotting the uncertainties and return the canvas
     """
     # All graphs have the same central values so it doesn't matter which one we
     # take
@@ -83,6 +85,34 @@ def make_plot(graphs, variable):
     return can
 
 
+def make_limit_plot(graphs, variable):
+    """
+    Make a limit plot
+    """
+    leg = setup_legend(0.675, 0.74, 0.88, 0.88)
+    can = mkplot(graphs.values(), xRange=[8, 30], xLabel=PTLABEL, drawOpt='PE',
+                 yRange=[-0.5, 1.1], yLabel=YLABELS[variable],
+                 leg=leg, legOpt='L',
+                 legEntries=['{} % C.L.'.format(v) for v in graphs.keys()])
+
+    mkplot(r.TLine(8, -0.33333, 30, -0.33333), can=can, drawOpt='same',
+           attr=[{'color': 12, 'line': 7, 'linewidth': 2}])
+
+    add_auxiliary_info(can, 2012, prelim=True, pos='left')
+
+    return can
+
+
+def make_plot(graphs, variable):
+    """
+    Make the graph and return the canvas
+    """
+    if variable in ['dlth', 'dlph']:
+        return make_uncer_plot(graphs, variable)
+    else:
+        return make_limit_plot(graphs, variable)
+
+
 def main(args):
     """Main"""
     set_TDR_style()
@@ -90,6 +120,7 @@ def main(args):
     var, graphs = get_graphs(graphfile)
 
     can = make_plot(graphs, var)
+    cond_mkdir(args.outdir)
     can.SaveAs('{}/{}_v_pt.pdf'.format(args.outdir, var))
 
 

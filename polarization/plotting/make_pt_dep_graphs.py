@@ -24,6 +24,12 @@ SIGMA_BANDS = {
     3: [0.005, 0.995]
 }
 
+CL_BANDS = {
+    90: 0.1,
+    95: 0.05,
+    99: 0.01
+}
+
 def open_files(inputfiles):
     """
     Open the input files and return them ordered by pt
@@ -74,6 +80,20 @@ def get_uncertainty_graph(ppds, n_sigma, center_at_0=False):
                                val_lo, val_hi)
 
 
+def get_exclusion_graph(ppds, limit):
+    """
+    Get the graph (TGraph) corresponding to the lower limit of the passed PPDs
+    """
+    pt_vals = np.array([DATABASE.get_mean_pt(2012, p) for p in ppds.keys()])
+    pt_lo = pt_vals - np.array([p[0] for p in ppds.keys()])
+    pt_hi = np.array([p[1] for p in ppds.keys()]) - pt_vals
+
+    lim = np.array([get_quantiles(p, CL_BANDS[limit]) for p in ppds.values()])
+
+
+    return r.TGraphAsymmErrors(len(ppds), pt_vals, lim, pt_lo, pt_hi)
+
+
 def main(args):
     """Main"""
     infiles = open_files(args.infiles)
@@ -82,10 +102,16 @@ def main(args):
     graphfile = r.TFile(args.graphfile, 'recreate')
     graphfile.cd()
 
-    for n_sig in [1, 2, 3]:
-        graph = get_uncertainty_graph(ppds, n_sig, args.variable == 'dlth')
-        graph.SetName('{}_v_pt_n_sig_{}'.format(args.variable, n_sig))
-        graph.Write()
+    if args.variable in ['dlth', 'dlph']:
+        for n_sig in [1, 2, 3]:
+            graph = get_uncertainty_graph(ppds, n_sig, args.variable == 'dlth')
+            graph.SetName('{}_v_pt_n_sig_{}'.format(args.variable, n_sig))
+            graph.Write()
+    else:
+        for clb in [90, 95, 99]:
+            graph = get_exclusion_graph(ppds, clb)
+            graph.SetName('{}_v_pt_cl_{}'.format(args.variable, clb))
+            graph.Write()
 
     graphfile.Close()
 
@@ -100,7 +126,8 @@ if __name__ == '__main__':
                         help='Add an input file. Format is: min_pt,max_pt:file',
                         dest='infiles')
     parser.add_argument('-v', '--variable', default='dlth', help='Variable name '
-                        'for which the plot should be produced (dlth, dlph)')
+                        'for which the plot should be produced (dlth, dlph or '
+                        'lth)')
 
 
 
