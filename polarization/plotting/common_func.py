@@ -69,7 +69,7 @@ def plot_dlph(ppd):
     """
     ppdmax = ppd.GetBinCenter(ppd.GetMaximumBin())
     can = mkplot(ppd, xLabel=YLABELS['dlph'], yLabel='PPD [a.u.]',
-                 drawOpt='hist', attr=ATTR, xRange=[-0.45, 0.45])
+                 drawOpt='hist', attr=ATTR, xRange=[-0.85, 0.85])
     return can
 
 

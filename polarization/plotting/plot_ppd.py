@@ -113,6 +113,22 @@ def make_dlth_plot(hfile):
     return can
 
 
+def make_dlph_plot(hfile):
+    """
+    Make the dlph plot
+    """
+    ppd = get_scaled_ppd(hfile, 'dlph', 800)
+    can = plot_dlph(ppd)
+
+    ppdmax = get_y_max(ppd)
+
+    mkplot([r.TLine(v, 0, v, ppdmax * 1.1) for v in [-0.78, 0.78]], can=can,
+           drawOpt='same', attr=[{'color': 12, 'line': 7, 'width': 2}])
+
+    make_nice(can)
+    return can
+
+
 def make_simple_plot(var, n_bins=200):
     """
     Make an ordinary 1d plot, without anything fancy going on
@@ -134,7 +150,7 @@ PLOT_FUNCTIONS = {
     'lth': make_lth_plot,
     'lph': make_lph_plot,
     'dlth': make_dlth_plot,
-    'dlph': make_simple_plot('dlph', 400),
+    'dlph': make_dlph_plot,
     'norm_costh': make_simple_plot('norm_costh'),
     'norm_phi': make_simple_plot('norm_phi'),
     'ltilde': make_simple_plot('ltilde'),
