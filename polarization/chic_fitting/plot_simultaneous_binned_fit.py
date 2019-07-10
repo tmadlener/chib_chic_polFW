@@ -18,7 +18,7 @@ logging.basicConfig(level=logging.DEBUG,
 
 from utils.two_dim_binned_fitting import BinnedFitModel
 from utils.misc_helpers import cond_mkdir
-
+from utils.setup_plot_style import set_TDR_style, add_auxiliary_info
 
 def store_proto_pars(wsp, model, outfile, sym_uncer):
     """
@@ -73,14 +73,21 @@ def main(args):
 
     cond_mkdir(outdir)
 
+    if args.publication:
+        set_TDR_style()
+
     # Saving the plots
     if not args.no_plots:
-        cans = model.plot(wsp, verbose=args.verbose)
+        cans = model.plot(wsp, verbose=args.verbose, publication=args.publication,
+                          preliminary=args.preliminary)
         canp = model.plot_fit_params(wsp)
 
         for bin_name in model.bins:
             plotname = '/'.join([outdir, bin_name+'_massfit.pdf'])
+            if args.publication:
+                add_auxiliary_info(cans[bin_name], 2012, prelim=True)
             cans[bin_name].SaveAs(plotname)
+
             parname = '/'.join([outdir, bin_name+'_massfit_res.pdf'])
             canp[bin_name].SaveAs(parname)
 
@@ -111,6 +118,11 @@ if __name__ == '__main__':
                         'uncertainties', action='store_true', default=False)
     parser.add_argument('--no-plots', help='Do not produce the fit result pdf '
                         'plots', action='store_true', default=False)
+    parser.add_argument('--publication', action='store_true', default=False,
+                        help='Make the mass fit plots such that they are fit for'
+                        ' publication')
+    parser.add_argument('--preliminary', action='store_true', default=False,
+                        help='Add \'preliminary\' label to publication plots')
 
 
     clargs = parser.parse_args()

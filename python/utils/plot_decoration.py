@@ -37,7 +37,11 @@ YLABELS = {
     'ltilde': '#tilde{#lambda}(#chi_{c1})',
     'ltilde2': '#tilde{#lambda}(#chi_{c2})',
     'dltilde': '#Delta#tilde{#lambda}',
-    'dkappa': '#Delta#kappa'
+    'dkappa': '#Delta#kappa',
+    'chicMass': 'M(J/#psi#gamma) / GeV',
+    'JpsiPt': 'p_{T}^{J/#psi}',
+    'costh_HX_fold': '|cos#vartheta^{HX}|',
+    'phi_HX_fold': '#varphi^{HX}'
 }
 
 PLOT_LABELS_LATEX = {

@@ -27,6 +27,7 @@ from utils.plot_helpers import (
     setup_legend, _setup_canvas, setup_latex, put_on_latex
 )
 from utils.graph_utils import assign_x
+from utils.plot_decoration import YLABELS
 
 import utils.RooDoubleCB
 import utils.RooErfExponential
@@ -74,6 +75,35 @@ def _full_model_expr(model_type, name, sub_models, event_yields):
     ])
 
     return '{}::{}({})'.format(model_type, name, sub_expr)
+
+
+def get_bin_info_text(bin_name, bins):
+    """Get text that can be put into a TLatex specifying which bin is plotted"""
+    var_rgx = re.compile(r'(.*)_[0-9]+_(.*)_[0-9]+')
+    match = var_rgx.match(bin_name)
+
+    var1 = YLABELS.get(match.group(1), match.group(1))
+    var2 = YLABELS.get(match.group(2), match.group(2))
+
+    def fmt_val(value):
+        """Format a value somewhat nicely"""
+        return '{:.3f}'.format(value).rstrip('0').rstrip('.')
+
+    str1 = '{} < {} < {}'.format(fmt_val(bins[bin_name][0][0]), var1, fmt_val(bins[bin_name][0][1]))
+    str2 = '{} < {} < {}'.format(fmt_val(bins[bin_name][1][0]), var2, fmt_val(bins[bin_name][1][1]))
+
+    if var1 == 'JpsiPt':
+        str1 += ' GeV'
+    if var2 == 'JpsiPt':
+        str2 += ' GeV'
+
+    return [
+        (0.22, 0.575, str1),
+        (0.22, 0.5, str2)
+    ]
+
+    print bin_name
+    return []
 
 
 class BinnedFitModel(object):
@@ -276,7 +306,7 @@ class BinnedFitModel(object):
         ws_import(wsp, sim_nll)
 
 
-    def plot(self, wsp, verbose=False):
+    def plot(self, wsp, verbose=False, publication=False, preliminary=False):
         """
         Plot the fit results from the passed workspace
 
@@ -285,6 +315,9 @@ class BinnedFitModel(object):
                 data as well as the fit results
             verbose (boolean): Print some more information about the fit status
                 onto the plots (mainly for debugging)
+            publication (boolean, optional): Make the plots in publication
+                quality (negates the verbose argument automatically)
+            preliminary (boolean, optional): Add the 'preliminary' label
         """
         data = wsp.data('full_data')
 
@@ -297,7 +330,8 @@ class BinnedFitModel(object):
         wsp.loadSnapshot('snap_two_dim')
 
         for bin_name, bin_borders in self.bins.iteritems():
-            frame, leg = self._plot_bin(wsp, data, bin_name, bin_borders, n_bins)
+            frame, leg = self._plot_bin(wsp, data, bin_name, bin_borders, n_bins,
+                                        publication)
             b_chi2, b_ndf = get_chi2_ndf(frame, 'full_pdf_curve', 'data_hist')
             logging.debug('bin: {}: chi2 / number bins = {:.2f} / {}'
                           .format(bin_name, b_chi2, b_ndf))
@@ -307,8 +341,12 @@ class BinnedFitModel(object):
             can = _setup_canvas(None) # returns a TCanvasWrapper
             can.cd()
 
-            pad = r.TPad('result_pad', 'result pad', 0, 0.3, 1, 1)
+            pad = r.TPad('result_pad', 'result pad', 0, 0.3, 1, 0.98)
             r.SetOwnership(pad, False)
+
+            if publication:
+                pad.SetBottomMargin(0)
+
             pad.Draw()
             pad.cd()
             frame.Draw()
@@ -317,14 +355,18 @@ class BinnedFitModel(object):
             can.add_tobject(leg)
 
             # pulls
-            pull_frame = self._pull_plot(wsp, frame)
+            pull_frame = self._pull_plot(wsp, frame, publication)
 
             can.cd()
             pull_pad = r.TPad('pull_pad', 'pull pad', 0, 0, 1, 0.3)
             r.SetOwnership(pull_pad, False)
+            if publication:
+                pull_pad.SetTopMargin(0)
+                pull_pad.SetBottomMargin(0.275)
+            else:
+                pull_pad.SetBottomMargin(0.2)
             pull_pad.Draw()
             pull_pad.SetGridy()
-            pull_pad.SetBottomMargin(0.2)
             pull_pad.cd()
             pull_frame.Draw()
             can.add_tobject(pull_pad)
@@ -343,7 +385,7 @@ class BinnedFitModel(object):
         add_info.append((0.15, 0.875,
                          '(global) #chi^{{2}} / ndf = {:.1f} / {}'.format(g_chi2, g_ndf)))
 
-        if verbose:
+        if verbose and not publication:
             status = get_var(wsp, '__fit_status__').getVal()
             cov_qual = get_var(wsp, '__cov_qual__').getVal()
             add_info.append((0.15, 0.825,
@@ -365,11 +407,17 @@ class BinnedFitModel(object):
 
 
         latex = setup_latex()
+        if publication:
+            latex.SetTextSize(0.04)
+            add_info[0] = (0.185, 0.89, add_info[0][2])
 
-        for can in cans.values():
+
+        for bin_name, can in cans.iteritems():
             res_pad = can.attached_tobjects[0]
             res_pad.cd()
             put_on_latex(latex, add_info, ndc=True)
+            bin_info = get_bin_info_text(bin_name, self.bins)
+            put_on_latex(latex, bin_info, ndc=True)
 
         # for easier debugging at the moment
         return cans
@@ -588,41 +636,58 @@ class BinnedFitModel(object):
         return graph
 
 
-    def _pull_plot(self, wsp, frame):
+    def _pull_plot(self, wsp, frame, publication):
         """
         Make the frame containing the pulls
         """
         pulls = frame.pullHist('data_hist', 'full_pdf_curve', True)
         pulls.SetMarkerSize(0.8)
         pull_frame = get_var(wsp, self.fit_var).frame()
-        pull_frame.addPlotable(pulls, 'P')
+        if publication:
+            pull_frame.addPlotable(pulls, 'PEX0')
+            pulls.SetMarkerSize(0.7)
+            pull_frame.GetXaxis().SetTitle(YLABELS.get('chicMass'))
+        else:
+            pull_frame.addPlotable(pulls, 'P')
 
         pull_frame.SetTitle("")
         pull_frame.GetYaxis().SetTitle("pull")
-        pull_frame.GetXaxis().SetTitleSize(0.08)
-        pull_frame.GetYaxis().SetTitleSize(0.08)
-        pull_frame.GetXaxis().SetLabelSize(0.08)
-        pull_frame.GetYaxis().SetLabelSize(0.08)
-        pull_frame.GetYaxis().SetTitleOffset(0.4)
-        pull_frame.GetYaxis().SetRangeUser(-5.99, 5.99)
+        if publication:
+            pull_frame.GetXaxis().SetTitleSize(0.12)
+            pull_frame.GetYaxis().SetTitleSize(0.12)
+            pull_frame.GetXaxis().SetLabelSize(0.12)
+            pull_frame.GetYaxis().SetLabelSize(0.12)
+            pull_frame.GetYaxis().SetTitleOffset(0.625)
+            pull_frame.GetYaxis().SetRangeUser(-3.99, 3.99)
+            pull_frame.GetYaxis().SetNdivisions(507)
+        else:
+            pull_frame.GetXaxis().SetTitleSize(0.08)
+            pull_frame.GetYaxis().SetTitleSize(0.08)
+            pull_frame.GetXaxis().SetLabelSize(0.08)
+            pull_frame.GetYaxis().SetLabelSize(0.08)
+            pull_frame.GetYaxis().SetTitleOffset(0.4)
+            pull_frame.GetYaxis().SetRangeUser(-5.99, 5.99)
 
         return pull_frame
 
 
-    def _plot_bin(self, wsp, full_data, bin_name, bin_borders, n_bins):
+    def _plot_bin(self, wsp, full_data, bin_name, bin_borders, n_bins,
+                  publication=False):
         """Make the distribution plot for a given bin"""
-        data_args = (rf.MarkerSize(0.8), rf.Name('data_hist'))
+        data_args = (rf.MarkerSize(0.7), rf.Name('data_hist'))
         fit_var = get_var(wsp, self.fit_var)
         frame = fit_var.frame(rf.Bins(n_bins))
 
         leg = setup_legend(*self.plot_config['legpos'])
+        if publication:
+            leg.SetTextSize(0.04)
 
         cut = get_bin_cut(self.bin_cut_vars, bin_borders)
         full_data.reduce(cut).plotOn(frame, *data_args)
         full_pdf = wsp.pdf(self.full_model + '_' + bin_name)
         full_pdf.plotOn(frame, rf.LineWidth(2), rf.Name('full_pdf_curve'))
 
-        leg.AddEntry(frame.getCurve('full_pdf_curve'), 'sum', 'l')
+        leg.AddEntry(frame.getCurve('full_pdf_curve'), 'Fit result', 'l')
 
         for name, settings in self.components:
             full_pdf.plotOn(frame, rf.Components(name + '_' + bin_name),
@@ -639,8 +704,7 @@ class BinnedFitModel(object):
         frame.GetYaxis().SetTitle('Events / {:.2f} MeV'
                                   .format(bw_mev(fit_var, n_bins)))
 
-        # At least for debugging
-        frame.SetTitle(cut)
+        frame.SetTitle("")
 
         return frame, leg
 
