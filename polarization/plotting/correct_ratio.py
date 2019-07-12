@@ -28,15 +28,22 @@ CHI1_MODEL = 'M_chic1'
 CHI2_MODEL = 'M_chic2'
 
 
-def get_correction_map(cmfile):
+
+def get_correction_map(cmfile, use_pt=False):
     """
     Get the correction map from the correction map file
     """
     # TODO: Potentially rebin this thing
-    gen_dist = project(cmfile.Get(MAP_NAME.format('gen')), [1, 0])
-    reco_dist = project(cmfile.Get(MAP_NAME.format('reco')), [1, 0])
+    if use_pt:
+        gen_dist = project(cmfile.Get(MAP_NAME.format('gen')), [0, 1, 2])
+        reco_dist = project(cmfile.Get(MAP_NAME.format('reco')), [0, 1, 2])
+    else:
+        gen_dist = project(cmfile.Get(MAP_NAME.format('gen')), [1, 0])
+        reco_dist = project(cmfile.Get(MAP_NAME.format('reco')), [1, 0])
 
-    return AcceptanceCorrectionProvider(divide(reco_dist, gen_dist))
+    accmap = divide(reco_dist, gen_dist)
+
+    return AcceptanceCorrectionProvider(accmap)
 
 
 def eval_costh_phi_fold_HX(data):
@@ -44,13 +51,26 @@ def eval_costh_phi_fold_HX(data):
     return data.costh_HX_fold.abs(), data.phi_HX_fold
 
 
-def get_corr_weights(dfr, filen):
+def eval_costh_phi_fold_pt_HX(data):
+    """
+    Evaluate the correction map using costh and phi (folded) as well as JpsiPt
+    """
+    return data.costh_HX_fold.abs(), data.phi_HX_fold, data.JpsiPt
+
+
+def get_corr_weights(dfr, filen, use_pt=False):
     """
     Get the correction weights for all events using the correction map
     constructed from the histograms in the passed file
     """
     cmapfile = r.TFile.Open(filen)
-    cmap = get_correction_map(cmapfile)
+    cmap = get_correction_map(cmapfile, use_pt)
+
+    if use_pt:
+        logging.info('Using corrections in costh, phi and Jpsi pT')
+        return eval_corrmap(cmap, eval_costh_phi_fold_pt_HX)(dfr)
+    # Otherwise only evaluate in costh and phi
+    logging.info('Using corrections in costh and phi')
     return eval_corrmap(cmap, eval_costh_phi_fold_HX)(dfr)
 
 
@@ -180,8 +200,8 @@ def main(args):
     logging.debug('Loaded {} events, workspace contains {} events'
                   .format(n_ev_data, n_ev_wsp))
 
-    chi1_corr_w = get_corr_weights(data, args.chi1corrfile)
-    chi2_corr_w = get_corr_weights(data, args.chi2corrfile)
+    chi1_corr_w = get_corr_weights(data, args.chi1corrfile, args.pt)
+    chi2_corr_w = get_corr_weights(data, args.chi2corrfile, args.pt)
     data['corr_chi1'] = chi1_corr_w
     data['corr_chi2'] = chi2_corr_w
 
@@ -217,6 +237,8 @@ if __name__ == '__main__':
     parser.add_argument('--symmetric', action='store_true', default=False,
                         help='Use HESSE uncertainties instead of MINOS '
                         'uncertainties on the ratio')
+    parser.add_argument('--pt', help='Also use Jpsi pT to derive correction '
+                        'weights', action='store_true', default=False)
 
 
     clargs = parser.parse_args()

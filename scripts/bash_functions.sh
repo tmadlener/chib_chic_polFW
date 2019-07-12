@@ -383,7 +383,7 @@ export -f merge_batch
 # Function to do apply corrections
 function apply_corrections() {
     if [[ $# -lt 4 ]]; then
-        echo "usage: apply_corrections FITDIR DATAFILE CORRMAPDIR OUTFILE [SYMMETRIC]"
+        echo "usage: apply_corrections FITDIR DATAFILE CORRMAPDIR OUTFILE [ARGS]"
         return 64
     fi
     local fitdir=${1}
@@ -392,11 +392,6 @@ function apply_corrections() {
     local outfile=${4}
     shift 4
 
-    if $(check_args_flag "--symmetric" ${@}); then
-        local add_args="--symmetric"
-    fi
-
-
     local fitfile=${fitdir}/simultaneous_fit_results.root
     local model=${fitdir}/fit_model.json
     local chi1corrf=${cmapdir}/chic1_R_2o3/toy_data.root
@@ -404,6 +399,6 @@ function apply_corrections() {
 
     mkdir -p $(dirname ${outfile})
     python ${CHIB_CHIC_POLFW_DIR}/polarization/plotting/correct_ratio.py --outfile ${outfile} \
-           ${add_args} ${fitfile} ${datafile} ${model} ${chi1corrf} ${chi2corrf}
+           ${@} ${fitfile} ${datafile} ${model} ${chi1corrf} ${chi2corrf}
 }
 export -f apply_corrections
