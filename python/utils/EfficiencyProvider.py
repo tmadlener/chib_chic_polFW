@@ -73,8 +73,9 @@ def _sanitize_w(weights):
     valid = weights > 0
 
     if np.sum(valid) != n_all:
-        logging.warning('Found {} negative weights in {} total weights'
-                        .format(np.sum(valid), n_all))
+        n_neg = n_all - np.sum(valid)
+        logging.warning('Found negative weights: {} / {} ({:.2f} %)'
+                        .format(n_neg, n_all, 100 * float(n_neg) / n_all))
 
     return weights * valid
 

@@ -17,7 +17,7 @@ from utils.two_dim_binned_fitting import BinnedFitModel
 from utils.roofit_utils import eval_pdf, get_var, set_var
 from utils.data_handling import get_dataframe, apply_selections
 from utils.misc_helpers import select_bin
-from utils.hist_utils import project, divide
+from utils.hist_utils import project, divide, get_array
 from utils.EfficiencyProvider import AcceptanceCorrectionProvider, eval_corrmap
 from utils.selection_functions import collect_requirements
 from utils.graph_utils import get_errors, divide_graphs
@@ -27,6 +27,14 @@ MAP_NAME = 'fold_costh_phi_JpsiPt_JpsiRap_{}_HX'
 CHI1_MODEL = 'M_chic1'
 CHI2_MODEL = 'M_chic2'
 
+def get_min_acc(accmap, min_max_ratio=20):
+    """
+    Get a cut value to mask bins with too low acceptance that would lead to too
+    large correction weights
+    """
+    acc_vals = get_array(accmap)
+    max_acc = np.max(acc_vals)
+    return max_acc / min_max_ratio
 
 
 def get_correction_map(cmfile, use_pt=False):
@@ -42,8 +50,9 @@ def get_correction_map(cmfile, use_pt=False):
         reco_dist = project(cmfile.Get(MAP_NAME.format('reco')), [1, 0])
 
     accmap = divide(reco_dist, gen_dist)
+    min_acc = get_min_acc(accmap, 20)
 
-    return AcceptanceCorrectionProvider(accmap)
+    return AcceptanceCorrectionProvider(accmap, min_acc=min_acc)
 
 
 def eval_costh_phi_fold_HX(data):
