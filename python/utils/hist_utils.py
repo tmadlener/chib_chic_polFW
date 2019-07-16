@@ -403,7 +403,8 @@ def create_histogram(var, hist_sett, **kwargs):
     return hist
 
 
-def _get_hist_sett(var, nbins=None, minx=None, maxx=None, hist_sett=None):
+def _get_hist_sett(var, nbins=None, minx=None, maxx=None, hist_sett=None,
+                   log=False):
     """
     Get the "optimal" histogram settings for the passed variable or use
     some provided values.
@@ -420,6 +421,9 @@ def _get_hist_sett(var, nbins=None, minx=None, maxx=None, hist_sett=None):
         minx = np.min(var)
     if maxx is None:
         maxx = np.max(var)
+
+    if log:
+        return (nbins, np.logspace(np.log10(minx), np.log10(maxx), nbins + 1))
 
     return (nbins, minx, maxx)
 
@@ -441,6 +445,8 @@ def hist1d(var, **kwargs):
         nbins (int, optional): Number of bins to use
         min (float, optional): Lower bound of histogram
         max (float, optional): Upper bound of histogram
+        log (boolean, optional): Use a binning that has equal width bins on a
+            log scale
 
     Returns:
         ROOT.TH1D: The histogram of the passed variable
@@ -450,7 +456,8 @@ def hist1d(var, **kwargs):
     """
     hist_sett = _get_hist_sett(var, kwargs.pop('nbins', None),
                                kwargs.pop('min', None), kwargs.pop('max', None),
-                               kwargs.pop('hist_sett', None))
+                               kwargs.pop('hist_sett', None),
+                               kwargs.pop('log', False))
 
     # use the name of the variable if it has one and nothing else is set
     if kwargs.get('x_axis', None) is None and hasattr(var, 'name'):
@@ -467,24 +474,34 @@ def hist2d(varx, vary, **kwargs):
     automatic determination of the "optimal" histogram settings
 
     Keyword Args:
-        TODO
+        [xy]_hist_sett (tuple, optional): Histogram settings that are directly
+            unpacked in the constructor of the ROOT histogram for the x or y
+            axis.
+            NOTE: this overrides the nbins and min and max settings
+        nbins[xy] (int, optional): Number of bins to use for x or y axis
+        min[xy] (float, optional): Lower bound of histogram for x or y axis
+        max[xy] (float, optional): Upper bound of histogram for x or y axis
+        log[xy] (boolean, optional): Use a binning that has equal width bins on a
+            log scale on x or y axis
 
     Returns:
         ROOT.TH2D: The 2d histogram of the passed variables
 
     See also:
-        create_histogram
+        create_histogram, hist1d
     """
     hist_sett = kwargs.pop('hist_sett', None)
     if hist_sett is None:
         x_sett = _get_hist_sett(varx, kwargs.pop('nbinsx', None),
                                 kwargs.pop('minx', None),
                                 kwargs.pop('maxx', None),
-                                kwargs.pop('x_hist_sett', None))
+                                kwargs.pop('x_hist_sett', None),
+                                kwargs.pop('logx', False))
         y_sett = _get_hist_sett(vary, kwargs.pop('nbinsy', None),
                                 kwargs.pop('miny', None),
                                 kwargs.pop('maxy', None),
-                                kwargs.pop('y_hist_sett', None))
+                                kwargs.pop('y_hist_sett', None),
+                                kwargs.pop('logy', False))
         hist_sett = x_sett + y_sett
 
     # use the name of the variables if they have one and nothing else is set
@@ -504,28 +521,39 @@ def hist3d(varx, vary, varz, **kwargs):
     automatic determination of the "optimal" histogram settings
 
     Keyword Args:
-        TODO
+        [xyz]_hist_sett (tuple, optional): Histogram settings that are directly
+            unpacked in the constructor of the ROOT histogram for the x,y or z
+            axis
+            NOTE: this overrides the nbins and min and max settings
+        nbins[xyz] (int, optional): Number of bins to use for x, y or z-axis
+        min[xyz] (float, optional): Lower bound of histogram for x, y or z-axis
+        max[xyz] (float, optional): Upper bound of histogram for x, y or z-axis
+        log[xyz] (boolean, optional): Use a binning that has equal width bins on
+            a log scale on x, y or z axis
 
     Returns:
         ROOT.TH3D: The 3d histogram of the passed variable
 
     See also:
-        create_histogram
+        create_histogram, hist1d
     """
     hist_sett = kwargs.pop('hist_sett', None)
     if hist_sett is None:
         x_sett = _get_hist_sett(varx, kwargs.pop('nbinsx', None),
                                 kwargs.pop('minx', None),
                                 kwargs.pop('maxx', None),
-                                kwargs.pop('x_hist_sett', None))
+                                kwargs.pop('x_hist_sett', None),
+                                kwargs.pop('logx', False))
         y_sett = _get_hist_sett(vary, kwargs.pop('nbinsy', None),
                                 kwargs.pop('miny', None),
                                 kwargs.pop('maxy', None),
-                                kwargs.pop('y_hist_sett', None))
+                                kwargs.pop('y_hist_sett', None),
+                                kwargs.pop('logy', False))
         z_sett = _get_hist_sett(varz, kwargs.pop('nbinsz', None),
                                 kwargs.pop('minz', None),
                                 kwargs.pop('maxz', None),
-                                kwargs.pop('z_hist_sett', None))
+                                kwargs.pop('z_hist_sett', None),
+                                kwargs.pop('logz', False))
         hist_sett = x_sett + y_sett + z_sett
 
     # use the name of the variables if they have one and nothing else is set
