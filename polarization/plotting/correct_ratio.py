@@ -154,6 +154,23 @@ def get_graph(wsp, model, var, sym_uncer=False):
     return graphs[idx]
 
 
+def print_info(state, bin_dfr, state_prob, print_f=logging.info):
+    """
+    Print some information about rejected events, etc.
+    """
+    corr_w = bin_dfr.loc[:, 'corr_{}'.format(state)]
+    disc_ev = corr_w == 0
+    print_f('{}: {} / {} ({:.2f} %) events with 0 correction weight'.
+            format(state, np.sum(disc_ev), len(disc_ev),
+                   100.0 * np.sum(disc_ev) / len(disc_ev)))
+    print_f('Min observed costh-phi value of all events: ({:.3f}, {:.3f})'
+            .format(bin_dfr.costh_HX_fold.abs().max(),
+                    bin_dfr.phi_HX_fold.max()))
+    print_f('Max observed costh-phi value of used events: ({:.3f}, {:.3f})'
+            .format(bin_dfr.loc[~disc_ev, 'costh_HX_fold'].abs().max(),
+                    bin_dfr.loc[~disc_ev, 'phi_HX_fold'].max()))
+
+
 def get_corrected_ratio(data, wsp, model, sym_uncer=False):
     """
     Get the corrected ratio in all bins
@@ -169,6 +186,9 @@ def get_corrected_ratio(data, wsp, model, sym_uncer=False):
         bin_data = apply_selections(data, selections)
 
         chi1_prob, chi2_prob = get_state_fractions(bin_data, wsp, model, label)
+
+        print_info('chi1', bin_data, chi1_prob)
+        print_info('chi2', bin_data, chi2_prob)
 
         chi1_w = bin_data.loc[:, 'corr_chi1'] * chi1_prob
         chi2_w = bin_data.loc[:, 'corr_chi2'] * chi2_prob
