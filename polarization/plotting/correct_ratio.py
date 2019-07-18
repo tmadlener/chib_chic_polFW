@@ -17,8 +17,8 @@ from utils.two_dim_binned_fitting import BinnedFitModel
 from utils.roofit_utils import eval_pdf, get_var, set_var
 from utils.data_handling import get_dataframe, apply_selections
 from utils.misc_helpers import select_bin
-from utils.hist_utils import project, divide, get_array
 from utils.EfficiencyProvider import AcceptanceCorrectionProvider, eval_corrmap
+from utils.hist_utils import project, divide, get_array, rebin, hist1d, hist2d
 from utils.selection_functions import collect_requirements
 from utils.graph_utils import get_errors, divide_graphs
 
@@ -171,7 +171,35 @@ def print_info(state, bin_dfr, state_prob, print_f=logging.info):
                     bin_dfr.loc[~disc_ev, 'phi_HX_fold'].max()))
 
 
-def get_corrected_ratio(data, wsp, model, sym_uncer=False):
+def debug_plots(basename, rfile, state_prob, corr_w, mass):
+    """
+    Make some debug plots and store them into a root file so that they can be
+    viewed later
+    """
+    rfile.cd()
+    prob_h = hist1d(state_prob, min=0, max=1, name=basename + '_state_prob')
+    corr_h = hist1d(corr_w, log=True, name=basename + '_corr_w')
+    w_h = hist1d(state_prob * corr_w, log=True, name=basename + '_final_weight')
+
+    # Keep the 2d histograms consistent between different bins by setting ranges
+    corr_v_prob = hist2d(state_prob, corr_w, minx=0, maxx=1,
+                         miny=1, maxy=1e5, logy=True, y_axis='corr_weight',
+                         name=basename + '_corr_w_v_state_prob')
+    w_v_prob = hist2d(state_prob, corr_w * state_prob, minx=0, maxx=1,
+                      miny=0.01, maxy=1e4, logy=True, y_axis='final_weight',
+                      name=basename + '_final_weight_v_state_prob')
+
+    mass_h = hist1d(mass, min=3.2, max=3.75, weights=state_prob,
+                    name=basename + '_mass_w_state_prob')
+
+    mass_h_w = hist1d(mass, min=3.2, max=3.75, weights=state_prob * corr_w,
+                      name=basename + '_mass_w_final_weight')
+
+    for h in [prob_h, corr_h, w_h, corr_v_prob, w_v_prob, mass_h, mass_h_w]:
+        h.Write()
+
+
+def get_corrected_ratio(data, wsp, model, sym_uncer=False, dbg_file=None):
     """
     Get the corrected ratio in all bins
     """
@@ -189,6 +217,12 @@ def get_corrected_ratio(data, wsp, model, sym_uncer=False):
 
         print_info('chi1', bin_data, chi1_prob)
         print_info('chi2', bin_data, chi2_prob)
+
+        if dbg_file is not None:
+            debug_plots('chi1_{}'.format(label), dbg_file, chi1_prob,
+                        bin_data.corr_chi1, bin_data.chicMass)
+            debug_plots('chi2_{}'.format(label), dbg_file, chi2_prob,
+                        bin_data.corr_chi2, bin_data.chicMass)
 
         chi1_w = bin_data.loc[:, 'corr_chi1'] * chi1_prob
         chi2_w = bin_data.loc[:, 'corr_chi2'] * chi2_prob
@@ -233,11 +267,17 @@ def main(args):
     chi2_corr_w = get_corr_weights(data, args.chi2corrfile, args.pt)
     data['corr_chi1'] = chi1_corr_w
     data['corr_chi2'] = chi2_corr_w
+    # data['eff_corr'] = get_eff_corr_weights(data)
+
+    if args.debug:
+        dbgfile = r.TFile(args.outfile.replace('.root', '.dbg.root'), 'recreate')
+    else:
+        dbgfile = None
 
     # NOTE: This only works only as long as the first variable is not also used
     # for binning!
     variable = model.bin_vars[-1]
-    corr_ratio = get_corrected_ratio(data, wsp, model, args.symmetric)
+    corr_ratio = get_corrected_ratio(data, wsp, model, args.symmetric, dbgfile)
     corr_ratio.SetName('r_chic2_chic1_v_{}_bin_0'.format(variable))
 
     outfile = r.TFile.Open(args.outfile, 'recreate')
@@ -268,6 +308,8 @@ if __name__ == '__main__':
                         'uncertainties on the ratio')
     parser.add_argument('--pt', help='Also use Jpsi pT to derive correction '
                         'weights', action='store_true', default=False)
+    parser.add_argument('--debug', action='store_true', default=False,
+                        help='Create a file containing some debug plots')
 
 
     clargs = parser.parse_args()
