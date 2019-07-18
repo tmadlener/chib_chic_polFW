@@ -425,7 +425,7 @@ def _get_hist_sett(var, nbins=None, minx=None, maxx=None, hist_sett=None,
     if log:
         return (nbins, np.logspace(np.log10(minx), np.log10(maxx), nbins + 1))
 
-    return (nbins, minx, maxx)
+    return (nbins, np.linspace(minx, maxx, nbins + 1))
 
 
 def hist1d(var, **kwargs):
