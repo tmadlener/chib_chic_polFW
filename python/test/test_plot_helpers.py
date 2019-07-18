@@ -10,6 +10,7 @@ r.PyConfig.IgnoreCommandLineOptions = True
 import numpy as np
 
 from utils.misc_helpers import create_random_str
+from utils.graph_utils import get_errors
 
 import utils.plot_helpers as ph
 
@@ -24,18 +25,22 @@ class TestGetXYMinMax(unittest.TestCase):
         self.func_y_min = -11
         self.func_y_max = 1.5
 
-        # Use TGraphAsymmErrors with random errors since they are anyhow ignored
+        # Use TGraphAsymmErrors with random errors
         self.graph = r.TGraphAsymmErrors(10, np.linspace(0, 4, 10),
                                          np.sqrt(np.linspace(4, 16, 10)),
                                          np.random.uniform(size=10),
                                          np.random.uniform(size=10),
                                          np.random.uniform(size=10),
                                          np.random.uniform(size=10))
+        gxlo, gxhi, gylo, gyhi = get_errors(self.graph)
 
-        self.graph_x_max = 4
-        self.graph_x_min = 0
-        self.graph_y_max = 4
-        self.graph_y_min = 2
+        graph_x = np.array(self.graph.GetX())
+        graph_y = np.array(self.graph.GetY())
+
+        self.graph_x_max = np.max(graph_x + gxhi)
+        self.graph_x_min = np.min(graph_x - gxlo)
+        self.graph_y_max = np.max(graph_y + gyhi)
+        self.graph_y_min = np.min(graph_y - gylo)
 
         self.hist = r.TH1D(create_random_str(8), '', 10, -3, 1)
         self.hist.Fill(-1)

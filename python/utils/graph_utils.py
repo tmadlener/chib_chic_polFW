@@ -306,7 +306,7 @@ def get_lower_band(graph):
 
 def _get_y_max_graph(graph):
     """
-    Get the maximum y value (discarding uncertainties) of a graph (or graphs)
+    Get the maximum y value of a graph (or graphs)
     """
     max_vals = []
     for graph in make_iterable(graph):
@@ -325,7 +325,7 @@ def _get_y_max_graph(graph):
 
 def _get_y_min_graph(graph):
     """
-    Get the minimum y value (discarding uncertainties) of a graph (or graphs)
+    Get the minimum y value of a graph (or graphs)
     """
     min_vals = []
     for graph in make_iterable(graph):
@@ -344,7 +344,7 @@ def _get_y_min_graph(graph):
 
 def _get_x_max_graph(graph):
     """
-    Get the maximum x value (discarding uncertainties) of a graph (or graphs)
+    Get the maximum x value of a graph (or graphs)
     """
     max_vals = []
     for graph in make_iterable(graph):
@@ -363,7 +363,7 @@ def _get_x_max_graph(graph):
 
 def _get_x_min_graph(graph):
     """
-    Get the minimum x value (discarding uncertainties) of a graph (or graphs)
+    Get the minimum x value of a graph (or graphs)
     """
     min_vals = []
     for graph in make_iterable(graph):

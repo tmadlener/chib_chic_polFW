@@ -252,5 +252,36 @@ class TestDivideGraphs(unittest.TestCase):
         npt.assert_allclose(y_err, an_err)
 
 
+class TestGetErrors(unittest.TestCase):
+    def test_tgraph_errors(self):
+        graph = get_random_graph(r.TGraphErrors)
+        xerr, yerr = gu.get_errors(graph)
+
+        root_x_err, root_y_err = [], []
+        for i in xrange(graph.GetN()):
+            root_x_err.append(graph.GetErrorX(i))
+            root_y_err.append(graph.GetErrorY(i))
+
+        npt.assert_allclose(np.array(root_x_err), xerr)
+        npt.assert_allclose(np.array(root_y_err), yerr)
+
+
+    def test_tgraph_asymm_errors(self):
+        graph = get_random_graph(r.TGraphAsymmErrors)
+        xlo, xhi, ylo, yhi = gu.get_errors(graph)
+
+        rxlo, rxhi, rylo, ryhi = [], [], [], []
+        for i in xrange(graph.GetN()):
+            rxlo.append(graph.GetErrorXlow(i))
+            rxhi.append(graph.GetErrorXhigh(i))
+            rylo.append(graph.GetErrorYlow(i))
+            ryhi.append(graph.GetErrorYhigh(i))
+
+        npt.assert_allclose(np.array(rxlo), xlo)
+        npt.assert_allclose(np.array(rxhi), xhi)
+        npt.assert_allclose(np.array(rylo), ylo)
+        npt.assert_allclose(np.array(ryhi), yhi)
+
+
 if __name__ == '__main__':
     unittest.main()
