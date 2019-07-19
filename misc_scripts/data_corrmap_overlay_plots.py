@@ -92,7 +92,7 @@ def main(args):
     """Main"""
     data = get_dataframe(args.datafile)
     cmfile = r.TFile.Open(args.corrmapfile)
-    accmap = get_correction_map(cmfile, True, args.acceptance)
+    accmap = get_correction_map(cmfile, not args.no_pt, args.acceptance)
 
     cond_mkdir(args.outdir)
 
@@ -133,8 +133,10 @@ if __name__ == '__main__':
                         'in arg=value format as accepted by mkplot, where '
                         'individual pairs must be separated by \';;\'. NOTE: '
                         'rather experimental at the moment',
-
                         default=None)
+    parser.add_argument('--no-pt', action='store_true', default=False,
+                        help='Use the correction map pT integrated instead of '
+                        'splitting it into sub bins')
 
 
     clargs = parser.parse_args()
