@@ -37,20 +37,22 @@ def get_min_acc(accmap, min_max_ratio=20):
     return max_acc / min_max_ratio
 
 
-def get_correction_map(cmfile, use_pt=False):
+def get_correction_map(cmfile, use_pt=False, acc_only=False):
     """
     Get the correction map from the correction map file
     """
     # TODO: Potentially rebin this thing
+    reco = 'acc' if acc_only else 'reco'
     if use_pt:
         gen_dist = project(cmfile.Get(MAP_NAME.format('gen')), [0, 1, 2])
-        reco_dist = project(cmfile.Get(MAP_NAME.format('reco')), [0, 1, 2])
+        reco_dist = project(cmfile.Get(MAP_NAME.format(reco)), [0, 1, 2])
     else:
         gen_dist = project(cmfile.Get(MAP_NAME.format('gen')), [1, 0])
-        reco_dist = project(cmfile.Get(MAP_NAME.format('reco')), [1, 0])
+        reco_dist = project(cmfile.Get(MAP_NAME.format(reco)), [1, 0])
 
     accmap = divide(reco_dist, gen_dist)
-    min_acc = get_min_acc(accmap, 20)
+    # min_acc = get_min_acc(accmap, 50)
+    min_acc = 0
 
     return AcceptanceCorrectionProvider(accmap, min_acc=min_acc)
 
@@ -67,13 +69,13 @@ def eval_costh_phi_fold_pt_HX(data):
     return data.costh_HX_fold.abs(), data.phi_HX_fold, data.JpsiPt
 
 
-def get_corr_weights(dfr, filen, use_pt=False):
+def get_corr_weights(dfr, filen, use_pt=False, acc_only=False):
     """
     Get the correction weights for all events using the correction map
     constructed from the histograms in the passed file
     """
     cmapfile = r.TFile.Open(filen)
-    cmap = get_correction_map(cmapfile, use_pt)
+    cmap = get_correction_map(cmapfile, use_pt, acc_only)
 
     if use_pt:
         logging.info('Using corrections in costh, phi and Jpsi pT')
@@ -263,8 +265,8 @@ def main(args):
     logging.debug('Loaded {} events, workspace contains {} events'
                   .format(n_ev_data, n_ev_wsp))
 
-    chi1_corr_w = get_corr_weights(data, args.chi1corrfile, args.pt)
-    chi2_corr_w = get_corr_weights(data, args.chi2corrfile, args.pt)
+    chi1_corr_w = get_corr_weights(data, args.chi1corrfile, args.pt, args.acceptance)
+    chi2_corr_w = get_corr_weights(data, args.chi2corrfile, args.pt, args.acceptance)
     data['corr_chi1'] = chi1_corr_w
     data['corr_chi2'] = chi2_corr_w
     # data['eff_corr'] = get_eff_corr_weights(data)
@@ -310,6 +312,9 @@ if __name__ == '__main__':
                         'weights', action='store_true', default=False)
     parser.add_argument('--debug', action='store_true', default=False,
                         help='Create a file containing some debug plots')
+    parser.add_argument('-a', '--acceptance', help='Use the acceptance only map '
+                        'to derive correction weights (i.e. neglect '
+                        'efficiencies)', action='store_true', default=False)
 
 
     clargs = parser.parse_args()
