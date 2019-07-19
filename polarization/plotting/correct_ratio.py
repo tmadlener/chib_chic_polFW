@@ -27,17 +27,28 @@ MAP_NAME = 'fold_costh_phi_JpsiPt_JpsiRap_{}_HX'
 CHI1_MODEL = 'M_chic1'
 CHI2_MODEL = 'M_chic2'
 
-def get_min_acc(accmap, min_max_ratio=20):
+
+def get_acc_mask(cmfile, use_pt, min_acc):
     """
-    Get a cut value to mask bins with too low acceptance that would lead to too
-    large correction weights
+    Define an acceptance (only) map mask to exclude events with very low
+    acceptance values
     """
-    acc_vals = get_array(accmap)
-    max_acc = np.max(acc_vals)
-    return max_acc / min_max_ratio
+    logging.info('Masking all bins of correction map with acceptance < {}'
+                 .format(min_acc))
+    if use_pt:
+        gen_dist = project(cmfile.Get(MAP_NAME.format('gen')), [0, 1, 2])
+        acc_dist = project(cmfile.Get(MAP_NAME.format('acc')), [0, 1, 2])
+    else:
+        gen_dist = project(cmfile.Get(MAP_NAME.format('gen')), [1, 0])
+        acc_dist = project(cmfile.Get(MAP_NAME.format('acc')), [1, 0])
+
+    accmap = divide(acc_dist, gen_dist)
+
+    mask = get_array(accmap) < min_acc
+    return mask
 
 
-def get_correction_map(cmfile, use_pt=False, acc_only=False):
+def get_correction_map(cmfile, use_pt=False, acc_only=False, min_acc=None):
     """
     Get the correction map from the correction map file
     """
@@ -51,10 +62,13 @@ def get_correction_map(cmfile, use_pt=False, acc_only=False):
         reco_dist = project(cmfile.Get(MAP_NAME.format(reco)), [1, 0])
 
     accmap = divide(reco_dist, gen_dist)
-    # min_acc = get_min_acc(accmap, 50)
-    min_acc = 0
 
-    return AcceptanceCorrectionProvider(accmap, min_acc=min_acc)
+    if min_acc is not None:
+        acc_mask = get_acc_mask(cmfile, use_pt, min_acc)
+    else:
+        acc_mask = None
+
+    return AcceptanceCorrectionProvider(accmap, mask=acc_mask)
 
 
 def eval_abs_costh_phi_fold_HX(data):
@@ -82,13 +96,13 @@ def eval_costh_phi_fold_pt_HX(data):
     return data.costh_HX_fold, data.phi_HX_fold, data.JpsiPt
 
 
-def get_corr_weights(dfr, filen, use_pt=False, acc_only=False):
+def get_corr_weights(dfr, filen, use_pt=False, acc_only=False, min_acc=None):
     """
     Get the correction weights for all events using the correction map
     constructed from the histograms in the passed file
     """
     cmapfile = r.TFile.Open(filen)
-    cmap = get_correction_map(cmapfile, use_pt, acc_only)
+    cmap = get_correction_map(cmapfile, use_pt, acc_only, min_acc)
 
     # Check how far down the costh goes in the correction map
     is_abs_costh = np.min(cmap.var_binnings[0]) == 0
@@ -292,8 +306,10 @@ def main(args):
     logging.debug('Loaded {} events, workspace contains {} events'
                   .format(n_ev_data, n_ev_wsp))
 
-    chi1_corr_w = get_corr_weights(data, args.chi1corrfile, args.pt, args.acceptance)
-    chi2_corr_w = get_corr_weights(data, args.chi2corrfile, args.pt, args.acceptance)
+    chi1_corr_w = get_corr_weights(data, args.chi1corrfile, args.pt,
+                                   args.acceptance, args.min_acc)
+    chi2_corr_w = get_corr_weights(data, args.chi2corrfile, args.pt,
+                                   args.acceptance, args.min_acc)
     data['corr_chi1'] = chi1_corr_w
     data['corr_chi2'] = chi2_corr_w
     # data['eff_corr'] = get_eff_corr_weights(data)
@@ -342,6 +358,8 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--acceptance', help='Use the acceptance only map '
                         'to derive correction weights (i.e. neglect '
                         'efficiencies)', action='store_true', default=False)
+    parser.add_argument('--min-acc', type=float, help='Use a minimum ACCEPTANCE '
+                        'value cut to reject events that.', default=None)
 
 
     clargs = parser.parse_args()
