@@ -57,16 +57,29 @@ def get_correction_map(cmfile, use_pt=False, acc_only=False):
     return AcceptanceCorrectionProvider(accmap, min_acc=min_acc)
 
 
-def eval_costh_phi_fold_HX(data):
-    """Evaluate the correction map using costh and phi (folded)"""
+def eval_abs_costh_phi_fold_HX(data):
+    """Evaluate the correction map using abs(costh) and phi (folded)"""
     return data.costh_HX_fold.abs(), data.phi_HX_fold
 
 
-def eval_costh_phi_fold_pt_HX(data):
+def eval_abs_costh_phi_fold_pt_HX(data):
     """
-    Evaluate the correction map using costh and phi (folded) as well as JpsiPt
+    Evaluate the correction map using abs(costh) and phi (folded) as well as
+    JpsiPt
     """
     return data.costh_HX_fold.abs(), data.phi_HX_fold, data.JpsiPt
+
+
+def eval_costh_phi_fold_HX(data):
+    """
+    Evaluate the correction map using costh and phi (folded)
+    """
+    return data.costh_HX_fold, data.phi_HX_fold
+
+
+def eval_costh_phi_fold_pt_HX(data):
+    """Evaluate the correction map using costh, phi (folded) and JpsiPt"""
+    return data.costh_HX_fold, data.phi_HX_fold, data.JpsiPt
 
 
 def get_corr_weights(dfr, filen, use_pt=False, acc_only=False):
@@ -77,12 +90,26 @@ def get_corr_weights(dfr, filen, use_pt=False, acc_only=False):
     cmapfile = r.TFile.Open(filen)
     cmap = get_correction_map(cmapfile, use_pt, acc_only)
 
+    # Check how far down the costh goes in the correction map
+    is_abs_costh = np.min(cmap.var_binnings[0]) == 0
+
+    # Determine the appropriate eval function for the correction map
     if use_pt:
-        logging.info('Using corrections in costh, phi and Jpsi pT')
-        return eval_corrmap(cmap, eval_costh_phi_fold_pt_HX)(dfr)
-    # Otherwise only evaluate in costh and phi
-    logging.info('Using corrections in costh and phi')
-    return eval_corrmap(cmap, eval_costh_phi_fold_HX)(dfr)
+        if is_abs_costh:
+            logging.info('Using corrections in abs(costh), phi and Jpsi pT')
+            eval_f = eval_abs_costh_phi_fold_pt_HX
+        else:
+            logging.info('Using corrections in costh, phi and Jpsi pT')
+            eval_f = eval_costh_phi_fold_pt_HX
+    else:
+        if is_abs_costh:
+            logging.info('Using corrections in abs(costh) and phi')
+            eval_f = eval_abs_costh_phi_fold_HX
+        else:
+            logging.info('Using corrections in costh and phi')
+            eval_f = eval_costh_phi_fold_HX
+
+    return eval_corrmap(cmap, eval_f)(dfr)
 
 
 def load_data(filen, model):
