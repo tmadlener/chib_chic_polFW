@@ -423,6 +423,10 @@ def _get_hist_sett(var, nbins=None, minx=None, maxx=None, hist_sett=None,
         maxx = np.max(var)
 
     if log:
+        if minx <= 0:
+            logging.debug('Min value = {} but log axis specified. Using lowest'
+                          ' value > 0 as axis minimum'.format(minx))
+            minx = np.ma.masked_where(var <= 0, var).min()
         return (nbins, np.logspace(np.log10(minx), np.log10(maxx), nbins + 1))
 
     return (nbins, np.linspace(minx, maxx, nbins + 1))
