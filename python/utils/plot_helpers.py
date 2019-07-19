@@ -11,7 +11,6 @@ Attributes:
 """
 
 import logging
-import logging
 logging.basicConfig(level=logging.WARNING,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
