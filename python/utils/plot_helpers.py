@@ -848,3 +848,45 @@ def increase_label_size(hist, factor):
     for axis in 'XYZ':
         hist.SetLabelSize(hist.GetLabelSize(axis) * factor, axis)
         hist.SetTitleSize(hist.GetTitleSize(axis) * factor, axis)
+
+
+def parse_plot_args(plot_args):
+    """
+    Try to parse the plot arguments and turn them into something that is
+    accepted by mkplot.
+
+    NOTE: It is not possible to specify all of the available arguments in this
+        way.
+
+    Args:
+        plot_args (list of str): List of strings of the form 'argument=value',
+            where argument must be something that is accepted by mkplot
+
+    Returns:
+        dict: Dict that can be passed to mkplot via ** magic to use as kwargs
+
+    See also:
+        mkplot
+    """
+    arg_dict = {}
+    for arg, value in map(lambda x: x.split('='), plot_args):
+        arg = arg.strip() # cleanup whitespace
+        value = value.strip()
+        logging.debug('Processing argument: \'{}={}\''.format(arg, value))
+        if '[' in value and ']' in value:
+            logging.debug('Value is assumed to be a list')
+            value = value.strip('[]')
+            if 'Range' in arg or 'legPos' == arg:
+                logging.debug('Converting value into a list of floats')
+                value = [float(v) for v in value.split(',')]
+            if arg == 'legEntries':
+                logging.debug('Converting value into a list of strings')
+                value = value.spilt(',')
+
+            if value == 'True' or value == 'False':
+                logging.debug('Converting value into a boolean')
+                value = value=='True'
+
+        arg_dict[arg] = value
+
+    return arg_dict
