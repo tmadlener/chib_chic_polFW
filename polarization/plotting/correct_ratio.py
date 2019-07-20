@@ -238,7 +238,11 @@ def debug_plots(basename, rfile, state_prob, corr_w, mass):
     mass_h_w = hist1d(mass, min=3.2, max=3.75, weights=state_prob * corr_w,
                       name=basename + '_mass_w_final_weight')
 
-    for h in [prob_h, corr_h, w_h, corr_v_prob, w_v_prob, mass_h, mass_h_w]:
+    rej_sp_h = hist1d(state_prob[corr_w == 0], min=0, max=1,
+                      name=basename + '_state_prob_rej_ev')
+
+    for h in [prob_h, corr_h, w_h, corr_v_prob, w_v_prob, mass_h, mass_h_w,
+              rej_sp_h]:
         h.Write()
 
 
