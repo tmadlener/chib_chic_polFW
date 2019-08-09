@@ -410,6 +410,39 @@ def assign_x(graph, new_x):
     return r.TGraphAsymmErrors(len(x_vals), x_vals, y_vals, xlo, xhi, ylo, yhi)
 
 
+def assign_y(graph, new_y):
+    """
+    Assign new y points (and possibly errors) for the passed graph and return a
+    new graphs
+
+    Args:
+        graph (ROOT.TGraph or inheriting): Graph for which new y values should
+            be used
+        new_y (numpy.array): Array containing the new y-values. The uncertainty
+            for each point will be updated, such that the relative uncertainty
+            of each point remains the same
+
+    Returns:
+        ROOT.TGraph: Graph of the same type as the input type with updated y
+            y values.
+    """
+    x_val, y_val = np.array(graph.GetX()), np.array(graph.GetY())
+    y_scale = y_val / new_y
+
+    if isinstance(graph, r.TGraphAsymmErrors):
+        errors = list(get_errors(graph))
+        # Scale the errors to keep the same relative uncertainty
+        errors[-1] /= y_scale
+        errors[-2] /= y_scale
+        return r.TGraphAsymmErrors(len(x_val), x_val, new_y, *errors)
+    if isinstance(graph, r.TGraphErrors):
+        errors = list(get_errors(graph))
+        errors[-1] /= y_scale
+        return r.TGraphErrors(len(x_val), new_y, *errors)
+
+    return r.TGraph(x_val, new_y)
+
+
 def calc_pulls(graph, shape):
     """
     Calculate pulls between a graph and a shape. Currently only
