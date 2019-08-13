@@ -1083,7 +1083,8 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
 
   // the y axis is common to CS and helicity:
 
-    TVector3 newYaxis = ( beam_direction_psi.Cross( targ_direction_psi ) ).Unit();
+    // include the rapidity dependent sign change here
+    const TVector3 newYaxis = ( beam_direction_psi.Cross( targ_direction_psi ) ).Unit() * (y < 0 ? -1 : 1);
 
 
  /////////////////////////////////////////////////////////////////////
