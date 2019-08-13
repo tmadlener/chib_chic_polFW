@@ -597,13 +597,17 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
     conditionalBranch(tr, gamma_eff_sm, "gamma_eff_sm", store_config.storeBranches, storeAllBranches);
   }
 
+  const auto samplingWeightFunc = [&w_sampling]() { return 1.0 / w_sampling; };
+  const auto recoWeightFunc = [&lepP_eff_sm, &lepN_eff_sm, &gamma_eff_sm]() {
+    return 0.01 * gamma_eff_sm * lepP_eff_sm * lepN_eff_sm;
+  };
 
   StorageHistograms<4> costhPhiHists;
   if (store_config.storeHists) {
     costhPhiHists.Init("costh_phi_JpsiPt_JpsiRap", sel_config.sampling, photonEffs && muonEffs,
                          store_config.getNBins(), store_config.getLowEdges(sel_config), store_config.getHighEdges(sel_config));
 
-    costhPhiHists.setSamplingWeightF([&w_sampling]() { return 1.0 / w_sampling; });
+    costhPhiHists.setSamplingWeightF(samplingWeightFunc);
 
     costhPhiHists.setHXFillF([&costh_HX_sm, &phi_HX_sm, &pT_jpsi_sm, &y_jpsi_sm]() {
         return std::array<double, 4>{costh_HX_sm, phi_HX_sm, pT_jpsi_sm, std::abs(y_jpsi_sm)};
@@ -615,39 +619,37 @@ void chicpolgen(const gen_config& config = gen_config{}, const sel_config& sel_c
         return std::array<double, 4>{costh_CS_sm, phi_CS_sm, pT_jpsi_sm, std::abs(y_jpsi_sm)};
       });
 
-    costhPhiHists.setRecoEffWeightF([&lepP_eff_sm, &lepN_eff_sm, &gamma_eff_sm]() {
-        return 0.01 * gamma_eff_sm * lepP_eff_sm * lepN_eff_sm;
-      });
+    costhPhiHists.setRecoEffWeightF(recoWeightFunc);
   }
 
   StorageHistograms<4> foldCosthPhiHists;
   if (store_config.storeHists) {
     foldCosthPhiHists.Init("fold_costh_phi_JpsiPt_JpsiRap", sel_config.sampling, photonEffs && muonEffs,
-                           store_config.getNBins(), {0, 0, sel_config.psiPtMin, sel_config.psiRapMin}, {1, 90, sel_config.psiPtMax, sel_config.psiRapMax});
+                           store_config.getNBins(), {-1, 0, sel_config.psiPtMin, sel_config.psiRapMin}, {1, 90, sel_config.psiPtMax, sel_config.psiRapMax});
 
-    foldCosthPhiHists.setSamplingWeightF([&w_sampling]() { return 1.0 / w_sampling; });
+    foldCosthPhiHists.setSamplingWeightF(samplingWeightFunc);
 
     foldCosthPhiHists.setHXFillF([&costh_HX_sm, &phi_HX_sm, &pT_jpsi_sm, &y_jpsi_sm]() {
         const auto foldAngles = calcFoldAngles(costh_HX_sm, phi_HX_sm);
         // return std::array<double, 3>{foldAngles.costh, foldAngles.phi, pT_jpsi_sm};
-        // return std::array<double, 4>{foldAngles.costh, foldAngles.phi, pT_jpsi_sm, std::abs(y_jpsi_sm)};
-        return std::array<double, 4>{std::abs(foldAngles.costh), foldAngles.phi, pT_jpsi_sm, std::abs(y_jpsi_sm)};
+        return std::array<double, 4>{foldAngles.costh, foldAngles.phi, pT_jpsi_sm, std::abs(y_jpsi_sm)};
+        // return std::array<double, 4>{std::abs(foldAngles.costh), foldAngles.phi, pT_jpsi_sm, std::abs(y_jpsi_sm)};
       });
     foldCosthPhiHists.setPXFillF([&costh_PX_sm, &phi_PX_sm, &pT_jpsi_sm, &y_jpsi_sm]() {
         const auto foldAngles = calcFoldAngles(costh_PX_sm, phi_PX_sm);
         // return std::array<double, 3>{foldAngles.costh, foldAngles.phi, pT_jpsi_sm};
-        // return std::array<double, 4>{foldAngles.costh, foldAngles.phi, pT_jpsi_sm, std::abs(y_jpsi_sm)};
-        return std::array<double, 4>{std::abs(foldAngles.costh), foldAngles.phi, pT_jpsi_sm, std::abs(y_jpsi_sm)};
+        return std::array<double, 4>{foldAngles.costh, foldAngles.phi, pT_jpsi_sm, std::abs(y_jpsi_sm)};
+        // return std::array<double, 4>{std::abs(foldAngles.costh), foldAngles.phi, pT_jpsi_sm, std::abs(y_jpsi_sm)};
       });
     foldCosthPhiHists.setCSFillF([&costh_CS_sm, &phi_CS_sm, &pT_jpsi_sm, &y_jpsi_sm]() {
         const auto foldAngles = calcFoldAngles(costh_CS_sm, phi_CS_sm);
         // return std::array<double, 3>{foldAngles.costh, foldAngles.phi, pT_jpsi_sm};
-        // return std::array<double, 4>{foldAngles.costh, foldAngles.phi, pT_jpsi_sm, std::abs(y_jpsi_sm)};
-        return std::array<double, 4>{std::abs(foldAngles.costh), foldAngles.phi, pT_jpsi_sm, std::abs(y_jpsi_sm)};
+        return std::array<double, 4>{foldAngles.costh, foldAngles.phi, pT_jpsi_sm, std::abs(y_jpsi_sm)};
+        // return std::array<double, 4>{std::abs(foldAngles.costh), foldAngles.phi, pT_jpsi_sm, std::abs(y_jpsi_sm)};
       });
 
-    foldCosthPhiHists.setRecoEffWeightF([&lepP_eff_sm, &lepN_eff_sm, &gamma_eff_sm]() {
-        return 0.01 * gamma_eff_sm * lepP_eff_sm * lepN_eff_sm;
+    foldCosthPhiHists.setRecoEffWeightF(recoWeightFunc);
+  }
       });
   }
 
