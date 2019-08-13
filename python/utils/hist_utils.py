@@ -861,6 +861,22 @@ AXIS_IDCS = {'x': 0, 'X': 0, 'y': 1, 'Y': 1, 'z': 2, 'Z': 2}
 IDCS_AXIS = {0: 'X', 1: 'Y', 2: 'Z'}
 
 
+def _get_bin_index(lbl_or_idx):
+    """
+    Get the index from the passed label or index (i.e. normalize whatever comes
+    in to have a consistent accessor afterwards)
+
+    In case of problems this function just logs and returns the input
+    """
+    idx = AXIS_IDCS.get(lbl_or_idx, lbl_or_idx)
+    if isinstance(idx, int):
+        return idx
+    else:
+        logging.warning('Cannot convert {} to an axis-idx'.format(lbl_or_idx))
+    return lbl_or_idx
+
+
+
 def project(hist, axes):
     """
     Project the passed histogram onto any direction (or combination thereof).
@@ -887,12 +903,12 @@ def project(hist, axes):
         I want (especially for TH3.Project3D)
         """
         if isinstance(hist, r.TH3):
-            all_axes = 'xyz'
+            all_axes = (0, 1, 2)
             isTH3 = True
             if len(axes) != 1 and len(axes) != 2:
                 logging.error('Can only project onto one or two directions')
         elif isinstance(hist, r.TH2):
-            all_axes = 'xy'
+            all_axes = (0, 1)
             isTH3 = False
             if len(axes) != 1:
                 logging.error('Can only project onto one direction')
@@ -900,10 +916,11 @@ def project(hist, axes):
             logging.error('hist is not of type TH[2|3]. Cannot get a projection')
             return None
 
-        axes = axes.lower()
-        sum_axes = tuple(AXIS_IDCS[c] for c in all_axes if c.lower() not in axes)
+        # Normalize the input parameter and work with indices afterwards
+        axes = tuple(_get_bin_index(c) for c in axes)
+        sum_axes = tuple(i for i in all_axes if i not in axes)
 
-        binning = np.array([get_binning(hist, c.upper()) for c in axes])
+        binning = np.array([get_binning(hist, c) for c in axes])
         val, err = get_array(hist), get_array(hist, errors=True)
         sum_val = np.sum(val, axis=sum_axes)
         sum_err = np.sqrt(np.sum(err**2, axis=sum_axes))
@@ -963,7 +980,7 @@ def project(hist, axes):
 
 
     if isinstance(hist, r.TH1):
-        return _project_TH1(hist, axes.lower())
+        return _project_TH1(hist, axes)
     if isinstance(hist, r.THn):
         return _project_THn(hist, axes)
 
@@ -1003,7 +1020,7 @@ def rebin(hist, targ_bins):
         targ_bins (list of tuples): Each tuple contains an axis identifier as
             first element and the desired number of bins as second element. Axis
             identifiers can either be labels (i.e. chars) or indices for TH1 or
-            or integer indices for THn.
+            integer indices for THn.
 
     Returns:
         ROOT.TH1 or ROOT.THn: Histogram of the same type as the input histogram
@@ -1013,8 +1030,7 @@ def rebin(hist, targ_bins):
     ndims = len(orig_bins)
     rebin_factors = np.ones(ndims, dtype='i4')
     for axl, nbins in targ_bins:
-        if axl in AXIS_IDCS:
-            axl = AXIS_IDCS[axl]
+        axl = _get_bin_index(axl)
         fact = is_divisable(orig_bins[axl], nbins)
         if fact is None:
             logging.error('Cannot rebin axis {} to {} bins, because it is not '

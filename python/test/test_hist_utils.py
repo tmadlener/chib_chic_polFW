@@ -475,6 +475,19 @@ class TestProject(unittest.TestCase):
         npt.assert_allclose(err, np.swapaxes(np.sqrt(np.sum(err5d**2, axis=2)), 1, 2))
 
 
+    def test_project_THnD_integer_index(self):
+        """Check that using integer indices works as well"""
+        hist_3d = _get_hist(3)
+        proj_lab = hu.project(hist_3d, 'xy')
+        proj_ind = hu.project(hist_3d, [0, 1])
+
+        val_lab, err_lab = hu.get_array(proj_lab), hu.get_array(proj_lab, errors=True)
+        val_ind, err_ind = hu.get_array(proj_ind), hu.get_array(proj_ind, errors=True)
+
+        npt.assert_equal(val_lab, val_ind)
+        npt.assert_equal(err_lab, err_ind)
+
+
 class TestUncerHist(unittest.TestCase):
     def test_abs_uncer(self):
         for i in xrange(1, 4):
