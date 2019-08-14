@@ -694,3 +694,19 @@ def get_x_binning(graph):
     high_edges = np.round(high_edges, 6)
 
     return get_bin_edges(zip(low_edges, high_edges))
+
+
+def divide_func(graph, func):
+    """
+    Divide the graph by the function (assuming zero uncertainty on the function)
+
+    Args:
+        graph (ROOT.:TGraph or inheriting): numerator graph
+        func (ROOT.TF1 or anything providing an Eval function): denominator
+            function
+    """
+    x_vals = np.array(graph.GetX())
+    func_vals = np.array([func.Eval(x) for x in x_vals])
+    # Simply create a graph with zero uncertainties using the x-value and the
+    # function values at these points and pass them to divide_graphs
+    return divide_graphs(graph, type(graph)(len(x_vals), x_vals, func_vals))
