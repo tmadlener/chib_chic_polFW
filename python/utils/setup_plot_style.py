@@ -2,12 +2,26 @@
 Setup plotting style according to
 https://twiki.cern.ch/twiki/bin/view/CMS/Internal/FigGuidelines
 """
+import logging
+logging.basicConfig(level=logging.WARNING,
+                    format='%(levelname)s-%(module)s.%(funcName)s: %(message)s')
+
 import ROOT as r
 
 from utils.misc_helpers import make_iterable
 from utils.data_base import JsonDataBase
 
-DATABASE = JsonDataBase()
+# Much of the functionality of the utilities can be used without actually
+# setting up the framework via the setup script. However, the default
+# constructor of the JsonDataBase will try to use the CHIB_CHIC_POLFW_DIR
+# environment variable
+try:
+    DATABASE = JsonDataBase()
+except (KeyError, IOError) as e:
+    logging.warning('Cannot initialize the database: {}.\nMake sure to have '
+                    '\'CHIB_CHIC_POLFW_DIR\' set and pointing to the '
+                    'right path to be able to read the database'.format(e))
+    DATABASE = None
 
 def set_TDR_style():
     tdr_style = r.TStyle('tdr_style', 'Style for P-TDR')
@@ -194,6 +208,9 @@ def add_lumi_info(pad, lumi_text):
 def add_auxiliary_info(pad, years, pos='right', mc=False, prelim=False):
     """Add the auxiliary information to the passed pad"""
     def get_lumi(year):
+        if DATABASE is None:
+            logging.warning('DATABASE not initialized.')
+            return -1
         return '{} fb^{{-1}} ({} TeV)'.format(
             DATABASE.get_int_lumi(year), DATABASE.get_energy(year)
         )
