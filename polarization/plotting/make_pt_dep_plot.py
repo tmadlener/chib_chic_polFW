@@ -25,6 +25,9 @@ ATTR = {
     '1': [{'fillalpha': (PCOLOR, 0.65), 'size': 0, 'linewidth': 0}],
     '2': [{'fillalpha': (PCOLOR, 0.35), 'size': 0, 'linewidth': 0}],
     '3': [{'fillalpha': (PCOLOR, 0.25), 'size': 0, 'linewidth': 0}],
+    'combined': [{'color': PCOLOR, 'marker': 20, 'size': 1.0, 'linewidth': 0,
+                  'fillalpha': (PCOLOR, 0.65)}],
+    'stat only': [{'color': PCOLOR, 'marker': 20, 'size': 0, 'linewidth': 2}]
 }
 
 YRANGES = {
@@ -56,6 +59,19 @@ def remove_y_errors(graph):
     x_lo, x_hi, _, _ = get_errors(graph)
 
     return r.TGraphAsymmErrors(len(x_vals), x_vals, y_vals, x_lo, x_hi)
+
+
+def remove_x_errors(graph):
+    """
+    Get a (copy) of the passed graph with removed x errors
+    """
+    x_vals, y_vals = np.array(graph.GetX()), np.array(graph.GetY())
+    _, _, y_lo, y_hi = get_errors(graph)
+
+    nbins = len(x_vals)
+    x_err = np.zeros(nbins, dtype=float)
+
+    return r.TGraphAsymmErrors(nbins, x_vals, y_vals, x_err, x_err, y_lo, y_hi)
 
 
 def make_uncer_plot(graphs, variable, levels):
@@ -113,12 +129,61 @@ def make_plot(graphs, variable, levels):
         return make_limit_plot(graphs, variable)
 
 
+def get_combined_graph(stat, syst):
+    """
+    Get the combined graph of the statistical and systematical uncertainties
+    (added in quadrature)
+    """
+    syst_uncer = np.array(syst.GetY()) # stored in y-values
+    n_bins = len(syst_uncer)
+    xlow, xhigh, ylow, yhigh = get_errors(stat)
+    xcentral, ycentral = np.array(stat.GetX()), np.array(stat.GetY())
+
+    ylow = np.sqrt(ylow**2 + syst_uncer**2)
+    yhigh = np.sqrt(yhigh**2 + syst_uncer**2)
+
+    return r.TGraphAsymmErrors(n_bins, xcentral, ycentral,
+                               xlow, xhigh, ylow, yhigh)
+
+
+def make_plot_with_syst(graphs, variable, syst_file):
+    """
+    Make a plot including the systematic uncertainties.
+    First combine the stat. and syst. errors by summing them in quadrature then
+    plot the combined as well as the stat. only graphs onto the plot.
+    Only uses the +/- 1 sigma stat. uncertainties
+    """
+    syst_graph = syst_file.Get('{}_v_pt_syst'.format(variable))
+    stat_graph = graphs['1']
+    comb_graph = get_combined_graph(stat_graph, syst_graph)
+
+    leg = setup_legend(0.675, 0.74, 0.88, 0.88)
+    can = mkplot(comb_graph, drawOpt='PE2', attr=ATTR['combined'],
+                 xRange=[8, 30], xLabel=PTLABEL,
+                 yRange=YRANGES[variable], yLabel=YLABELS[variable],
+                 leg=leg, legEntries=['stat. + syst.'], legOpt='PF')
+
+    # remove the x uncertainties to avoid having the vertical line in the plot
+    # stat_graph = remove_x_errors(stat_graph)
+    mkplot(stat_graph, can=can, drawOpt='PEsame', attr=ATTR['stat only'],
+           leg=leg, legEntries=['stat. only'], legOpt='PE')
+
+    add_auxiliary_info(can, 2012, prelim=True, pos='left')
+    return can
+
+
 def main(args):
     """Main"""
     set_TDR_style()
     graphfile = r.TFile.Open(args.graphfile)
     var, graphs = get_graphs(graphfile)
-    can = make_plot(graphs, var, args.sigmas.split(','))
+
+    if args.systematics is None:
+        can = make_plot(graphs, var, args.sigmas.split(','))
+    else:
+        syst_file = r.TFile.Open(args.systematics)
+        can = make_plot_with_syst(graphs, var, syst_file)
+
     cond_mkdir(args.outdir)
     can.SaveAs('{}/{}_v_pt.pdf'.format(args.outdir, var))
 
@@ -136,6 +201,10 @@ if __name__ == '__main__':
                         'uncertainty levels that should be plotted. NOTE: '
                         'can only be 1, 2 or 3 (or any combination of them)',
                         default='1')
+    parser.add_argument('-s', '--systematics', help='File containing a graph '
+                        'with the systematic uncertainties that should be '
+                        'combined with the statistical uncertainties',
+                        default=None)
 
     clargs = parser.parse_args()
     main(clargs)
