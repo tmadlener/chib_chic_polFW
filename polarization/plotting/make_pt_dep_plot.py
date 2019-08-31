@@ -19,15 +19,17 @@ from utils.setup_plot_style import set_TDR_style, add_auxiliary_info
 from utils.misc_helpers import cond_mkdir
 
 PCOLOR = default_colors()[0]
+SCOLOR = default_colors()[5]
 
 ATTR = {
-    'central': [{'color': PCOLOR, 'marker': 20, 'size': 1.0, 'linewidth': 2}],
-    '1': [{'fillalpha': (PCOLOR, 0.65), 'size': 0, 'linewidth': 0}],
-    '2': [{'fillalpha': (PCOLOR, 0.35), 'size': 0, 'linewidth': 0}],
-    '3': [{'fillalpha': (PCOLOR, 0.25), 'size': 0, 'linewidth': 0}],
-    'combined': [{'color': PCOLOR, 'marker': 20, 'size': 1.0, 'linewidth': 0,
-                  'fillalpha': (PCOLOR, 0.65)}],
-    'stat only': [{'color': PCOLOR, 'marker': 20, 'size': 0, 'linewidth': 2}]
+    'central': [{'color': PCOLOR, 'marker': 20, 'size': 1.0, 'width': 2}],
+    '1': [{'fillalpha': (PCOLOR, 0.65), 'size': 0, 'width': 0}],
+    '2': [{'fillalpha': (PCOLOR, 0.35), 'size': 0, 'width': 0}],
+    '3': [{'fillalpha': (PCOLOR, 0.25), 'size': 0, 'width': 0}],
+    'combined': [{'color': PCOLOR, 'marker': 20, 'size': 1.0, 'width': 0,
+                  'fillalpha': (PCOLOR, 1.0)}],
+    'stat only': [{'color': SCOLOR, 'marker': 20, 'size': 0, 'width': 0,
+                   'fillalpha': (SCOLOR, 1.0)}]
 }
 
 YRANGES = {
@@ -165,8 +167,11 @@ def make_plot_with_syst(graphs, variable, syst_file):
 
     # remove the x uncertainties to avoid having the vertical line in the plot
     # stat_graph = remove_x_errors(stat_graph)
-    mkplot(stat_graph, can=can, drawOpt='PEsame', attr=ATTR['stat only'],
-           leg=leg, legEntries=['stat. only'], legOpt='PE')
+    mkplot(stat_graph, can=can, drawOpt='PE2same', attr=ATTR['stat only'],
+           leg=leg, legEntries=['stat. only'], legOpt='F')
+
+    # stat only covers the point of the combined one. Plot them again
+    mkplot(comb_graph, drawOpt='PEX0same', attr=ATTR['combined'], can=can)
 
     add_auxiliary_info(can, 2012, prelim=True, pos='left')
     return can
