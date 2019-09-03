@@ -74,7 +74,8 @@ def get_uncertainty_graph(ppds, n_sigma, center_at_0=False):
     val_hi = hi_lo[:, 1] - med
 
     if center_at_0:
-        med = np.zeros_like(med)
+        med -= med[0]
+        # med = np.zeros_like(med)
 
     return r.TGraphAsymmErrors(len(ppds), pt_vals, med, pt_lo, pt_hi,
                                val_lo, val_hi)

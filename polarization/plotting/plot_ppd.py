@@ -79,21 +79,24 @@ def make_lph_plot(hfile):
     return can
 
 
-def shift_by_median(ppd):
+def shift_by_median(ppd, use_val=None):
     """
     Shift the ppd by the median to center it around 0
     """
-    med = get_quantiles(ppd, 0.5)
+    if use_val is None:
+        med = get_quantiles(ppd, 0.5)
+    else:
+        med = use_val
     binning = get_binning(ppd)
     return from_array(get_array(ppd), binning - med, errors=get_array(ppd, errors=True))
 
 
-def make_dlth_plot(hfile):
+def _make_dlth_plot(hfile, shift=None):
     """
     Make the dlth plot
     """
     ppd = get_scaled_ppd(hfile, 'dlth')
-    ppd = rebin(shift_by_median(ppd), [(0, 200)])
+    ppd = rebin(shift_by_median(ppd, shift), [(0, 200)])
     ppdmax = get_y_max(ppd)
     can = mkplot(ppd,
                  xLabel= '{0}#minus#bar{{{0}}}'.format(YLABELS['dlth']),
@@ -149,7 +152,7 @@ def make_simple_plot(var, n_bins=200):
 PLOT_FUNCTIONS = {
     'lth': make_lth_plot,
     'lph': make_lph_plot,
-    'dlth': make_dlth_plot,
+    # 'dlth': make_dlth_plot,
     'dlph': make_dlph_plot,
     'norm_costh': make_simple_plot('norm_costh'),
     'norm_phi': make_simple_plot('norm_phi'),
@@ -162,6 +165,9 @@ def main(args):
     """Main"""
     set_TDR_style()
     ppd_file = r.TFile.Open(args.ppdfile)
+
+    # Only now do we know the shift, so put it here
+    PLOT_FUNCTIONS['dlth'] = lambda f: _make_dlth_plot(f, args.shift_by)
 
     plot_vars = []
     if 'costh' in args.variables:
@@ -183,6 +189,8 @@ if __name__ == '__main__':
                                      'calculated in calc_ppd.py')
     parser.add_argument('ppdfile', help='Root file containing the TTree from the'
                         ' scanning of the parameter space')
+    parser.add_argument('--shift-by', help='Shift the whole PPD by the passed '
+                        'value', default=None, type=float)
 
     var_sel = parser.add_mutually_exclusive_group()
     var_sel.add_argument('--costh', action='store_const', dest='variables',
