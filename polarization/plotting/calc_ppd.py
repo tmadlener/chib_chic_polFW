@@ -37,11 +37,14 @@ BIN_WIDTH_1D = 0.0005
 # The number of bins used for the 2d ppd histograms in each direction.
 NBINS_2D = 200
 
-# For now use an "unknown" but constant shift to avoid early unblinding
-RAND_DLTH_SHIFT = float(os.environ['RANDOM_DELTA_LAMBDA_SHIFT'])
+# Introduce a "random" but constant shift into the Delta lambda theta PPD
+# It is in fact applied to lambda_theta(chic2), which automatically makes it
+# appear in Delta_lth
+RAND_DLTH_SHIFT = 0
 
 # The name of the ratio graph in the fit files
 RATIO_NAME = 'r_chic2_chic1_v_{}_HX_fold_bin_0'
+# RATIO_NAME = 'r_chic2_chic1_v_{}_HX_fold_bin_0_sym_uncer'
 
 # The width and center of the Gaussian importance sampling kernel for the norm
 NORM_SIGMA = 0.025
@@ -54,17 +57,17 @@ KAPPA_1_BOUNDS = (-0.25, 0.25)
 KAPPA_2_BOUNDS = (-np.sqrt(5) / 6, np.sqrt(5) / 6)
 
 XRANGES = {
-    'dlth': [76.8, 80.2], # Make sure that this covers the whole range # Make sure that this covers the whole range
+    'dlth': [-2, 2], # Make sure that this covers the whole range
     'lth': LTH_1_BOUNDS,
     'norm_costh': [NORM_MU_CTH - 5 * NORM_SIGMA, NORM_MU_CTH + 5 * NORM_SIGMA],
     'norm_phi': [NORM_MU_PHI - 5 * NORM_SIGMA, NORM_MU_PHI + 5 * NORM_SIGMA],
     'lph': LPH_1_BOUNDS,
     'dlph': [-1./3 - np.sqrt(5) / 5, 1./3 + np.sqrt(5) / 5],
-    'lth2': [78, 79.8],
+    'lth2': LTH_2_BOUNDS,
     'lph2': LPH_2_BOUNDS,
     'ltilde' : [-1, 1],
     # min / max lambda_tilde 2 = -1 / +3
-    'ltilde2': [-1.05 + RAND_DLTH_SHIFT, 3.05 + RAND_DLTH_SHIFT],
+    'ltilde2': [-1, 3],
     # NOTE: This is only the full range for lambdas conforming to the 2d relations
     'dltilde': [-2.1 + RAND_DLTH_SHIFT, 4.1 + RAND_DLTH_SHIFT],
     'kappa': KAPPA_1_BOUNDS,

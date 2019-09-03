@@ -246,6 +246,14 @@ def main(args):
         syst_file = r.TFile.Open(args.systematics)
         can = make_plot_with_syst(graphs, var, syst_file, args.fit, args.pt_over_m)
 
+        comb_gr = can.pltables[1]
+        comb_gr.SetName(graphs.values()[0].GetName())
+        outfile = r.TFile('{}/comb_graph_{}_v_pt.root'.format(args.outdir, var),
+                          'recreate')
+        outfile.cd()
+        comb_gr.Write()
+        outfile.Close()
+
     cond_mkdir(args.outdir)
     can.SaveAs('{}/{}_v_pt.pdf'.format(args.outdir, var))
 

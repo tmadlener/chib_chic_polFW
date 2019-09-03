@@ -84,7 +84,7 @@ def shift_by_median(ppd, use_val=None):
     Shift the ppd by the median to center it around 0
     """
     if use_val is None:
-        med = get_quantiles(ppd, 0.5)
+        return ppd
     else:
         med = use_val
     binning = get_binning(ppd)
@@ -99,18 +99,18 @@ def _make_dlth_plot(hfile, shift=None):
     ppd = rebin(shift_by_median(ppd, shift), [(0, 200)])
     ppdmax = get_y_max(ppd)
     can = mkplot(ppd,
-                 xLabel= '{0}#minus#bar{{{0}}}'.format(YLABELS['dlth']),
+                 xLabel=YLABELS['dlth'],
                  xRange=[-2, 2],
                  drawOpt='hist', yLabel='PPD [a.u.]')
 
     mkplot([r.TLine(v, 0, v, ppdmax * 1.1) for v in [-1.6, 1.3333]], can=can,
            drawOpt='same', attr=[{'color': 12, 'line': 7, 'width': 2}])
 
-    ltx = setup_latex()
-    put_on_latex(ltx, [
-        (0.65, 0.8, '+{:.2f}'.format(np.diff(get_quantiles(ppd, [0.5, 0.84]))[0])),
-        (0.40, 0.8, '#minus{:.2f}'.format(np.diff(get_quantiles(ppd, [0.16, 0.5]))[0]))
-    ], ndc=True)
+    # ltx = setup_latex()
+    # put_on_latex(ltx, [
+    #     (0.65, 0.8, '+{:.2f}'.format(np.diff(get_quantiles(ppd, [0.5, 0.84]))[0])),
+    #     (0.40, 0.8, '#minus{:.2f}'.format(np.diff(get_quantiles(ppd, [0.16, 0.5]))[0]))
+    # ], ndc=True)
 
     make_nice(can)
     return can

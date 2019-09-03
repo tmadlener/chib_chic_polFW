@@ -74,8 +74,8 @@ def get_uncertainty_graph(ppds, n_sigma, center_at_0=False):
     val_hi = hi_lo[:, 1] - med
 
     if center_at_0:
-        med -= med[0]
-        # med = np.zeros_like(med)
+        med -= med[0] # step 1 unblinding
+        # med = np.zeros_like(med) # blinded
 
     return r.TGraphAsymmErrors(len(ppds), pt_vals, med, pt_lo, pt_hi,
                                val_lo, val_hi)
@@ -105,7 +105,7 @@ def main(args):
 
     if args.variable in ['dlth', 'dlph']:
         for n_sig in [1, 2, 3]:
-            graph = get_uncertainty_graph(ppds, n_sig, args.variable == 'dlth')
+            graph = get_uncertainty_graph(ppds, n_sig, False)
             graph.SetName('{}_v_pt_n_sig_{}'.format(args.variable, n_sig))
             graph.Write()
     else:
