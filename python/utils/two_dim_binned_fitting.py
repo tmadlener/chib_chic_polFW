@@ -92,9 +92,9 @@ def get_bin_info_text(bin_name, bins):
     str1 = '{} < {} < {}'.format(fmt_val(bins[bin_name][0][0]), var1, fmt_val(bins[bin_name][0][1]))
     str2 = '{} < {} < {}'.format(fmt_val(bins[bin_name][1][0]), var2, fmt_val(bins[bin_name][1][1]))
 
-    if var1 == 'JpsiPt':
+    if match.group(1) == 'JpsiPt':
         str1 += ' GeV'
-    if var2 == 'JpsiPt':
+    if match.group(2) == 'JpsiPt':
         str2 += ' GeV'
 
     return [
@@ -674,7 +674,7 @@ class BinnedFitModel(object):
     def _plot_bin(self, wsp, full_data, bin_name, bin_borders, n_bins,
                   publication=False):
         """Make the distribution plot for a given bin"""
-        data_args = (rf.MarkerSize(0.7), rf.Name('data_hist'))
+        data_args = (rf.MarkerSize(0.5), rf.Name('data_hist'))
         fit_var = get_var(wsp, self.fit_var)
         frame = fit_var.frame(rf.Bins(n_bins))
 
@@ -684,9 +684,10 @@ class BinnedFitModel(object):
 
         cut = get_bin_cut(self.bin_cut_vars, bin_borders)
         full_data.reduce(cut).plotOn(frame, *data_args)
+        leg.AddEntry(frame.getHist('data_hist'), 'Data', 'PE')
+
         full_pdf = wsp.pdf(self.full_model + '_' + bin_name)
         full_pdf.plotOn(frame, rf.LineWidth(2), rf.Name('full_pdf_curve'))
-
         leg.AddEntry(frame.getCurve('full_pdf_curve'), 'Fit result', 'l')
 
         for name, settings in self.components:
