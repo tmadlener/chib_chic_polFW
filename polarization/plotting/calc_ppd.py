@@ -159,7 +159,8 @@ def generate_lambdas(n_points, lth_bounds, lph_bounds):
     return lth, lph
 
 
-def get_scan_points(n_points, var, use_costh=False):
+def get_scan_points(n_points, var, use_costh=False,
+                    fix_lambda1=None):
     """
     Get a DataFrame of scan values that should be used for scanning the PPD.
     Depending on which direction is scanned and whether or not the costh ratio is
@@ -176,6 +177,20 @@ def get_scan_points(n_points, var, use_costh=False):
     if var != 'kappa':
         lth_1, lph_1 = generate_lambdas(n_points, LTH_1_BOUNDS, LPH_1_BOUNDS)
         lth_2, lph_2 = generate_lambdas(n_points, LTH_2_BOUNDS, LPH_2_BOUNDS)
+
+        if fix_lambda1 is not None:
+            lth_1, lph_1 = fix_lambda1, fix_lambda1
+            # simply "stretch" and shift the values of lth_2 to have a basically
+            # -inf:+inf range for delta lambda. This is only necessary for the
+            # costh direction, since in phi, the PPD is already so narrow, that
+            # the normally used prior is already -inf:+inf
+            lth_2 *= 5 # Now spans -3:5
+            lth_2 -= 3 # Now spans -6:2
+
+            global XRANGES
+            XRANGES['lth2'] = [-6, 2]
+            XRANGES['dlth'] = [-6 - lth_1, 2 - lth_1]
+
 
         ret_dict = {
             'lth_1': lth_1, 'lth_2': lth_2,
@@ -512,7 +527,8 @@ def main(args):
         cth_file = r.TFile.Open(args.costh_ratio)
         costh_ratio = get_ratio_graph(cth_file, 'costh')
 
-    dfr = get_scan_points(args.number_extractions, args.direction, use_costh)
+    dfr = get_scan_points(args.number_extractions, args.direction, use_costh,
+                          args.fix_lambda1)
     calc_ppd(ratio, dfr, args.direction, costh_ratio if use_costh else None,
              args.max_costh)
 
@@ -562,6 +578,9 @@ if __name__ == '__main__':
     parser.add_argument('--max-costh', help='Maximum costh value (only necesary '
                         'for phi ratio to calculate kappa)', default=0.625,
                         type=float)
+    parser.add_argument('--fix-lambda1', help='Fix lambda(chic1) to the passed '
+                        'value instead of using a flat prior distribution',
+                        default=None, type=float)
 
     dir_sel = parser.add_mutually_exclusive_group()
     dir_sel.add_argument('--costh', action='store_const', dest='direction',
