@@ -674,17 +674,36 @@ class BinnedFitModel(object):
     def _plot_bin(self, wsp, full_data, bin_name, bin_borders, n_bins,
                   publication=False):
         """Make the distribution plot for a given bin"""
-        data_args = (rf.MarkerSize(0.5), rf.Name('data_hist'))
+        leg = setup_legend(*self.plot_config['legpos'])
+
+        # In order to remove horizontal error bars from the plot the option
+        # XErrorSize(0) has to be used, but that breaks the calculation of the
+        # chi2 wrt a given curve since the x-errors are used to determine the
+        # bin and the corresponding mean value of the data points in the bin
+        # which is necessary to calculate the point at which the curve should be
+        # evaluated. So here I plot two curves, the one labeled 'data_hist_plot'
+        # is the visible one, whereas the one labeled 'data_hist' will be the
+        # with associated x uncertainties that can be used to calculate the chi2
+        # This will only be done in "publication mode"
+        if publication:
+            data_args = (rf.MarkerSize(0.5), rf.Name('data_hist_plot'),
+                         rf.XErrorSize(0))
+            leg.SetTextSize(0.04)
+        else:
+            data_args = (rf.MarkerSize(0.7), rf.Name('data_hist'))
+
         fit_var = get_var(wsp, self.fit_var)
         frame = fit_var.frame(rf.Bins(n_bins))
 
-        leg = setup_legend(*self.plot_config['legpos'])
-        if publication:
-            leg.SetTextSize(0.04)
-
         cut = get_bin_cut(self.bin_cut_vars, bin_borders)
         full_data.reduce(cut).plotOn(frame, *data_args)
-        leg.AddEntry(frame.getHist('data_hist'), 'Data', 'PE')
+        if publication:
+            full_data.reduce(cut).plotOn(frame, rf.MarkerSize(0),
+                                         rf.Name('data_hist'),
+                                         rf.LineColor(0), rf.LineWidth(0))
+
+            leg.AddEntry(frame.getHist('data_hist_plot'), 'Data', 'PE')
+
 
         full_pdf = wsp.pdf(self.full_model + '_' + bin_name)
         full_pdf.plotOn(frame, rf.LineWidth(2), rf.Name('full_pdf_curve'))
