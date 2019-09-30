@@ -95,24 +95,41 @@ def get_exclusion_graph(ppds, limit):
     return r.TGraphAsymmErrors(len(ppds), pt_vals, lim, pt_lo, pt_hi)
 
 
+def get_central_graph(ppds):
+    """
+    Get the graph with the central values only from the ppds
+    """
+    pt_vals = np.array([DATABASE.get_mean_pt(2012, p) for p in ppds.keys()])
+    pt_lo = pt_vals - np.array([p[0] for p in ppds.keys()])
+    pt_hi = np.array([p[1] for p in ppds.keys()]) - pt_vals
+
+    med = np.array([p.GetMean() for p in ppds.values()])
+
+    return r.TGraphAsymmErrors(len(ppds), pt_vals, med, pt_lo, pt_hi)
+
+
 def main(args):
     """Main"""
     infiles = open_files(args.infiles)
-    ppds = get_ppds(infiles, args.variable)
 
     graphfile = r.TFile(args.graphfile, 'recreate')
     graphfile.cd()
 
-    if args.variable in ['dlth', 'dlph']:
-        for n_sig in [1, 2, 3]:
-            graph = get_uncertainty_graph(ppds, n_sig, False)
-            graph.SetName('{}_v_pt_n_sig_{}'.format(args.variable, n_sig))
+    for variable in args.variable.split(','):
+        ppds = get_ppds(infiles, variable)
+        if variable in ['dlth', 'dlph', 'lth2']:
+            for n_sig in [1, 2, 3]:
+                graph = get_uncertainty_graph(ppds, n_sig, False)
+                graph.SetName('{}_v_pt_n_sig_{}'.format(variable, n_sig))
+                graph.Write()
+        else:
+            graph = get_central_graph(ppds)
+            graph.SetName('{}_v_pt_central'.format(variable))
             graph.Write()
-    else:
-        for clb in [90, 95, 99]:
-            graph = get_exclusion_graph(ppds, clb)
-            graph.SetName('{}_v_pt_cl_{}'.format(args.variable, clb))
-            graph.Write()
+            # for clb in [90, 95, 99]:
+            #     graph = get_exclusion_graph(ppds, clb)
+            #     graph.SetName('{}_v_pt_cl_{}'.format(args.variable, clb))
+            #     graph.Write()
 
     graphfile.Close()
 
