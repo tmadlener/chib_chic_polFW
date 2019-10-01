@@ -877,7 +877,7 @@ def fmt_float(number, use_exp=None):
 
     if use_exp is not None:
         if not isinstance(use_exp, int):
-            logging.warning('Rounding use_exp={} to nearest int')
+            logging.warning('Rounding use_exp={} to nearest int'.format(use_exp))
         # float to avoid "Integers to negative integer powers are not allowed"
         exp = np.round(use_exp).astype(float)
 

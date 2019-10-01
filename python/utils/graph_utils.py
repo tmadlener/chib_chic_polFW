@@ -127,6 +127,20 @@ def scale_graph(graph, scale):
     return r.TGraph(n_points, x_vals, y_vals)
 
 
+def scale_graph_x(graph, scale):
+    """
+    Scale the graph in x-direction
+    """
+    x_vals, y_vals = np.array(graph.GetX()), np.array(graph.GetY())
+    xlo, xhi, ylo, yhi = get_errors(graph)
+
+    x_vals *= scale
+    xlo *= scale
+    xhi *= scale
+
+    return r.TGraphAsymmErrors(len(xlo), x_vals, y_vals, xlo, xhi, ylo, yhi)
+
+
 @out_of_range_default
 def get_y(graph, point_idx):
     """

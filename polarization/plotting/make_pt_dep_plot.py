@@ -16,7 +16,7 @@ from utils.plot_helpers import (
 )
 from utils.plot_decoration import YLABELS
 from utils.data_handling import list_obj
-from utils.graph_utils import get_errors
+from utils.graph_utils import get_errors, scale_graph_x
 from utils.setup_plot_style import set_TDR_style, add_auxiliary_info
 from utils.misc_helpers import cond_mkdir, fmt_float
 from utils.constants import m_psiPDG
@@ -153,20 +153,6 @@ def get_combined_graph(stat, syst):
 
     return r.TGraphAsymmErrors(n_bins, xcentral, ycentral,
                                xlow, xhigh, ylow, yhigh)
-
-
-def scale_graph_x(graph, scale):
-    """
-    Scale the graph in x-direction
-    """
-    x_vals, y_vals = np.array(graph.GetX()), np.array(graph.GetY())
-    xlo, xhi, ylo, yhi = get_errors(graph)
-
-    x_vals *= scale
-    xlo *= scale
-    xhi *= scale
-
-    return r.TGraphAsymmErrors(len(xlo), x_vals, y_vals, xlo, xhi, ylo, yhi)
 
 
 def make_plot_with_syst(graphs, variable, syst_file,
