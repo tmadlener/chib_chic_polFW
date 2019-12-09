@@ -86,7 +86,7 @@ def make_lth_plot(ppd_files):
     can = mkplot(ppds, drawOpt='hist same', can=can,
                  leg=leg, legOpt='L',
                  legEntries=['{} < p_{{T}} < {} GeV'.format(*p) for p in ppd_files.keys()])
-    # can.pltables[0].GetYaxis().SetNdivisions(505)
+    can.pltables[0].GetYaxis().SetNdivisions(505)
     can.pltables[0].GetXaxis().SetNdivisions(505)
 
     mkplot([r.TLine(q, 0, q, 0.01) for q in quantiles], can=can, drawOpt='same')
@@ -120,7 +120,7 @@ def make_lph_plot(ppd_files):
     can = mkplot(ppds, drawOpt='hist same', can=can,
                  leg=leg, legOpt='L',
                  legEntries=['{} < p_{{T}} < {} GeV'.format(*p) for p in ppd_files.keys()])
-    # can.pltables[0].GetYaxis().SetNdivisions(505)
+    can.pltables[0].GetYaxis().SetNdivisions(505)
     can.pltables[0].GetXaxis().SetNdivisions(505)
 
     return add_info(can)
