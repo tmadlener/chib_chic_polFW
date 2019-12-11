@@ -5,6 +5,7 @@
 
 #include "general/interface/ArgParser.h"
 #include "general/interface/misc_utils.h"
+#include "general/interface/progress.h"
 
 #include "Fit/Fitter.h"
 #include "Fit/BinData.h"
@@ -108,8 +109,6 @@ private:
   std::vector<ROOT::Math::IMultiGenFunction*> m_functions;
 };
 
-
-
 struct CombinedFitter {
   CombinedFitter() {
     ROOT::Math::MinimizerOptions minOpt;
@@ -198,6 +197,57 @@ struct CombinedFitter {
     return scanhist;
   }
 
+  TH2D get2DContourScan(CombinedChi2& chi2, const double deltaChi2,
+                        const std::vector<double>& l1Binning,
+                        const std::vector<double>& l2Binning, const std::vector<double>& n1Binning,
+                        const std::vector<double>& n2Binning, const std::vector<double>& n3Binning) {
+    TH2D scanhist("h_chi2_cont_scan", "",
+                  l1Binning.size() - 1, l1Binning.data(),
+                  l2Binning.size() - 1, l2Binning.data());
+
+    std::vector<double> params = fitter.Result().Parameters();
+    const double minChi2 = fitter.Result().Chi2();
+
+    const size_t nScanPoints = (l1Binning.size() - 1) * (l2Binning.size() - 1) *
+      (n1Binning.size() - 1) * (n2Binning.size() - 1) * (n3Binning.size() - 1);
+    const auto startTime = ProgressClock::now();
+    size_t scannedPoints = 0;
+
+    for (size_t i = 0; i < l1Binning.size() - 1; ++i) {
+      params[0] = 0.5 * (l1Binning[i] + l1Binning[i + 1]);
+      for (size_t j = 0; j < l2Binning.size() - 1; ++j) {
+        params[1] = 0.5 * (l2Binning[j] + l2Binning[j + 1]);
+
+        for (size_t k = 0; k < n1Binning.size() - 1; ++k) {
+          params[2] = 0.5 * (n1Binning[k] + n1Binning[k + 1]);
+
+          for (size_t l = 0; l < n2Binning.size() - 1; ++l) {
+            params[3] = 0.5 * (n2Binning[l] + n2Binning[l + 1]);
+
+            for (size_t m = 0; m < n3Binning.size() - 1; ++m) {
+              params[4] = 0.5 * (n3Binning[m] + n3Binning[m + 1]);
+
+              const double dChi2Val = chi2(params.data()) - minChi2;
+              if (dChi2Val < deltaChi2) {
+                scanhist.Fill(params[0], params[1]);
+              }
+              printProgress(scannedPoints++, nScanPoints, startTime);
+            }
+          }
+        }
+      }
+    }
+
+    return scanhist;
+  }
+
+  std::vector<double> getScanBinningNorm(int iNorm, size_t nPoints=20) const {
+    const double val = fitter.Result().Parameter(iNorm);
+    const double err = fitter.Result().ParError(iNorm);
+
+    return linspace(val - 2.5 * err, val + 2.5 * err, nPoints);
+  }
+
   ROOT::Fit::Fitter fitter{};
 };
 
@@ -235,11 +285,11 @@ int main(int argc, char *argv[])
   central.SetName("min_lambda1_lambda2");
   central.Write();
 
-  auto oneSigmaContour = fitter.get2DContour(0.683, 35);
-  oneSigmaContour.SetName("cont_2d_lambda1_lambda2_0p683");
-  if (oneSigmaContour.GetN() > 0) {
-    oneSigmaContour.Write();
-  }
+  // auto oneSigmaContour = fitter.get2DContour(0.683, 35);
+  // oneSigmaContour.SetName("cont_2d_lambda1_lambda2_0p683");
+  // if (oneSigmaContour.GetN() > 0) {
+  //   oneSigmaContour.Write();
+  // }
 
   // auto twoSigmaContour = fitter.get2DContour(0.954, 35);
   // twoSigmaContour.SetName("cont_2d_lambda1_lambda2_0p95");
@@ -253,8 +303,46 @@ int main(int argc, char *argv[])
   //   threeSigmaContour.Write();
   // }
 
-  // auto scanHist = fitter.getChi2Scan(linspace(-5.0, 16.0, 500), linspace(-4.0, 20.0, 500), globalChi2);
-  // scanHist.Write();
+  auto scanHist = fitter.getChi2Scan(linspace(-5.0, 16.0, 500), linspace(-4.0, 20.0, 500), globalChi2);
+  scanHist.Write();
+
+  const size_t nPoints = 100; // number of scan points in lambda1 and lambda2 direction
+  const size_t normScanPoints = 50;
+
+  std::cout << "Scanning for 68 % Contour\n";
+  auto scanHistCont = fitter.get2DContourScan(globalChi2, TMath::ChisquareQuantile(0.68, 5),
+                                              linspace(-2.0, 2.0, nPoints),
+                                              linspace(-2.0, 2.0, nPoints),
+                                              fitter.getScanBinningNorm(2, normScanPoints),
+                                              fitter.getScanBinningNorm(3, normScanPoints),
+                                              fitter.getScanBinningNorm(4, normScanPoints));
+  scanHistCont.SetName("chi2_scan_contour_1sigma");
+  scanHistCont.Write();
+  std::cout << std::endl;
+
+
+  std::cout << "Scanning for 95 % Contour\n";
+  auto scanHistCont2 = fitter.get2DContourScan(globalChi2, TMath::ChisquareQuantile(0.95, 5),
+                                         linspace(-2.0, 2.0, nPoints),
+                                         linspace(-2.0, 2.0, nPoints),
+                                         fitter.getScanBinningNorm(2, normScanPoints),
+                                         fitter.getScanBinningNorm(3, normScanPoints),
+                                         fitter.getScanBinningNorm(4, normScanPoints));
+  scanHistCont2.SetName("chi2_scan_contour_2sigma");
+  scanHistCont2.Write();
+  std::cout << std::endl;
+
+
+  std::cout << "Scanning for 99 % Contour\n";
+  auto scanHistCont3 = fitter.get2DContourScan(globalChi2, TMath::ChisquareQuantile(0.99, 5),
+                                               linspace(-2.0, 2.0, nPoints),
+                                               linspace(-2.0, 2.0, nPoints),
+                                               fitter.getScanBinningNorm(2, normScanPoints),
+                                               fitter.getScanBinningNorm(3, normScanPoints),
+                                               fitter.getScanBinningNorm(4, normScanPoints));
+  scanHistCont3.SetName("chi2_scan_contour_3sigma");
+  scanHistCont3.Write();
+  std::cout << std::endl;
 
   ofile->Write("", TObject::kWriteDelete);
   ofile->Close();
