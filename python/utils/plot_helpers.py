@@ -112,9 +112,8 @@ def default_colors():
         # repeatedly calling TColor.GetFreeColorIndex in the list creation is OK
         # since it returns a different index only once it has been used.
         get_idx = TColor.GetFreeColorIndex
-        _colors = [(get_idx(), TColor(get_idx(),
-                                      rgbcolors[i][0], rgbcolors[i][1], rgbcolors[i][2]))
-                   for i in xrange(len(rgbcolors))]
+        _colors = [(get_idx(), TColor(get_idx(), red, green, blue))
+                   for (red, green, blue) in rgbcolors]
 
         _color_indices = [col[0] for col in _colors]
 

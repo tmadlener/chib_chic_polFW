@@ -306,7 +306,7 @@ class BinnedFitModel(object):
         ws_import(wsp, sim_nll)
 
 
-    def plot(self, wsp, verbose=False, publication=False, preliminary=False):
+    def plot(self, wsp, verbose=False, publication=False):
         """
         Plot the fit results from the passed workspace
 
@@ -317,7 +317,6 @@ class BinnedFitModel(object):
                 onto the plots (mainly for debugging)
             publication (boolean, optional): Make the plots in publication
                 quality (negates the verbose argument automatically)
-            preliminary (boolean, optional): Add the 'preliminary' label
         """
         data = wsp.data('full_data')
 
