@@ -149,7 +149,21 @@ ArgParser::ArgParser(int argc, char* argv[])
   for (const auto& arg : args) {
     if (std::regex_match(arg, flagRgx)) {
       key = arg;
+      m_argumentMap.insert({key, ""});
     } else {
+      // first check if the key already exists and if it does whether it is the
+      // empty string. In that case, the flag has been created in the map, but
+      // no value has been added and the empty string is replaced with the
+      // actual value. If the flag is in the map and the corresponding value is
+      // already set, insert the new value again
+      auto keyIt = m_argumentMap.find(key);
+      if (keyIt != m_argumentMap.end()) {
+        if (keyIt->second.empty()) {
+          keyIt->second = arg;
+          continue;
+        }
+      }
+
       m_argumentMap.insert({key, arg});
     }
   }
@@ -227,6 +241,23 @@ std::pair<bool, std::string> ArgParser::getArg_impl(const std::string& key, std:
   }
 
   return {false, ""};
+}
+
+template<>
+std::pair<bool, bool> ArgParser::getArg_impl(const std::string& key, bool*) const
+{
+  auto keyIt = m_argumentMap.find(key);
+  if (keyIt != m_argumentMap.end()) {
+    // first check whether a value has been set
+    const auto convArg = convertArg<bool>(keyIt->second);
+    if (convArg.first) { return convArg; }
+
+    // if no value has been set, then convArg should fail, but since the flag
+    // was found true is returned nontheless to enable flag-like behaviour
+    return {true, true};
+  }
+
+  return {false, false};
 }
 
 
