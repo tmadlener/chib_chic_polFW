@@ -169,7 +169,7 @@ function run_sandboxed() {
     logfile=${sandboxdir}/sandbox_run.log
 
     print_date "start of "${exe}" in "${sandboxdir} >> ${logfile}
-    ./${exe} ${args} >> ${logfile}
+    ./${exe} ${args} >> ${logfile} 2>&1
     cleanup_or_exit $? ${exe} ${curr_dir} >> ${logfile}
 
     print_date "end" >> ${logfile}
