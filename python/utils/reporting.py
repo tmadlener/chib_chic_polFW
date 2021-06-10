@@ -72,7 +72,7 @@ def create_figure(plots):
     ret_str = []
 
     fig_started = False
-    for iplot, (label, pname) in enumerate(plots.iteritems()):
+    for iplot, (label, pname) in enumerate(plots.items()):
         if iplot % MAX_FIG_P_PAGE == 0:
             if fig_started:
                 ret_str.append(r'\end{figure}')

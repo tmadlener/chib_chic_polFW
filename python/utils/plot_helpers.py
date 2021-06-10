@@ -14,7 +14,10 @@ import logging
 logging.basicConfig(level=logging.WARNING,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
-import __builtin__
+try:
+    import __builtin__ as builtins
+except ImportError:
+    import builtins
 
 import numpy as np
 
@@ -111,8 +114,11 @@ def default_colors():
         # bind TColor.GetFreeColorIndex to a shorter name for less typing
         # repeatedly calling TColor.GetFreeColorIndex in the list creation is OK
         # since it returns a different index only once it has been used.
+        #
+        # 6.22/08 somehow breaks here and chooses the wrong constructor if no
+        # empty string is passed
         get_idx = TColor.GetFreeColorIndex
-        _colors = [(get_idx(), TColor(get_idx(), red, green, blue))
+        _colors = [(get_idx(), TColor(get_idx(), red, green, blue, ""))
                    for (red, green, blue) in rgbcolors]
 
         _color_indices = [col[0] for col in _colors]
@@ -706,7 +712,7 @@ def _extremal_vals_hist_2d(axis, extremum):
 
     def _val_getter(hists):
         """Closure to avoid a lambda"""
-        return __builtin__.__dict__[extremum](
+        return builtins.__dict__[extremum](
             fext(gaxis(h)) for h in make_iterable(hists)
         )
 
@@ -779,7 +785,7 @@ def _get_extremal_value(pltable, axis, value):
             # Do nothing if we can't handle it (TODO: introduce logging)
 
     # somewhat hacky way to get either min or max depending on the desired value
-    return __builtin__.__dict__[value](vals)
+    return builtins.__dict__[value](vals)
 
 
 def get_x_max(pltable):

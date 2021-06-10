@@ -13,8 +13,11 @@ logging.basicConfig(level=logging.INFO,
 
 from collections import OrderedDict
 from itertools import chain
-from root_numpy import fill_hist, array2hist, hist2array
-from root_numpy import __version__ as rnp_version
+try:
+    from root_numpy import fill_hist, array2hist, hist2array
+    from root_numpy import __version__ as rnp_version
+except ImportError:
+    pass
 
 from utils.misc_helpers import (
     make_iterable, create_random_str, get_vals_from_rwbuffer, replace_all,

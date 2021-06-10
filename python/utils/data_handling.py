@@ -13,7 +13,10 @@ import numpy as np
 import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 
-from root_numpy import array2root
+try:
+    from root_numpy import array2root
+except ImportError:
+    pass
 
 from utils.misc_helpers import make_iterable
 
@@ -203,7 +206,7 @@ def get_treename(filename):
     """
     rfl = r.TFile.Open(filename)
     contents = {k.GetName(): rfl.Get(k.GetName()) for k in rfl.GetListOfKeys()}
-    trees = [n for n, o in contents.iteritems() if o.InheritsFrom('TTree')]
+    trees = [n for n, o in contents.items() if o.InheritsFrom('TTree')]
 
     if len(trees) == 1:
         return trees[0]

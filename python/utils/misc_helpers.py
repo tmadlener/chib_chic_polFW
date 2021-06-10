@@ -15,6 +15,16 @@ import logging
 logging.basicConfig(level=logging.WARNING,
                     format='%(levelname)s - %(funcName)s: %(message)s')
 
+try:
+    basestring
+except NameError:
+    basestring = str
+
+try:
+    xrange
+except:
+    xrange = range
+
 def cond_mkdir(path):
     """
     Conditionally make the directory with the passed path if it doesn't already
@@ -142,7 +152,7 @@ def create_random_str(length=32):
     Returns:
         str: Non-cryptographically safe random string
     """
-    return ''.join(choice(ascii_letters + digits) for _ in xrange(length))
+    return ''.join(choice(ascii_letters + digits) for _ in range(length))
 
 
 def get_full_trigger(subpath):

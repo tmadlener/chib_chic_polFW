@@ -62,8 +62,8 @@ def get_errors(graph):
         y_hi_errs = get_vals_from_rwbuffer(graph.GetEYhigh(), n_points)
         return x_lo_errs, x_hi_errs, y_lo_errs, y_hi_errs
     if graph.InheritsFrom('TGraphErrors'):
-        x_errs = np.array(graph.GetEX())
-        y_errs = np.array(graph.GetEY())
+        x_errs = get_vals_from_rwbuffer(graph.GetEX(), n_points)
+        y_errs = get_vals_from_rwbuffer(graph.GetEY(), n_points)
         return x_errs, y_errs
 
 
@@ -80,10 +80,10 @@ def shift_graph(graph, shift):
         ROOT.TGraph: graph of the same type as the passed in graph shifted by
             a constant factor
     """
-    x_vals = np.array(graph.GetX())
     n_points = graph.GetN()
+    x_vals = get_vals_from_rwbuffer(graph.GetX(), n_points)
 
-    y_vals = np.array(graph.GetY()) + shift
+    y_vals = get_vals_from_rwbuffer(graph.GetY(), n_points) + shift
 
     # have to test from specific to less specific here
     if graph.InheritsFrom('TGraphAsymmErrors'):
@@ -106,10 +106,10 @@ def scale_graph(graph, scale):
         ROOT.TGraph: graph of the same type as the passed in graph scaled by a
             factor
     """
-    x_vals = np.array(graph.GetX())
     n_points = graph.GetN()
+    x_vals = get_vals_from_rwbuffer(graph.GetX(), n_points)
 
-    y_vals = np.array(graph.GetY()) * scale
+    y_vals = get_vals_from_rwbuffer(graph.GetY(), n_points) * scale
 
     # have to test from very specific to less specific here
     if graph.InheritsFrom('TGraphAsymmErrors'):
@@ -131,7 +131,9 @@ def scale_graph_x(graph, scale):
     """
     Scale the graph in x-direction
     """
-    x_vals, y_vals = np.array(graph.GetX()), np.array(graph.GetY())
+    n_points = graph.GetN()
+    x_vals = get_vals_from_rwbuffer(graph.GetX(), n_points)
+    y_vals = get_vals_from_rwbuffer(graph.GetY(), n_points)
     xlo, xhi, ylo, yhi = get_errors(graph)
 
     x_vals *= scale
@@ -188,9 +190,9 @@ def divide_graphs(ngraph, dgraph, corr=0):
                                               dgraph.ClassName()))
         return None
 
-    nx_vals = np.array(ngraph.GetX())
-    ny_vals = np.array(ngraph.GetY())
-    dy_vals = np.array(dgraph.GetY())
+    nx_vals = get_vals_from_rwbuffer(ngraph.GetX(), n_points)
+    ny_vals = get_vals_from_rwbuffer(ngraph.GetY(), n_points)
+    dy_vals = get_vals_from_rwbuffer(dgraph.GetY(), n_points)
 
     ry_vals = ny_vals / dy_vals
 
@@ -232,7 +234,7 @@ def get_binning(graph):
         np.array or None: 2D array with the bins (low, high) as columns for the
             different bins. None if not a TGraphErrors or a TGraphAsymmErrors
     """
-    x_vals = np.array(graph.GetX())
+    x_vals = get_vals_from_rwbuffer(graph.GetX(), graph.GetN())
 
     if graph.InheritsFrom('TGraphAsymmErrors'):
         x_lo_errs, x_hi_errs, _, _ = get_errors(graph)
@@ -268,8 +270,8 @@ def _get_uncer_band(graph, combi, err_func):
         ROOT.TGraph: The TGraph with the same x values as the passed graph and
             y values shifted according to the combi function
     """
-    x_vals = np.array(graph.GetX())
-    y_vals = np.array(graph.GetY())
+    x_vals = get_vals_from_rwbuffer(graph.GetX(), graph.GetN())
+    y_vals = get_vals_from_rwbuffer(graph.GetY(), graph.GetN())
     n_points = graph.GetN()
 
     y_err = err_func(graph)
@@ -324,7 +326,7 @@ def _get_y_max_graph(graph):
     """
     max_vals = []
     for graph in make_iterable(graph):
-        yvals = np.array(graph.GetY())
+        yvals = get_vals_from_rwbuffer(graph.GetY(), graph.GetN())
         if isinstance(graph, r.TGraphAsymmErrors):
             _, _, _, yerr = get_errors(graph)
         elif isinstance(graph, r.TGraphErrors):
@@ -343,7 +345,7 @@ def _get_y_min_graph(graph):
     """
     min_vals = []
     for graph in make_iterable(graph):
-        yvals = np.array(graph.GetY())
+        yvals = get_vals_from_rwbuffer(graph.GetY(), graph.GetN())
         if isinstance(graph, r.TGraphAsymmErrors):
             _, _, yerr, _ = get_errors(graph)
         elif isinstance(graph, r.TGraphErrors):
@@ -362,7 +364,7 @@ def _get_x_max_graph(graph):
     """
     max_vals = []
     for graph in make_iterable(graph):
-        xvals = np.array(graph.GetX())
+        xvals = get_vals_from_rwbuffer(graph.GetX(), graph.GetN())
         if isinstance(graph, r.TGraphAsymmErrors):
             _, xerr, _, _= get_errors(graph)
         elif isinstance(graph, r.TGraphErrors):
@@ -381,7 +383,7 @@ def _get_x_min_graph(graph):
     """
     min_vals = []
     for graph in make_iterable(graph):
-        xvals = np.array(graph.GetX())
+        xvals = get_vals_from_rwbuffer(graph.GetX(), graph.GetN())
         if isinstance(graph, r.TGraphAsymmErrors):
             xerr, _, _, _= get_errors(graph)
         elif isinstance(graph, r.TGraphErrors):
@@ -413,7 +415,9 @@ def assign_x(graph, new_x):
     if not isinstance(graph, r.TGraphAsymmErrors):
         logging.error('Can only reassign x-values and keep error interval '
                       'intact for TGraphAsymmErrors')
-    x_vals, y_vals = np.array(graph.GetX()), np.array(graph.GetY())
+    n_points = graph.GetN()
+    x_vals = get_vals_from_rwbuffer(graph.GetX(), n_points)
+    y_vals = get_vals_from_rwbuffer(graph.GetY(), n_points)
     xlo, xhi, ylo, yhi = get_errors(graph)
 
     # shift central values and x errors according to delta between old and new
@@ -440,7 +444,9 @@ def assign_y(graph, new_y):
         ROOT.TGraph: Graph of the same type as the input type with updated y
             y values.
     """
-    x_val, y_val = np.array(graph.GetX()), np.array(graph.GetY())
+    n_points = graph.GetN()
+    x_val = get_vals_from_rwbuffer(graph.GetX(), n_points)
+    y_val = get_vals_from_rwbuffer(graph.GetY(), n_points)
     y_scale = y_val / new_y
 
     if isinstance(graph, r.TGraphAsymmErrors):
@@ -478,7 +484,9 @@ def calc_pulls(graph, shape):
         Calculate pulls between graph and shape with a recipe on how to evaluate
         the shape at the x-values of the graph
         """
-        x_vals, y_vals = np.array(graph.GetX()), np.array(graph.GetY())
+        n_points = graph.GetN()
+        x_vals = get_vals_from_rwbuffer(graph.GetX(), n_points)
+        y_vals = get_vals_from_rwbuffer(graph.GetY(), n_points)
         _, _, y_err, _ = get_errors(graph)
         y_pred = np.array([eval_f(shape, x) for x in x_vals])
 
@@ -511,11 +519,12 @@ def pull_graph(graph, shape):
     See also:
         calc_pulls
     """
-    xvals = np.array(graph.GetX())
+    n_points = graph.GetN()
+    xvals = get_vals_from_rwbuffer(graph.GetX(), n_points)
     pulls = calc_pulls(graph, shape)
     val_vals = np.abs(pulls) != 0
 
-    return r.TGraph(np.sum(val_vals), xvals[val_vals], pulls[val_vals])
+    return r.TGraph(int(np.sum(val_vals)), xvals[val_vals], pulls[val_vals])
 
 
 def divide_hist(graph, hist, corr=0):
@@ -570,7 +579,7 @@ def shift_graph_horizontal(graph, shift):
     See also:
         assign_x
     """
-    return assign_x(graph, np.array(graph.GetX()) + shift)
+    return assign_x(graph, get_vals_from_rwbuffer(graph.GetX(), graph.GetN()) + shift)
 
 
 def graph_in_range(graph, low, high):
@@ -588,12 +597,13 @@ def graph_in_range(graph, low, high):
             desired range. If all points are in the desired range the original
             graph will be returned
     """
-    x_vals = np.array(graph.GetX())
+    n_points = graph.GetN()
+    x_vals = get_vals_from_rwbuffer(graph.GetX(), n_points)
     in_range = (x_vals < high) & (x_vals > low)
     if np.all(in_range):
         return graph
 
-    y_vals = np.array(graph.GetY())
+    y_vals = get_vals_from_rwbuffer(graph.GetY(), n_points)
 
     if isinstance(graph, (r.TGraphErrors, r.TGraphAsymmErrors)):
         errors = get_errors(graph)
@@ -636,8 +646,9 @@ def subtract_graphs(graph1, graph2, corr=0):
 
     exl, exh, eyl1, eyh1 = get_errors(graph1)
     _, _, eyl2, eyh2 = get_errors(graph2)
-    xvals = np.array(graph1.GetX())
-    diff = np.array(graph1.GetY()) - np.array(graph2.GetY())
+    xvals = get_vals_from_rwbuffer(graph1.GetX(), graph1.GetN())
+    diff = get_vals_from_rwbuffer(graph1.GetY(), graph1.GetN()) - \
+        get_vals_from_rwbuffer(graph2.GetY(), graph2.GetN())
 
     eyl = np.sqrt(-2 * corr * eyl1 * eyl2 + eyl1**2 + eyl2**2)
     eyh = np.sqrt(-2 * corr * eyh1 * eyh2 + eyh1**2 + eyh2**2)
@@ -661,11 +672,11 @@ def fit_to_graph(graph, template):
         norm, chi2: The normalization value and the minimal chi2 value of the
             fit procedure.
     """
-    tval = np.array(template.GetY())
-    gval = np.array(graph.GetY())
+    tval = get_vals_from_rwbuffer(template.GetY(), template.GetN())
+    gval = get_vals_from_rwbuffer(graph.GetY(), graph.GetN())
     _, _, elow, ehigh = get_errors(graph)
 
-    def _chisquare((norm,)):
+    def _chisquare(norm):
         """Calculate the chi2 value associated to a given norm"""
         pred = norm * tval
         diff = gval - pred
@@ -690,7 +701,7 @@ def get_x_binning(graph):
     Returns:
         np.array: The bin-edges of the binning along the x-direction
     """
-    x_vals = np.array(graph.GetX())
+    x_vals = get_vals_from_rwbuffer(graph.GetX(), graph.GetN())
     if isinstance(graph, r.TGraphErrors):
         x_err, _ = get_errors(graph)
         low_edges = x_vals - x_err
@@ -719,7 +730,7 @@ def divide_func(graph, func):
         func (ROOT.TF1 or anything providing an Eval function): denominator
             function
     """
-    x_vals = np.array(graph.GetX())
+    x_vals = get_vals_from_rwbuffer(graph.GetX(), graph.GetN())
     func_vals = np.array([func.Eval(x) for x in x_vals])
     # Simply create a graph with zero uncertainties using the x-value and the
     # function values at these points and pass them to divide_graphs
