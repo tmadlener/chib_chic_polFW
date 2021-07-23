@@ -712,7 +712,7 @@ def parse_binning(binning_str):
     rmatch =  re.match(flt_rgx + ':' + flt_rgx + r',(\d+)$', binning_str)
     if rmatch:
         return np.linspace(float(rmatch.group(1)), float(rmatch.group(2)),
-                           float(rmatch.group(3)))
+                           int(rmatch.group(3)))
 
     # match the arange case
     rmatch = re.match(r':'.join([flt_rgx]*3), binning_str)
