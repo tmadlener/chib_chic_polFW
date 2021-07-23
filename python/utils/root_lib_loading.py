@@ -9,8 +9,7 @@ import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 
 import logging
-logging.basicConfig(level=logging.ERROR,
-                    format='%(levelname)s - %(funcName)s: %(message)s')
+logger = logging.getLogger()
 
 def try_load_lib(path, name=''):
     """
@@ -30,7 +29,7 @@ def try_load_lib(path, name=''):
         # independently of first trying to load the shared object, but loading
         # libRooFitCore displays the splash text from RooFit which is something
         # I do not like entirely, so we do it only when really necessary
-        logging.debug('Cannot load the {} shared object from {}. Trying after '
+        logger.debug('Cannot load the {} shared object from {}. Trying after '
                       'loading libRooFitCore first'.format(name, path))
         r.gSystem.Load('libRooFitCore')
 

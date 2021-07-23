@@ -13,8 +13,7 @@ Attributes:
 import json
 import os
 import logging
-logging.basicConfig(level=logging.INFO,
-                    format='%(levelname)s: %(message)s')
+logger = logging.getLogger()
 
 from decorator import decorator
 
@@ -44,7 +43,7 @@ def default_value_access(def_val, proto_err_msg):
             try:
                 return func(*args)
             except KeyError:
-                logging.warning('database access: ' +
+                logger.warning('database access: ' +
                                 proto_err_msg.format(*args))
                 return def_val
 
@@ -69,7 +68,7 @@ class JsonDataBase(object):
         else:
             self.db_path = '/'.join([os.environ['CHIB_CHIC_POLFW_DIR'],
                                      'database', 'data.json'])
-        logging.debug('Initializing json data base from {}'
+        logger.debug('Initializing json data base from {}'
                       .format(self.db_path))
         with open(self.db_path) as dataf:
             self.data = json.load(dataf)
@@ -92,9 +91,9 @@ class JsonDataBase(object):
         """
         if trigger is None:
             trigger = DEFAULT_TRIGGERS[int(year)]
-            logging.debug('No trigger passed. Selecting default trigger \'{}\' '
+            logger.debug('No trigger passed. Selecting default trigger \'{}\' '
                           'for year {}'.format(trigger, year))
-        logging.debug('Trying to get integrated luminosity for year {} and '
+        logger.debug('Trying to get integrated luminosity for year {} and '
                       'trigger {}'.format(year, trigger))
         return self._get_from_db('int_lumi', lambda d, y, t: d[y][t],
                                  str(year), trigger)
@@ -111,7 +110,7 @@ class JsonDataBase(object):
         Returns:
             int: cms energy in TeV
         """
-        logging.debug('Trying to get cms energy for year {}'.format(year))
+        logger.debug('Trying to get cms energy for year {}'.format(year))
         return self._get_from_db('cms_energy', lambda d, y: d[y], str(year))
 
 
@@ -128,7 +127,7 @@ class JsonDataBase(object):
             float: The mean signal pT of the J/psi in the given pt bin for the
                 passed year
         """
-        logging.debug('Trying to get mean pt for year {} in pt bin [{}, {}]'
+        logger.debug('Trying to get mean pt for year {} in pt bin [{}, {}]'
                       .format(year, *pt_bin))
         return self._get_from_db('mean_pt',
                                  lambda d, y, p: d[y]["{}, {}".format(*p)],

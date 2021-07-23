@@ -3,8 +3,8 @@ Module for data handling and related things.
 """
 import sys
 import logging
-logging.basicConfig(level=logging.INFO,
-                    format='%(levelname)s - %(funcName)s: %(message)s')
+logger = logging.getLogger()
+
 import re
 
 import pandas as pd
@@ -32,13 +32,13 @@ def check_branch_available(tree, branch, nowarn=False):
     Returns:
         bool: True if branch is in tree, else False
     """
-    logging.debug('Checking if {} is available in {}'
+    logger.debug('Checking if {} is available in {}'
                   .format(branch, tree.GetName()))
 
     all_branches = [b.GetName() for b in tree.GetListOfBranches()]
     if branch in all_branches:
         return True
-    log_func = logging.info if nowarn else logging.warning
+    log_func = logger.info if nowarn else logger.warning
     log_func('Could not find branch \'{}\' in TTree \'{}\''
              .format(branch, tree.GetName()))
     return False
@@ -63,15 +63,15 @@ def store_dataframe(dfr, outfile, tname='chi2_values', **kwargs):
 
     See Also: root_pandas.to_root
     """
-    logging.debug('Storing DataFrame to {}'.format(outfile))
+    logger.debug('Storing DataFrame to {}'.format(outfile))
     if not outfile.endswith('.pkl') and not outfile.endswith('.root'):
-        logging.warning('Output file doesnot have .root or .pkl format. '
+        logger.warning('Output file doesnot have .root or .pkl format. '
                         'Creating a .pkl file instead')
-        logging.debug('Output filename before substitution: {}'.format(outfile))
+        logger.debug('Output filename before substitution: {}'.format(outfile))
         outfile = re.sub(r'(.*\.)(\w*)$', r'\1pkl', outfile)
-        logging.debug('Output filename after substitution: {}'.format(outfile))
+        logger.debug('Output filename after substitution: {}'.format(outfile))
 
-    logging.info('Writing resulting DataFrame to: {}'.format(outfile))
+    logger.info('Writing resulting DataFrame to: {}'.format(outfile))
     # if .root is requested check if root_pandas is here, otherwise go to .pkl
     if outfile.endswith('.root'):
         try:
@@ -80,7 +80,7 @@ def store_dataframe(dfr, outfile, tname='chi2_values', **kwargs):
             to_root(dfr, outfile, tname, **kwargs# , store_index=False
             )
         except ImportError:
-            logging.warning('Output to .root file was requested, but root_pandas'
+            logger.warning('Output to .root file was requested, but root_pandas'
                             ' was not found. Creating a .pkl file instead')
             outfile = outfile.replace('.pkl', '.root')
 
@@ -122,9 +122,9 @@ def get_dataframe(infile, treename=None, **kwargs):
     Returns:
         pandas.DataFrame: The dataframe read from the file.
     """
-    logging.debug('Getting DataFrame from {}'.format(infile))
+    logger.debug('Getting DataFrame from {}'.format(infile))
     if not infile.endswith('.pkl') and not infile.endswith('.root'):
-        logging.error('Infile does not have a parseable format: {}'
+        logger.error('Infile does not have a parseable format: {}'
                       ' Valid formats are .root and .pkl'.format(infile))
 
     if infile.endswith('.pkl'):
@@ -138,7 +138,7 @@ def get_dataframe(infile, treename=None, **kwargs):
             return read_root(infile, key=treename, **kwargs)
         except ImportError:
             # log and bail out
-            logging.error('Requested to read DataFrame from {}, but could not '
+            logger.error('Requested to read DataFrame from {}, but could not '
                           'import root_pandas'.format(infile))
     sys.exit(1)
 
@@ -173,7 +173,7 @@ def apply_selections(dataframe, selections, negate=False):
         # Check if all selections are actually functions. If not sipmly log as
         # this will fail in the next few lines anyway
         if not all(callable(f) for f in selections):
-            logging.error('Passed selections are not all functions and also not'
+            logger.error('Passed selections are not all functions and also not'
                           ' an array of boolean indices')
         sum_selection = np.ones(dataframe.shape[0], dtype=bool)
         for sel in selections:
@@ -183,7 +183,7 @@ def apply_selections(dataframe, selections, negate=False):
         sum_selection = np.invert(sum_selection)
 
     if np.sum(sum_selection) == dataframe.shape[0]:
-        logging.debug('Sum of selections (after possible negation) selects all '
+        logger.debug('Sum of selections (after possible negation) selects all '
                       'elements from passed DataFrame.')
         return dataframe
 
@@ -212,10 +212,10 @@ def get_treename(filename):
         return trees[0]
 
     if len(trees) > 1:
-        logging.warning('Found more than one TTrees in {}: {}'
+        logger.warning('Found more than one TTrees in {}: {}'
                         .format(filename, trees))
     if len(trees) == 0:
-        logging.warning('Found no TTrees in {}'.format(filename))
+        logger.warning('Found no TTrees in {}'.format(filename))
 
     return None
 

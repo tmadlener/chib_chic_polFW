@@ -12,8 +12,7 @@ from collections import Iterable
 from decorator import decorator, decorate
 
 import logging
-logging.basicConfig(level=logging.WARNING,
-                    format='%(levelname)s - %(funcName)s: %(message)s')
+logger = logging.getLogger()
 
 try:
     basestring
@@ -34,7 +33,7 @@ def cond_mkdir(path):
     Implementation following: http://stackoverflow.com/a/14364249/3604607
     """
     try:
-        logging.debug('trying to make directory: \'{}\''.format(path))
+        logger.debug('trying to make directory: \'{}\''.format(path))
         if path:
             os.makedirs(path)
     except OSError as err:
@@ -181,12 +180,12 @@ def get_full_trigger(subpath):
         ('HLT_Dimuon25_Jpsi', ((2, '25'),)),
     )
 
-    logging.debug('Trying to find full path for subexpression: {}'
+    logger.debug('Trying to find full path for subexpression: {}'
                   .format(subpath))
     trg_rgx = r'(HLT_)?(Dimuon)?(\d{1,2})_?(Jpsi|Upsilon)?_?(Barrel)?_?(Seagulls)?'
     trg_m = re.search(trg_rgx, subpath)
     if trg_m:
-        logging.debug('Got a regex match, Now checking if we can uniquely '
+        logger.debug('Got a regex match, Now checking if we can uniquely '
                       'identify the path')
 
         match_ids = [(i, m) for i, m in enumerate(trg_m.groups())
@@ -195,7 +194,7 @@ def get_full_trigger(subpath):
             if all([ids in match_ids for ids in path_ids]):
                 return path
 
-    logging.warning('Could not uniquely identify a trigger path from the sub '
+    logger.warning('Could not uniquely identify a trigger path from the sub '
                     'expression: {}'.format(subpath))
     return ''
 
@@ -371,7 +370,7 @@ def deprecated_soon(replacement=None):
         message = '\'{}\' will soon be deprecated.'.format(func.__name__)
         if replacement is not None:
             message += ' You should start to use the replacement \'{}\''.format(replacement)
-        logging.warn(message)
+        logger.warn(message)
 
         return func(*args, **kwargs)
 
@@ -527,7 +526,7 @@ def log_key_error(func, *args):
         try:
             return func(*args)
         except KeyError:
-            logging.warning('Caught KeyError')
+            logger.warning('Caught KeyError')
 
     return try_catch_access(*args)
 
@@ -607,7 +606,7 @@ def find_common_binning(bin_borders):
     if np.all(low_bounds <= high_bounds):
         return poss_bins
     else:
-        logging.warning('Cannot find a common binning without overlaps. All '
+        logger.warning('Cannot find a common binning without overlaps. All '
                         'possible bins are: {}'.format(poss_bins))
         return None
 
@@ -725,12 +724,12 @@ def parse_binning(binning_str):
         try:
             return np.array([float(v) for v in binning_str.split(',')])
         except ValueError as parse_err:
-            logging.error('Could not parse binning from \'{}\' because \'{}\''
+            logger.error('Could not parse binning from \'{}\' because \'{}\''
                           .format(binning_str, parse_err.message))
             return np.array([])
 
     # if we fall through here then we got a case that we don't handle
-    logging.error('Cannot handle \'{}\' in trying to parse a binning'
+    logger.error('Cannot handle \'{}\' in trying to parse a binning'
                   .format(binning_str))
 
     return np.array([])
@@ -766,7 +765,7 @@ def parse_func_var(expr):
         if hasattr(np, func):
             return var, getattr(np, func)
         else:
-            logging.error('Could not find a numpy function named \'{}\' that '
+            logger.error('Could not find a numpy function named \'{}\' that '
                           'was parsed from \'{}\''.format(func, expr))
 
     var_rgx = r'^\w+$'
@@ -811,7 +810,7 @@ def parse_sel_expr(expr):
                 return lambda d: _get_var(d, *func) < float(parts[1])
 
     # If we are still here then we could not parse the expression
-    logging.error('Could not parse expression \'{}\' to extract a selection '
+    logger.error('Could not parse expression \'{}\' to extract a selection '
                   'function'.format(expr))
     return False
 
@@ -832,7 +831,7 @@ def is_divisable(dividend, divisor):
     ratio = dividend / divisor
     if ratio * divisor == dividend:
         return ratio
-    logging.warning('{} is not a divisor of {}'.format(divisor, dividend))
+    logger.warning('{} is not a divisor of {}'.format(divisor, dividend))
 
 
 def memoize(func):
@@ -887,7 +886,7 @@ def fmt_float(number, use_exp=None):
 
     if use_exp is not None:
         if not isinstance(use_exp, int):
-            logging.warning('Rounding use_exp={} to nearest int'.format(use_exp))
+            logger.warning('Rounding use_exp={} to nearest int'.format(use_exp))
         # float to avoid "Integers to negative integer powers are not allowed"
         exp = np.round(use_exp).astype(float)
 

@@ -3,8 +3,8 @@
 Module to facilitate some handling of RooFit objects
 """
 import logging
-logging.basicConfig(level=logging.WARNING,
-                    format='%(levelname)s - %(funcName)s: %(message)s')
+logger = logging.getLogger()
+
 import ROOT as r
 import numpy as np
 import pandas as pd
@@ -106,11 +106,11 @@ def get_chi2_ndf(frame, pdfname, histname, fit_res=None):
     n_bins = frame.GetNbinsX()
     if fit_res is not None:
         n_float_pars = fit_res.floatParsFinal().getSize()
-        logging.debug('fit results have {} floating parameters'
+        logger.debug('fit results have {} floating parameters'
                       .format(n_float_pars))
     else:
         n_float_pars = 0
-        logging.debug('No fit result passed')
+        logger.debug('No fit result passed')
 
     ndf = n_bins - n_float_pars
 
@@ -119,7 +119,7 @@ def get_chi2_ndf(frame, pdfname, histname, fit_res=None):
     chi2_ndf = frame.chiSquare(pdfname, histname, n_float_pars)
     chi2 = chi2_ndf * ndf
 
-    logging.debug('Reduced chi2 from frame is {:.2f}. Have {} bins in histogram '
+    logger.debug('Reduced chi2 from frame is {:.2f}. Have {} bins in histogram '
                   'and {} floating parameters -> chi2 / ndf = {:.2f} / {}'
                   .format(chi2_ndf, n_bins, n_float_pars, chi2, ndf))
 
@@ -148,11 +148,11 @@ def calc_info_crit(fit_res, min_nll, n_events=None):
         min_nll = fit_res.minNll()
     n_pars = fit_res.floatParsFinal().getSize()
     if n_events is not None:
-        logging.debug('Calculating BIC with -log(L) = {:.0f}, k = {}, n = {}'
+        logger.debug('Calculating BIC with -log(L) = {:.0f}, k = {}, n = {}'
                       .format(min_nll, n_pars, n_events))
         return np.log(n_events) * n_pars + 2 * min_nll
 
-    logging.debug('Calculating AIC with -log(L) = {:.0f}, k = {}'
+    logger.debug('Calculating AIC with -log(L) = {:.0f}, k = {}'
                   .format(min_nll, n_pars))
     return 2 * n_pars + 2 * min_nll
 
@@ -217,7 +217,7 @@ def _get_var_vals(wsp, var, snapshots):
 
     # check if all the asymmetric uncertainties are present
     if np.any(np.array(err_low) == 0) or np.any(np.array(err_high) == 0):
-        logging.warning('Some of the asymmetric (MINOS) uncertainties for {} are'
+        logger.warning('Some of the asymmetric (MINOS) uncertainties for {} are'
                         ' not properly determined, switching to symmetric '
                         '(HESSE) uncertainties'.format(var))
         err_low = err_high = err_sym
@@ -233,7 +233,7 @@ def get_var_graph(wsp, snap_base, var, n_bins, binning=None, bin_means=None,
     snapshots = [snap_base.format(i) for i in xrange(n_bins)]
     dependent = isinstance(get_var(wsp, var), r.RooFormulaVar)
     if dependent and not fit_res_base:
-        logging.error('{} is a dependent variable but no base name for the fit '
+        logger.error('{} is a dependent variable but no base name for the fit '
                       'results is passed. Cannot calculate uncertainties'
                       .format(var))
         return None
@@ -280,11 +280,11 @@ def set_var(wsp, varname, val, create=False, err=None):
     var = get_var(wsp, varname)
     if var is None:
         if not create:
-            logging.error('Variable \'{}\' is not present in workspace'
+            logger.error('Variable \'{}\' is not present in workspace'
                           .format(varname))
             return
         else:
-            logging.debug('Variable \'{}\' not already present in workspace. '
+            logger.debug('Variable \'{}\' not already present in workspace. '
                           'Creating it.'.format(varname))
             wsp.factory("{}[{}]".format(varname, val))
             var = get_var(wsp, varname)
@@ -314,7 +314,7 @@ def fix_params(wsp, param_vals):
         else:
             debug_msg = 'Fixing {} to {}'
 
-        logging.info(debug_msg.format(par, val))
+        logger.info(debug_msg.format(par, val))
         get_var(wsp, par).setVal(val)
         get_var(wsp, par).setConstant(True)
 
@@ -329,16 +329,16 @@ def release_params(wsp, param_names):
             workspace to release
     """
     for par in param_names:
-        logging.debug('Releasing variable \'{}\''.format(par))
+        logger.debug('Releasing variable \'{}\''.format(par))
         get_var(wsp, par).setConstant(False)
 
 
 def try_factory(wsp, expr):
     """Try to run the expression through the RooWorkspace.factory"""
-    logging.debug(expr)
+    logger.debug(expr)
     obj = wsp.factory(expr)
     if not obj:
-        logging.error('\'{}\' failed to create the an object in the workspace'
+        logger.error('\'{}\' failed to create the an object in the workspace'
                       .format(expr))
         return False
     return True
@@ -395,7 +395,7 @@ def eval_pdf(pdf, var, values):
     Returns:
         np.array: The values of the passed pdf at the passed variable values
     """
-    logging.debug('Evaluating pdf {} along variable {} at {} values'.
+    logger.debug('Evaluating pdf {} along variable {} at {} values'.
                   format(pdf.GetName(), var, len(values)))
     vals = np.ones_like(values)
     # Necessary to have the resulting pdf normalized to 1 on the range of the

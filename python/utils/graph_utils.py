@@ -9,8 +9,7 @@ import ROOT as r
 
 from decorator import decorator
 import logging
-logging.basicConfig(level=logging.INFO,
-                    format='%(levelname)s: %(message)s')
+logger = logging.getLogger()
 
 from scipy.optimize import minimize
 
@@ -31,7 +30,7 @@ def out_of_range_default(func, *args):
     graph, idx = args[0:2]
     n_points = graph.GetN()
     if n_points < idx:
-        logging.error('Cannot access index {} in graph having only {} points'
+        logger.error('Cannot access index {} in graph having only {} points'
                       .format(idx, n_points))
         return np.nan
 
@@ -180,12 +179,12 @@ def divide_graphs(ngraph, dgraph, corr=0):
     """
     n_points = ngraph.GetN()
     if n_points != dgraph.GetN():
-        logging.error('Cannot divide graphs with different numbers of points! '
+        logger.error('Cannot divide graphs with different numbers of points! '
                       'Number of points: {} / {}'
                       .format(n_points, dgraph.GetN()))
         return None
     if ngraph.ClassName() != dgraph.ClassName():
-        logging.error('Cannot divide graphs of different types! '
+        logger.error('Cannot divide graphs of different types! '
                       'Types: {} / {}'.format(ngraph.ClassName(),
                                               dgraph.ClassName()))
         return None
@@ -245,7 +244,7 @@ def get_binning(graph):
         bins_lo = x_vals - x_errs
         bins_hi = x_vals + x_errs
     else:
-        logging.warning('Trying to obtain binning from something else than a '
+        logger.warning('Trying to obtain binning from something else than a '
                         'TGraphErrors or a TGraphAsymmErrors')
         return None # without uncertainties there are no bins
 
@@ -413,7 +412,7 @@ def assign_x(graph, new_x):
             spanned by the input errors remains the same.
     """
     if not isinstance(graph, r.TGraphAsymmErrors):
-        logging.error('Can only reassign x-values and keep error interval '
+        logger.error('Can only reassign x-values and keep error interval '
                       'intact for TGraphAsymmErrors')
     n_points = graph.GetN()
     x_vals = get_vals_from_rwbuffer(graph.GetX(), n_points)
@@ -498,7 +497,7 @@ def calc_pulls(graph, shape):
         return _pulls(graph, shape, lambda s, x: s.Eval(x))
     if isinstance(shape, r.TH1):
         return _pulls(graph, shape, lambda h, x: h.GetBinContent(h.FindBin(x)))
-    logging.error('Passed shape could not be processed because it is neither a '
+    logger.error('Passed shape could not be processed because it is neither a '
                   'TF1 nor a TH1')
 
 
@@ -640,7 +639,7 @@ def subtract_graphs(graph1, graph2, corr=0):
     """
     TGA = r.TGraphAsymmErrors # less typing
     if not isinstance(graph1, TGA) or not isinstance(graph2, TGA):
-        logging.error('Subtracting graphs is currently only implemented for '
+        logger.error('Subtracting graphs is currently only implemented for '
                       'TGraphAsymmErrors')
         return None
 
@@ -711,7 +710,7 @@ def get_x_binning(graph):
         low_edges = x_vals - xlo
         high_edges = x_vals + xhi
     else:
-        logging.error('Cannot determine binning of graph of type'
+        logger.error('Cannot determine binning of graph of type'
                       .format(type(graph)))
 
     # Avoid some numerical problems by rounding to the 6th decimal place

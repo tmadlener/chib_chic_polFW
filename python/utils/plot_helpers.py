@@ -11,8 +11,7 @@ Attributes:
 """
 
 import logging
-logging.basicConfig(level=logging.WARNING,
-                    format='%(levelname)s - %(funcName)s: %(message)s')
+logger = logging.getLogger()
 
 try:
     import __builtin__ as builtins
@@ -145,7 +144,7 @@ def default_attributes(diff_markers=True, size=1, linewidth=2,
             argument of plot_on_canvas
     """
     if kwargs.pop('unique_colors', None) is not None:
-        logging.warning('\'unique_colors \' is a keyword arg without effect')
+        logger.warning('\'unique_colors \' is a keyword arg without effect')
 
     dcols = default_colors()
     if diff_markers:
@@ -731,7 +730,7 @@ def _warn_thstack(func, *args):
     See: https://sft.its.cern.ch/jira/browse/ROOT-9854
     """
     if BUGGED_THSTACK:
-        logging.warn('Calling GetMinimum or GetMaximum on a THStack leads to '
+        logger.warn('Calling GetMinimum or GetMaximum on a THStack leads to '
                      'plot attributes not being set properly to the stacked '
                      'histograms')
     return func(*args)
@@ -876,19 +875,19 @@ def parse_plot_args(plot_args):
     for arg, value in map(lambda x: x.split('='), plot_args):
         arg = arg.strip() # cleanup whitespace
         value = value.strip()
-        logging.debug('Processing argument: \'{}={}\''.format(arg, value))
+        logger.debug('Processing argument: \'{}={}\''.format(arg, value))
         if '[' in value and ']' in value:
-            logging.debug('Value is assumed to be a list')
+            logger.debug('Value is assumed to be a list')
             value = value.strip('[]')
             if 'Range' in arg or 'legPos' == arg:
-                logging.debug('Converting value into a list of floats')
+                logger.debug('Converting value into a list of floats')
                 value = [float(v) for v in value.split(',')]
             if arg == 'legEntries':
-                logging.debug('Converting value into a list of strings')
+                logger.debug('Converting value into a list of strings')
                 value = value.spilt(',')
 
             if value == 'True' or value == 'False':
-                logging.debug('Converting value into a boolean')
+                logger.debug('Converting value into a boolean')
                 value = value=='True'
 
         arg_dict[arg] = value

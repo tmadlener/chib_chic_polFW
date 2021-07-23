@@ -3,8 +3,7 @@ Setup plotting style according to
 https://twiki.cern.ch/twiki/bin/view/CMS/Internal/FigGuidelines
 """
 import logging
-logging.basicConfig(level=logging.WARNING,
-                    format='%(levelname)s-%(module)s.%(funcName)s: %(message)s')
+logger = logging.getLogger()
 
 import ROOT as r
 
@@ -18,7 +17,7 @@ from utils.data_base import JsonDataBase
 try:
     DATABASE = JsonDataBase()
 except (KeyError, IOError) as e:
-    logging.warning('Cannot initialize the database: {}.\nMake sure to have '
+    logger.warning('Cannot initialize the database: {}.\nMake sure to have '
                     '\'CHIB_CHIC_POLFW_DIR\' set and pointing to the '
                     'right path to be able to read the database'.format(e))
     DATABASE = None
@@ -209,7 +208,7 @@ def add_auxiliary_info(pad, years, pos='right', mc=False, prelim=False):
     """Add the auxiliary information to the passed pad"""
     def get_lumi(year):
         if DATABASE is None:
-            logging.warning('DATABASE not initialized.')
+            logger.warning('DATABASE not initialized.')
             return -1
         return '{} fb^{{-1}} ({} TeV)'.format(
             DATABASE.get_int_lumi(year), DATABASE.get_energy(year)

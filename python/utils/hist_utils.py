@@ -8,8 +8,7 @@ import ROOT as r
 r.PyConfig.IgnoreCommandLineOptions = True
 
 import logging
-logging.basicConfig(level=logging.INFO,
-                    format='%(levelname)s - %(funcName)s: %(message)s')
+logger = logging.getLogger()
 
 from collections import OrderedDict
 from itertools import chain
@@ -89,13 +88,13 @@ def set_bins_to_zero(hist, thresh=0):
         thresh (float, optional): Threshold below which bins should be set to 0.
         verbose (bool, optional): Make function print out the bins it sets to 0.
     """
-    logging.debug('Checking {} for bins with entries below {}'
+    logger.debug('Checking {} for bins with entries below {}'
                   .format(hist.GetName(), thresh))
     neg_bins = [(i, b) for i, b in enumerate(hist) if b < thresh]
     for negb, cont in neg_bins:
         hist.SetBinContent(negb, 0)
         hist.SetBinError(negb, 0)
-        logging.debug('Set bin {} to 0, content was {}'.format(negb, cont))
+        logger.debug('Set bin {} to 0, content was {}'.format(negb, cont))
 
 
 def set_labels(hist, xlabel='', ylabel=''):
@@ -378,7 +377,7 @@ def create_histogram(var, hist_sett, **kwargs):
         ndim = ndim[1]
 
     if ndim > 3 or ndim < 0:
-        logging.error('Dimension of histogram is {}. Cannot create histogram'
+        logger.error('Dimension of histogram is {}. Cannot create histogram'
                       .format(ndim))
         raise TypeError('Invalid number of dimensions in create_histograms')
 
@@ -386,7 +385,7 @@ def create_histogram(var, hist_sett, **kwargs):
     try:
         hist = getattr(r, hist_type)(name, '', *hist_sett)
     except TypeError as exc:
-        logging.error('Could not construct TH{}D with passed hist_sett: {}'
+        logger.error('Could not construct TH{}D with passed hist_sett: {}'
                       .format(ndim, hist_sett))
         raise exc
 
@@ -427,7 +426,7 @@ def _get_hist_sett(var, nbins=None, minx=None, maxx=None, hist_sett=None,
 
     if log:
         if minx <= 0:
-            logging.debug('Min value = {} but log axis specified. Using lowest'
+            logger.debug('Min value = {} but log axis specified. Using lowest'
                           ' value > 0 as axis minimum'.format(minx))
             minx = np.ma.masked_where(var <= 0, var).min()
         return (nbins, np.logspace(np.log10(minx), np.log10(maxx), nbins + 1))
@@ -618,7 +617,7 @@ def get_n_slices(hist, direction, n_slices, basename=None):
     n_bins = getattr(hist, 'GetNbins' + OTHER_AXIS[direction])()
     dslice = n_bins / n_slices
     if n_bins % n_slices:
-        logging.warning('Cannot evenly cut {} bins into {} slices'
+        logger.warning('Cannot evenly cut {} bins into {} slices'
                         .format(n_bins, n_slices))
 
     for islice in xrange(n_slices):
@@ -676,7 +675,7 @@ def _get_nbins(hist):
         ndim = hist.GetNdimensions()
         return tuple(hist.GetAxis(i).GetNbins() for i in xrange(ndim))
 
-    logging.error('{} does not seem to inherit from TH1 or THn. Cannot get shape!'
+    logger.error('{} does not seem to inherit from TH1 or THn. Cannot get shape!'
                   .format(hist.GetName()))
 
 
@@ -759,7 +758,7 @@ def find_bin(binning, value, silent=False):
     # giving a value for all input values
     if not silent and not (len(rows) == len(value)
                            and np.all(np.diff(rows) == 1)):
-        logging.warn('When trying to find the bin indices at least one value '
+        logger.warn('When trying to find the bin indices at least one value '
                      'could not be attributed to a bin in the passed binning')
 
     return cols
@@ -824,7 +823,7 @@ def from_array(array, binning, **kwargs):
     try:
         hist = getattr(r, hist_type)(create_random_str(8), '', *hist_sett)
     except TypeError as exc:
-        logging.error ('Could not construct {} with passed binning: {}'.
+        logger.error ('Could not construct {} with passed binning: {}'.
                        format(hist_type, binning))
         raise exc
 
@@ -851,7 +850,7 @@ def from_array(array, binning, **kwargs):
 
 
     if rnp_version == '4.7.3':
-        logging.debug('Using root_numpys capabilities of setting the errors')
+        logger.debug('Using root_numpys capabilities of setting the errors')
         array2hist(array, hist, errors=uncer)
 
     return hist
@@ -875,7 +874,7 @@ def _get_bin_index(lbl_or_idx):
     if isinstance(idx, int):
         return idx
     else:
-        logging.warning('Cannot convert {} to an axis-idx'.format(lbl_or_idx))
+        logger.warning('Cannot convert {} to an axis-idx'.format(lbl_or_idx))
     return lbl_or_idx
 
 
@@ -909,14 +908,14 @@ def project(hist, axes):
             all_axes = (0, 1, 2)
             isTH3 = True
             if len(axes) != 1 and len(axes) != 2:
-                logging.error('Can only project onto one or two directions')
+                logger.error('Can only project onto one or two directions')
         elif isinstance(hist, r.TH2):
             all_axes = (0, 1)
             isTH3 = False
             if len(axes) != 1:
-                logging.error('Can only project onto one direction')
+                logger.error('Can only project onto one direction')
         else:
-            logging.error('hist is not of type TH[2|3]. Cannot get a projection')
+            logger.error('hist is not of type TH[2|3]. Cannot get a projection')
             return None
 
         # Normalize the input parameter and work with indices afterwards
@@ -1036,7 +1035,7 @@ def rebin(hist, targ_bins):
         axl = _get_bin_index(axl)
         fact = is_divisable(orig_bins[axl], nbins)
         if fact is None:
-            logging.error('Cannot rebin axis {} to {} bins, because it is not '
+            logger.error('Cannot rebin axis {} to {} bins, because it is not '
                           'a divisor of {}'.format(axl, nbins, orig_bins[axl]))
             return None
         rebin_factors[axl] = fact
@@ -1075,7 +1074,7 @@ def rebin_1d_binning(hist, targ_binning):
     orig_binning = get_binning(hist)
     # Check if the target binning is compatible with the original binning
     if not np.all([np.abs(orig_binning - v).min() < 1e-7 for v in targ_binning]):
-        logging.error('Cannot rebin histogram with binning {} to target binning '
+        logger.error('Cannot rebin histogram with binning {} to target binning '
                       '{}'.format(orig_binning, targ_binning))
         return None
 
