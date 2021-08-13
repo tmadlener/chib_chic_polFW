@@ -722,7 +722,7 @@ def parse_binning(binning_str):
     # check if we have a comma separated list of values
     if ',' in binning_str and not ':' in binning_str:
         try:
-            return np.array([float(v) for v in binning_str.split(',')])
+            return np.array([float(v) for v in binning_str.split(',') if v])
         except ValueError as parse_err:
             logger.error('Could not parse binning from \'{}\' because \'{}\''
                           .format(binning_str, parse_err.message))
